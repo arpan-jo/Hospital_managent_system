@@ -361,7 +361,6 @@
     "title": "আমার প্রেসক্রিপশন",
     "recordCount": "{{count}} টি রেকর্ড",
     "recordCount_plural": "{{count}} টি রেকর্ড",
-    "todaysMedicines": "আজকের ওষুধ",
     "allMembers": "সব সদস্য",
     "member": "সদস্য",
     "memberSelf": "{{name}} (আপনি)",
@@ -400,25 +399,6 @@
     "documentDeleted": "ডকুমেন্ট মুছে ফেলা হয়েছে",
     "downloadFailed": "ফাইল ডাউনলোড করা যায়নি",
     "downloadSaved": "ডাউনলোডস-এ সেভ হয়েছে"
-  },
-  "todaysMedicines": {
-    "title": "আজকের ওষুধ",
-    "dosesTaken": "{{total}} টির মধ্যে {{taken}} টি ডোজ নেওয়া হয়েছে",
-    "schedule": "সময়সূচি",
-    "alerts": "অ্যালার্ট",
-    "markTaken": "নেওয়া হয়েছে চিহ্নিত করুন",
-    "noMedicines": "এই সময়ের জন্য কোনো ওষুধ নেই",
-    "slots": {
-      "morning": "সকাল",
-      "afternoon": "দুপুর",
-      "evening": "বিকাল",
-      "night": "রাত"
-    },
-    "scheduleTitle": "রিমাইন্ডার সময়সূচি",
-    "scheduleSubtitle": "প্রতিটি সময়ের জন্য রিমাইন্ডার ঠিক করুন",
-    "scheduleHint": "এই সময়ে নোটিফিকেশন পেতে অ্যালার্ট চালু করুন।",
-    "resetDefaults": "ডিফল্টে ফিরে যান",
-    "saveSchedule": "সময়সূচি সংরক্ষণ"
   },
   "patientProfile": {
     "title": "আমার প্রোফাইল",
@@ -596,6 +576,7 @@
   "drawer": {
     "appointments": "অ্যাপয়েন্টমেন্ট",
     "prescriptions": "আমার প্রেসক্রিপশন",
+    "profile": "আমার প্রোফাইল",
     "findDoctors": "ডাক্তার খুঁজুন",
     "followUps": "ফলো-আপ",
     "reports": "রিপোর্ট"

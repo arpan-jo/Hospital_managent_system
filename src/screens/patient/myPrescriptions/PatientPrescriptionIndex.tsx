@@ -56,12 +56,6 @@ export const PatientPrescriptionIndex = observer(() => {
     [toastStore, t],
   );
 
-  // Parked with the header button below until Today's Medicines ships.
-  // const handleTodaysMedicines = useCallback(
-  //   () => navigation.navigate('TodaysMedicines'),
-  //   [navigation],
-  // );
-
   const handleOpen = useCallback(() => notAvailableYet(), [notAvailableYet]);
 
   /** `url` is a blob name — the file itself is served by the download endpoint. */
@@ -232,18 +226,6 @@ export const PatientPrescriptionIndex = observer(() => {
         title={t('myPrescriptions.title')}
         subtitle={subtitle}
         leading="menu"
-        // right={
-        //   <Pressable
-        //     onPress={handleTodaysMedicines}
-        //     style={[styles.todayButton, { backgroundColor: theme.colors.primary }]}
-        //     accessibilityRole="button"
-        //   >
-        //     <Icon name="pill" size={13} color={theme.colors.onPrimary} />
-        //     <Text style={[styles.todayText, { color: theme.colors.onPrimary }]}>
-        //       {t('myPrescriptions.todaysMedicines')}
-        //     </Text>
-        //   </Pressable>
-        // }
       />
 
       <View style={[styles.memberCard, { backgroundColor: theme.colors.surface }]}>
@@ -345,18 +327,6 @@ export const PatientPrescriptionIndex = observer(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  todayButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  todayText: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 11,
   },
   memberCard: {
     flexDirection: 'row',

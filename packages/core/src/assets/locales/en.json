@@ -361,7 +361,6 @@
     "title": "My Prescriptions",
     "recordCount": "{{count}} record",
     "recordCount_plural": "{{count}} records",
-    "todaysMedicines": "Today's Medicines",
     "allMembers": "All Members",
     "member": "MEMBER",
     "memberSelf": "{{name}} (You)",
@@ -400,25 +399,6 @@
     "documentDeleted": "Document deleted",
     "downloadFailed": "Could not download the file",
     "downloadSaved": "Saved to Downloads"
-  },
-  "todaysMedicines": {
-    "title": "Today's Medicines",
-    "dosesTaken": "{{taken}} of {{total}} doses taken",
-    "schedule": "Schedule",
-    "alerts": "Alerts",
-    "markTaken": "Mark as taken",
-    "noMedicines": "Nothing scheduled for this slot",
-    "slots": {
-      "morning": "Morning",
-      "afternoon": "Afternoon",
-      "evening": "Evening",
-      "night": "Night"
-    },
-    "scheduleTitle": "Reminder Schedule",
-    "scheduleSubtitle": "Set when to be reminded for each slot",
-    "scheduleHint": "Enable alerts to activate notifications at these times.",
-    "resetDefaults": "Reset to Defaults",
-    "saveSchedule": "Save Schedule"
   },
   "patientProfile": {
     "title": "My Profile",
@@ -596,6 +576,7 @@
   "drawer": {
     "appointments": "Appointments",
     "prescriptions": "My Prescriptions",
+    "profile": "My Profile",
     "findDoctors": "Find Doctors",
     "followUps": "Follow-ups",
     "reports": "Reports"

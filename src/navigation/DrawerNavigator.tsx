@@ -32,6 +32,10 @@ type MenuItem = {
   tab?: keyof TabParamList;
 };
 
+/**
+ * The patient portal's menu, in the order of the web's sidebar — every entry
+ * there is open to the Patient role. Settings is the app's own addition.
+ */
 const MENU_ITEMS: MenuItem[] = [
   {
     name: 'MainTabs',
@@ -39,7 +43,6 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'account-search-outline',
     tab: 'HomeTab',
   },
-
   {
     name: 'MainTabs',
     labelKey: 'drawer.appointments',
@@ -51,20 +54,21 @@ const MENU_ITEMS: MenuItem[] = [
     labelKey: 'drawer.followUps',
     icon: 'calendar-refresh-outline',
   },
-
   {
     name: 'MainTabs',
     labelKey: 'drawer.prescriptions',
     icon: 'file-document-edit-outline',
     tab: 'PrescriptionsTab',
   },
+  {
+    name: 'MainTabs',
+    labelKey: 'drawer.profile',
+    icon: 'account-outline',
+    tab: 'ProfileTab',
+  },
   { name: 'Reports', labelKey: 'drawer.reports', icon: 'file-chart-outline' },
-
   { name: 'Settings', labelKey: 'settings.title', icon: 'cog-outline' },
 ];
-
-const isInternalEmail = (email?: string | null): boolean =>
-  /@doctormate\.local$/i.test(String(email ?? '').trim());
 
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
@@ -90,12 +94,11 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
     authStore.user?.fullName?.trim() ||
     t('common.na');
 
-  const loginEmail = authStore.user?.email?.trim() ?? '';
-  const profileContact = patientProfile?.email || patientProfile?.phone;
-
-  const contactLine = isInternalEmail(loginEmail)
-    ? profileContact?.trim() ?? ''
-    : loginEmail || profileContact?.trim() || '';
+  const contactLine =
+    authStore.user?.email?.trim() ||
+    patientProfile?.email?.trim() ||
+    patientProfile?.phone?.trim() ||
+    '';
 
   const photoUrl = getFileUrl(patientProfile?.photoUrl ?? '');
 
@@ -121,16 +124,6 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
             {contactLine}
           </Text>
         ) : null}
-        <View
-          style={[
-            styles.roleBadge,
-            { backgroundColor: theme.colors.primaryContainer },
-          ]}
-        >
-          <Text style={[styles.roleText, { color: theme.colors.primary }]}>
-            {authStore.user?.role || 'N/A'}
-          </Text>
-        </View>
       </View>
       <Divider style={styles.divider} />
       <View style={styles.drawerList}>
@@ -230,16 +223,6 @@ const styles = StyleSheet.create({
   email: {
     fontFamily: fontFamilies.regular,
     fontSize: 13,
-  },
-  roleBadge: {
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  roleText: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 11,
   },
   divider: {
     marginHorizontal: 16,

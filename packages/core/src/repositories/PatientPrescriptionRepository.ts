@@ -1,7 +1,6 @@
 /**
  * The patient's prescriptions, end to end: the list, the printed record behind
- * one row, the medicines due today, the reminder times those doses fire at, and
- * the documents a card lists.
+ * one row, and the documents a card lists.
  *
  * Two keys, not one. A row's id keys the record itself — the detail. The
  * payload calls it `consultationId`, but it is the **prescription id**
@@ -18,30 +17,6 @@ import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
 import FileRepository, { UploadFile } from './FileRepository';
 import PatientReportRepository from './PatientReportRepository';
-
-/**
- * One dosing slot of the day. Single source of truth for the Today's Medicines
- * tabs and the reminder rows — they cannot drift apart because both read this.
- */
-export type DoseSlot = 'morning' | 'afternoon' | 'evening' | 'night';
-
-export const DOSE_SLOTS: DoseSlot[] = [
-  'morning',
-  'afternoon',
-  'evening',
-  'night',
-];
-
-/** Reminder time per slot as 'HH:mm' — `MedicineScheduleDto` in app shape. */
-export type ReminderSchedule = Record<DoseSlot, string>;
-
-/** Only used until the first `GET /api/medicine-schedule` answers. */
-export const DEFAULT_REMINDER_SCHEDULE: ReminderSchedule = {
-  morning: '08:00',
-  afternoon: '14:00',
-  evening: '18:00',
-  night: '21:00',
-};
 
 /** One row of `GET /api/prescriptions` — the account's prescriptions, the
  *  signed-in patient's own and their family members'. */
@@ -112,8 +87,6 @@ export interface PrescribedMedicine {
   form: string;
   /** The doctor's own pattern, stored verbatim, e.g. "1-0-1". */
   frequency: string;
-  /** `frequency` read as slots, for the Today's Medicines tabs. */
-  slots: DoseSlot[];
   /** "5 Days" as the record prints it; '' when no number was recorded. */
   duration: string;
   /** `instructions` — "After meal", "Before meal", … */
@@ -154,14 +127,6 @@ export interface PrescriptionDetail {
   /** 'YYYY-MM-DD', or '' when no follow-up was set. */
   nextVisit: string;
   medicines: PrescribedMedicine[];
-}
-
-/** One row of `GET /api/prescriptions/today` — a dose due today. */
-export interface TodayMedicine extends PrescribedMedicine {
-  consultationId: string;
-  doctorName: string;
-  patientName: string;
-  patientCode: string;
 }
 
 /**
@@ -225,45 +190,6 @@ const toText = (value: any): string => String(value ?? '').trim();
 /** "120.00" -> "120"; the payload pads vitals and durations with zeros. */
 const trimDecimals = (value: any): string => toText(value).replace(/\.0+$/, '');
 
-/**
- * "1-0-1" -> the slots the dose fires in.
- *
- * The doctor types the pattern and the backend stores it verbatim, so its
- * length varies. Each length is spread over the four slots the reminder
- * schedule keeps:
- *
- *   "1"        -> morning
- *   "1-1"      -> morning, night
- *   "1-0-1"    -> morning, afternoon, night
- *   "1-0-1-0"  -> morning, afternoon, evening, night
- *
- * A pattern with no digits at all (free text such as "SOS") falls back to the
- * morning tab, so the medicine is listed somewhere rather than vanishing — the
- * card shows the pattern verbatim either way.
- */
-export const parseFrequencySlots = (
-  frequency: string | undefined | null,
-): DoseSlot[] => {
-  const parts = toText(frequency)
-    .split(/[^0-9½.]+/)
-    .filter(Boolean);
-
-  if (parts.length === 0) return ['morning'];
-
-  const SLOTS_BY_LENGTH: Record<number, DoseSlot[]> = {
-    1: ['morning'],
-    2: ['morning', 'night'],
-    3: ['morning', 'afternoon', 'night'],
-    4: DOSE_SLOTS,
-  };
-  const layout = SLOTS_BY_LENGTH[parts.length] ?? DOSE_SLOTS;
-
-  const slots = layout.filter(
-    (_, index) => Number(parts[index] ?? 0) > 0 || parts[index] === '½',
-  );
-  return slots.length > 0 ? slots : ['morning'];
-};
-
 /** Defensive mapping — every field on the payload can come back null. */
 const toPrescriptionListItem = (raw: any): PrescriptionListItem => ({
   id: toText(raw?.consultationId),
@@ -313,7 +239,6 @@ const toMedicine = (raw: any, index: number): PrescribedMedicine => {
     dosage: toText(raw?.dosage),
     form: toText(raw?.formType),
     frequency,
-    slots: parseFrequencySlots(frequency),
     duration,
     instruction,
     doses: [{ dose: frequency, duration, instruction }],
@@ -347,19 +272,6 @@ const toPrescriptionDetail = (raw: any): PrescriptionDetail => ({
   medicines: Array.isArray(raw?.medicines) ? raw.medicines.map(toMedicine) : [],
 });
 
-/**
- * A dose row carries its medicine fields plus who prescribed it and for whom.
- * The endpoint has no schema in swagger, so the context fields are read through
- * the names the rest of the API uses for them.
- */
-const toTodayMedicine = (raw: any, index: number): TodayMedicine => ({
-  ...toMedicine(raw, index),
-  consultationId: toText(raw?.consultationId),
-  doctorName: toText(raw?.doctorName),
-  patientName: toText(raw?.patientName),
-  patientCode: toText(raw?.patientCode),
-});
-
 const toAttachment = (raw: any, index: number): PrescriptionAttachment => ({
   id: toText(raw?.documentId) || String(index),
   patientCode: toText(raw?.patientCode),
@@ -371,17 +283,6 @@ const toAttachment = (raw: any, index: number): PrescriptionAttachment => ({
   uploadedAt: toText(raw?.uploadedAt),
   url: toText(raw?.fileUrl),
   notes: toText(raw?.notes),
-});
-
-const toReminderSchedule = (raw: any): ReminderSchedule => ({
-  morning:
-    toText(raw?.morningTime).slice(0, 5) || DEFAULT_REMINDER_SCHEDULE.morning,
-  afternoon:
-    toText(raw?.afternoonTime).slice(0, 5) ||
-    DEFAULT_REMINDER_SCHEDULE.afternoon,
-  evening:
-    toText(raw?.eveningTime).slice(0, 5) || DEFAULT_REMINDER_SCHEDULE.evening,
-  night: toText(raw?.nightTime).slice(0, 5) || DEFAULT_REMINDER_SCHEDULE.night,
 });
 
 /**
@@ -462,58 +363,6 @@ export const PatientPrescriptionRepository = {
     }
 
     return toPrescriptionDetail(response);
-  },
-
-  /** `GET /api/prescriptions/today` — doses due today, for one member or all. */
-  getTodaysMedicines: async (
-    patientCode?: string,
-  ): Promise<TodayMedicine[]> => {
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.prescriptionsToday,
-      method: 'GET',
-      baseUrl: API_URL,
-      params: patientCode ? { patientCode } : {},
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return toList(response, toTodayMedicine, "today's medicines");
-  },
-
-  /** `GET /api/medicine-schedule` — the four reminder times. */
-  getReminderSchedule: async (): Promise<ReminderSchedule> => {
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.medicineSchedule,
-      method: 'GET',
-      baseUrl: API_URL,
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return toReminderSchedule(response);
-  },
-
-  /**
-   * `PUT /api/medicine-schedule`. The offset goes with the times so the server
-   * can fire reminders in the patient's own timezone.
-   */
-  saveReminderSchedule: async (
-    schedule: ReminderSchedule,
-  ): Promise<ReminderSchedule> => {
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.medicineSchedule,
-      method: 'PUT',
-      baseUrl: API_URL,
-      data: {
-        morningTime: schedule?.morning ?? DEFAULT_REMINDER_SCHEDULE.morning,
-        afternoonTime:
-          schedule?.afternoon ?? DEFAULT_REMINDER_SCHEDULE.afternoon,
-        eveningTime: schedule?.evening ?? DEFAULT_REMINDER_SCHEDULE.evening,
-        nightTime: schedule?.night ?? DEFAULT_REMINDER_SCHEDULE.night,
-        utcOffsetMinutes: -new Date().getTimezoneOffset(),
-      },
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return toReminderSchedule(response);
   },
 
   /**

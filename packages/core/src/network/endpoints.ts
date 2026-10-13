@@ -18,8 +18,6 @@ export const ENDPOINTS = {
   consultations: '/hms/consultations',
   prescriptions: '/hms/prescriptions',
   prescriptionDoctors: '/hms/prescriptions/doctors',
-  prescriptionsToday: '/hms/prescriptions/today',
-  medicineSchedule: '/hms/medicine-schedule',
   patientDocuments: '/hms/patient/documents',
   followUps: '/hms/followups',
 
