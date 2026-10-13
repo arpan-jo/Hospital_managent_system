@@ -77,5 +77,4 @@ yarn-error.log
 # MCP server config (contains DB credentials)
 .mcp.json
 
-# Local secrets — never commit
-.env
+

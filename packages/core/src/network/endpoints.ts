@@ -1,41 +1,29 @@
 export const ENDPOINTS = {
-  login: '/api/auth/login',
-  logout: '/api/auth/logout',
-  patientProfile: '/api/patient/profile',
-  patientProfileAll: '/api/patient/profile/all',
-  patientProfileAllergies: '/api/patient/profile/allergies',
-  patientProfileMedicalHistory: '/api/patient/profile/medical-history',
-  sendOtp: '/api/auth/otp/send',
-  verifyOtp: '/api/auth/otp/verify',
-  registerWithOtp: '/api/auth/otp/register',
-  register: '/api/auth/register',
-  forgotPassword: '/api/auth/forgot-password',
-  fileUpload: '/api/FileUpload/upload',
-  /**
-   * Serves a stored blob to the app, taking the JWT as an `access_token` query
-   * param instead of a header — React Native's new architecture drops the
-   * `headers` on an `<Image>` source, so a header-authenticated url can never
-   * render. The web portal keeps using `/download` (below), which authenticates
-   * from the cookie a browser sends on its own.
-   */
-  fileMobileDownload: '/api/FileUpload/mobile',
-  /**
-   * Header/cookie-authenticated download — kept for reference. The app cannot
-   * use it: `<Image>` sends no Authorization header, so every request 401s.
-   * Confirmed against the live API on 2026-08-24.
-   */
-  // fileDownload: '/api/FileUpload/download',
-  filters: '/api/doctors/filters',
-  doctors: '/api/doctors',
-  appointments: '/api/appointments',
+  login: '/hms/auth/login',
+  logout: '/hms/auth/logout',
+  patientProfile: '/hms/patient/profile',
+  patientProfileAll: '/hms/patient/profile/all',
+  patientProfileAllergies: '/hms/patient/profile/allergies',
+  patientProfileMedicalHistory: '/hms/patient/profile/medical-history',
+  sendOtp: '/hms/auth/otp/send',
+  verifyOtp: '/hms/auth/otp/verify',
+  registerWithOtp: '/hms/auth/otp/register',
+  register: '/hms/auth/register',
+  forgotPassword: '/hms/auth/forgot-password',
+  fileUpload: '/hms/FileUpload/upload',
+  /** Serves a stored blob. Anonymous, so the url needs no token. */
+  fileDownload: '/hms/FileUpload/download',
+  filters: '/hms/doctors/filters',
+  doctors: '/hms/doctors',
+  appointments: '/hms/appointments',
   /** What the doctor recorded during a visit, keyed by its appointment. */
-  consultations: '/api/consultations',
-  prescriptions: '/api/prescriptions',
-  prescriptionDoctors: '/api/prescriptions/doctors',
-  prescriptionsToday: '/api/prescriptions/today',
-  medicineSchedule: '/api/medicine-schedule',
-  patientDocuments: '/api/patient/documents',
-  followUps: '/api/followups',
+  consultations: '/hms/consultations',
+  prescriptions: '/hms/prescriptions',
+  prescriptionDoctors: '/hms/prescriptions/doctors',
+  prescriptionsToday: '/hms/prescriptions/today',
+  medicineSchedule: '/hms/medicine-schedule',
+  patientDocuments: '/hms/patient/documents',
+  followUps: '/hms/followups',
 
   // ── Find Doctors: AI doctor finder — pepobot, on AI_ASSIST_URL ────────────
   /** A patient's symptoms into a recommended specialist and doctors from this hospital. */

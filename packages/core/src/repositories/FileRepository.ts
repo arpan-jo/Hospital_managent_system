@@ -56,7 +56,7 @@ export const FileRepository = {
       headers: { 'Content-Type': 'multipart/form-data' },
       // The client's 10s default is short for a few megabytes on mobile data.
       timeout: UPLOAD_TIMEOUT_MS,
-      // `/api/FileUpload` is on the backend's `Encryption:ExcludedPaths`, so the
+      // `/hms/FileUpload` is on the backend's `Encryption:ExcludedPaths`, so the
       // multipart body goes up as-is. Every other endpoint takes the client's
       // default and is encrypted — do not add these flags back elsewhere.
       encrypt: false,
