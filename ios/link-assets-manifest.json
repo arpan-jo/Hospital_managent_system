@@ -1,0 +1,21 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "packages/ui/src/assets/fonts/Inter-Bold.ttf",
+      "sha1": "0027821da93afcf5ad44ca4fa6ba8ff3c05221a5"
+    },
+    {
+      "path": "packages/ui/src/assets/fonts/Inter-Medium.ttf",
+      "sha1": "10d7624390e37e0986a5651009cccfb0214b3ebe"
+    },
+    {
+      "path": "packages/ui/src/assets/fonts/Inter-Regular.ttf",
+      "sha1": "5e20b9b7f1752ecdf87f08fce636c50411cd4013"
+    },
+    {
+      "path": "packages/ui/src/assets/fonts/Inter-SemiBold.ttf",
+      "sha1": "95cfa0febbb1a3b663e3d64475a2beea3f50b661"
+    }
+  ]
+}

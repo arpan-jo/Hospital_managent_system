@@ -1,0 +1,53 @@
+import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReportCategory, UPLOAD_REPORT_CATEGORIES } from '@app/core';
+import { DropdownItem } from '@app/ui';
+import UploadFileSheet, { UploadFileResult } from '../../../components/UploadFileSheet';
+import { UploadReportInput } from './useReportsViewModel';
+
+interface UploadReportSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  /** Resolves false when the upload failed, which keeps the sheet open. */
+  onUpload: (input: UploadReportInput) => Promise<boolean>;
+}
+
+const CATEGORY_LABEL_KEY: Record<ReportCategory, string> = {
+  Prescription: 'reports.categoryPrescription',
+  Laboratory: 'reports.categoryLaboratory',
+  'Radiology and Imaging': 'reports.categoryRadiology',
+  Other: 'reports.categoryOther',
+};
+
+/** Adds a document to the patient's report vault — the shared upload form, categorised for reports. */
+export const UploadReportSheet = ({ visible, onClose, onUpload }: UploadReportSheetProps) => {
+  const { t } = useTranslation();
+
+  const categoryItems: DropdownItem<ReportCategory>[] = useMemo(
+    () =>
+      UPLOAD_REPORT_CATEGORIES.map(item => ({
+        label: t(CATEGORY_LABEL_KEY[item]),
+        value: item,
+      })),
+    [t],
+  );
+
+  const handleUpload = useCallback(
+    ({ file, title, category, notes }: UploadFileResult<ReportCategory>) =>
+      onUpload({ file, title, category, notes }),
+    [onUpload],
+  );
+
+  return (
+    <UploadFileSheet<ReportCategory>
+      visible={visible}
+      title={t('reports.uploadDocument')}
+      categoryItems={categoryItems}
+      defaultCategory="Prescription"
+      onClose={onClose}
+      onUpload={handleUpload}
+    />
+  );
+};
+
+export default UploadReportSheet;

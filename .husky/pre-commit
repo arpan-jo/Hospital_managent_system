@@ -1,0 +1,2 @@
+# Navigate to your project folder and run your task
+cd template && npx lint-staged

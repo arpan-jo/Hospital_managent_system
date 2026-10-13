@@ -1,0 +1,24 @@
+{
+  "When you call api, this is the argument of apiRequest.": {
+    "scope": "typescript,typescriptreact",
+    "prefix": "apicall",
+    "body": [
+      "const api_params = {",
+      "  url: '${1:/example/api}', // required field, string type",
+      "  method: '${2|GET,POST,PUT,DELETE,PATCH|}', // optional, string type, default 'GET'",
+      "  data: { key: 'value' }, // optional, ***this will be object type, goes in the body (encrypted)",
+      "  params: { pageNo: 1, pageSize: 20 }, // optional, ***this will be object type, goes in the query (encrypted)",
+      "  baseUrl: 'https://www.example.com', // optional, string type, default API_URL from .env",
+      "  headers: { 'X-Business-Unit': '5' }, // optional, object type, Authorization is added automatically",
+      "  encrypt: true, // optional, boolean type, default true, false = send plain",
+      "  decrypt: true, // optional, boolean type, default true, false = keep the raw response",
+      "  isConsole: true, // optional, boolean type, logs 'api_response ==>' and 'error_response ==>'",
+      "  isConsoleParams: true, // optional, boolean type, logs 'api_params/payload ==>' with the plain payload",
+      "  isConsoleEncrypted: true, // optional, boolean type, logs 'Encrypted_Payload for==>' with the ciphertext",
+      "};",
+      "const res = await apiRequest<${3:ResponseType}>(api_params);",
+      "$0"
+    ],
+    "description": "When you call api, this is the argument of apiRequest. Drop the lines you do not need."
+  }
+}

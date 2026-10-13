@@ -1,0 +1,40 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Profile photo: taking a new one needs the camera; picking an existing
+         one goes through the system picker, which needs no storage permission. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Doctor Desk AI Assist records the consultation to draft the prescription. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application
+      android:name=".MainApplication"
+      android:label="@string/app_name"
+      android:icon="@mipmap/ic_launcher"
+      android:roundIcon="@mipmap/ic_launcher_round"
+      android:allowBackup="false"
+      android:theme="@style/AppTheme"
+      android:usesCleartextTraffic="${usesCleartextTraffic}"
+      android:supportsRtl="true">
+      <activity
+        android:name=".MainActivity"
+        android:label="@string/app_name"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:launchMode="singleTask"
+        android:windowSoftInputMode="adjustResize"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+        <intent-filter android:label="filter_managerium_health">
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="Managerium_Health" />
+            <data android:scheme="https" android:host="Managerium_Health.com" />
+            <data android:scheme="http" android:host="Managerium_Health.com" />
+        </intent-filter>
+      </activity>
+    </application>
+</manifest>

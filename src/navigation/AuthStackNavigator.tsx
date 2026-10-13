@@ -1,0 +1,37 @@
+import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import LoginScreen from '../screens/auth/login/LoginScreen';
+import ForgotPasswordScreen from '../screens/auth/forgotPassword/ForgotPasswordScreen';
+import SignupScreen from '../screens/auth/signup/SignupScreen';
+import VerifyEmailScreen from '../screens/auth/verifyEmail/VerifyEmailScreen';
+import SetPasswordScreen from '../screens/auth/setPassword/SetPasswordScreen';
+
+export type AuthStackParamList = {
+  Login: undefined;
+  ForgotPassword: undefined;
+  Signup: undefined;
+  VerifyEmail: {
+    identifier: string;
+    expiresInSeconds?: number;
+  };
+  SetPassword: {
+    identifier: string;
+    /** Verified OTP, required to register. Absent on the phone sign-up path. */
+    code?: string;
+  };
+};
+
+const Stack = createNativeStackNavigator<AuthStackParamList>();
+
+export const AuthStackNavigator = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="Signup" component={SignupScreen} />
+      <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+      <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
+    </Stack.Navigator>
+  );
+};
+export default AuthStackNavigator;

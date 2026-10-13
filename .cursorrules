@@ -1,0 +1,6 @@
+# Cursor Rules Redirect
+
+To avoid duplicate documentation and keep instructions generic across all AI assistants (Claude, Gemini, ChatGPT, Cursor), all project rules are defined in the central instructions file.
+
+Please read and strictly follow the workspace rules in:
+👉 [Workspace Coding Instructions (.instructions.md)](file:///home/arpan/react-native-template/template/.instructions.md)

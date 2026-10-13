@@ -1,0 +1,3 @@
+# Run project-wide type compilation checks before allowing pushes
+echo "🔍 Running pre-push type compilation check..."
+cd template && yarn tsc -p _tsconfig.json --noEmit

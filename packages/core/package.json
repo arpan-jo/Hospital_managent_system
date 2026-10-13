@@ -1,0 +1,20 @@
+{
+  "name": "@app/core",
+  "version": "0.0.1",
+  "private": true,
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "dependencies": {
+    "@react-native-documents/viewer": "^4.0.0",
+    "axios": "^1.18.0",
+    "crypto-js": "^4.2.0",
+    "i18next": "^23.15.1",
+    "mobx": "^6.13.1",
+    "mobx-state-tree": "^7.2.0",
+    "react-i18next": "^15.0.2",
+    "react-native-mmkv": "^4.3.1"
+  }
+}
