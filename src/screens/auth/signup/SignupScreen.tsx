@@ -123,7 +123,7 @@ export const SignupScreen = observer(() => {
             style={styles.logo}
             resizeMode="contain"
             accessibilityRole="image"
-            accessibilityLabel="DoctorMate"
+            accessibilityLabel="Hospital Management System"
           />
 
           <Text style={titleStyle}>{t('signup.title')}</Text>
@@ -207,8 +207,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   logo: {
-    width: 96,
-    height: 96,
+    width: 176,
+    height: 32,
   },
   title: {
     fontFamily: fontFamilies.bold,

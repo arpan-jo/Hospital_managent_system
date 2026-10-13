@@ -160,7 +160,7 @@ export const ForgotPasswordScreen = observer(() => {
                 style={styles.logo}
                 resizeMode="contain"
                 accessibilityRole="image"
-                accessibilityLabel="DoctorMate"
+                accessibilityLabel="Hospital Management System"
               />
 
               <Text style={titleStyle}>{t('forgotPassword.title')}</Text>
@@ -247,8 +247,8 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 220,
+    height: 40,
   },
   badge: {
     width: 72,
