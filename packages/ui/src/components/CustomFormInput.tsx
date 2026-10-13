@@ -18,6 +18,10 @@ export interface CustomFormInputProps<TFieldValues extends FieldValues = FieldVa
   leftIcon?: string;
   rightIcon?: string;
   onRightIconPress?: () => void;
+  /** Fires on the keyboard's return key — e.g. submitting from a form's last field. */
+  onSubmitEditing?: () => void;
+  /** What that return key reads as. */
+  returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
   multiline?: boolean;
   numberOfLines?: number;
   style?: ViewStyle;

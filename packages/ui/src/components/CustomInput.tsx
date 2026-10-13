@@ -97,6 +97,9 @@ export const CustomInput = memo<CustomInputProps>(function CustomInput({
         returnKeyType={returnKeyType}
         placeholder={placeholder}
         secureTextEntry={secureTextEntry && !passwordVisible}
+        // A password goes in exactly as typed: left to its default, Android
+        // capitalises the first letter and a correct password is refused.
+        autoCapitalize={secureTextEntry ? 'none' : undefined}
         keyboardType={keyboardType}
         disabled={disabled}
         multiline={multiline}

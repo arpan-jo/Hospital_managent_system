@@ -6,8 +6,11 @@ import { useStores, AuthRepository, PatientRepository } from '@app/core';
  * The one role this app is built for. Doctors, admins and assistants have
  * their own portal on the web; signed in here they would get the patient's
  * screens and a stream of refused calls.
+ *
+ * Lower case because the role is compared that way, as on the web — the API
+ * sends "Patient".
  */
-const APP_ROLE = 'Patient';
+const APP_ROLE = 'patient';
 
 /**
  * Starts a session from credentials: logs in, populates `authStore`, then
@@ -21,16 +24,11 @@ export const useSignIn = () => {
   const { t } = useTranslation();
 
   return useCallback(
-    async (identifier: string, password: string) => {
-      const result = await AuthRepository.login(identifier, password);
+    async (email: string, password: string) => {
+      const result = await AuthRepository.login(email, password);
 
-      if (result?.role !== APP_ROLE) {
-        // The server has already opened a session — close it again, then say why.
-        if (result?.token) {
-          AuthRepository.logout(result.token).catch(err =>
-            console.warn('[SignIn] Logout of an unsupported role failed:', err),
-          );
-        }
+      // Nothing to undo on the server: the token is just never stored.
+      if (result?.role?.toLowerCase() !== APP_ROLE) {
         throw new Error(t('login.roleNotSupported'));
       }
 

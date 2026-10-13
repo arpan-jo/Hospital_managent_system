@@ -1,11 +1,24 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SegmentedButtons } from 'react-native-paper';
+import { SegmentedButtons, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useStores } from '@app/core';
 
 export const CustomLanguageToggler: React.FC = observer(() => {
   const { languageStore } = useStores();
+  const theme = useTheme();
+
+  // Paper tints the chosen segment with `secondaryContainer`, which the app
+  // theme leaves at Paper's own lilac — the brand's container tone goes in.
+  const segmentedTheme = useMemo(
+    () => ({
+      colors: {
+        secondaryContainer: theme.colors.primaryContainer,
+        onSecondaryContainer: theme.colors.onPrimaryContainer,
+      },
+    }),
+    [theme.colors.primaryContainer, theme.colors.onPrimaryContainer],
+  );
 
   return (
     <View style={styles.container}>
@@ -23,6 +36,7 @@ export const CustomLanguageToggler: React.FC = observer(() => {
           },
         ]}
         style={styles.segmented}
+        theme={segmentedTheme}
       />
     </View>
   );

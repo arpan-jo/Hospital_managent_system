@@ -1,6 +1,5 @@
 export const ENDPOINTS = {
   login: '/hms/auth/login',
-  logout: '/hms/auth/logout',
   patientProfile: '/hms/patient/profile',
   patientProfileAll: '/hms/patient/profile/all',
   patientProfileAllergies: '/hms/patient/profile/allergies',

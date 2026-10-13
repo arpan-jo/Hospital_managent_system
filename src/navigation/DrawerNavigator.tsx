@@ -13,7 +13,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text, Button, useTheme, Divider } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { NavigatorScreenParams, getFocusedRouteNameFromRoute } from '@react-navigation/native';
-import { useStores, AuthRepository, getFileUrl } from '@app/core';
+import { useStores, getFileUrl } from '@app/core';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CustomAvatar, fontFamilies } from '@app/ui';
@@ -169,14 +169,8 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
         <Button
           mode="outlined"
           onPress={() => {
-            const token = authStore.authToken;
             authStore.logout();
             profileStore.clear();
-            if (token) {
-              AuthRepository.logout(token).catch(err =>
-                console.warn('[Logout] API call failed:', err),
-              );
-            }
           }}
           icon="logout"
           style={[styles.logoutBtn, { borderColor: theme.colors.error }]}

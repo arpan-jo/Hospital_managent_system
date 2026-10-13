@@ -7,7 +7,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { AuthRepository, FamilyMember, UploadFile, useStores } from '@app/core';
+import { FamilyMember, UploadFile, useStores } from '@app/core';
 import { CustomDialog } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import PhotoPickerSheet from '../../../components/PhotoPickerSheet';
@@ -67,14 +67,8 @@ export const PatientProfileIndex = observer(() => {
 
   const handleConfirmLogout = useCallback(() => {
     setShowLogoutDialog(false);
-    const token = authStore.authToken;
     authStore.logout();
     profileStore.clear();
-    if (token) {
-      AuthRepository.logout(token).catch(err =>
-        console.warn('[Logout] API call failed:', err),
-      );
-    }
   }, [authStore, profileStore]);
 
   const handleEdit = useCallback(() => navigation.navigate('ProfileEdit'), [navigation]);

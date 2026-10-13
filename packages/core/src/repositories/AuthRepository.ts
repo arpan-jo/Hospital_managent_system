@@ -167,10 +167,16 @@ export const AuthRepository = {
     return apiRequest<ForgotPasswordResponse>(api_params);
   },
 
-  login: async (identifier: string, password: string) => {
+  /**
+   * Email and password only — the API has no mobile-number sign-in.
+   *
+   * There is no matching logout call: the API keeps no session to close, so
+   * signing out is just clearing the stores.
+   */
+  login: async (email: string, password: string) => {
     const payload = {
-      // A mobile number goes in its local form: the API rejects '+880…' and spaces.
-      identifier: toLoginIdentifier(identifier),
+      // Trimmed, since a leading space alone turns a correct login into a 401.
+      email: email?.trim() ?? '',
       password: password || '',
     };
 
@@ -179,8 +185,6 @@ export const AuthRepository = {
       method: 'POST',
       data: payload,
       baseUrl: API_URL,
-      // isConsole: true,
-      // isConsoleParams: true,
     };
     const res = await apiRequest<LoginResponse>(api_params);
 
@@ -189,25 +193,6 @@ export const AuthRepository = {
     }
 
     return res;
-  },
-
-  /**
-   * Best-effort server-side session invalidation, called right before the
-   * local store is cleared. Takes the token explicitly rather than reading it
-   * off the store: axios interceptors run as a microtask, so if the caller
-   * cleared the store first the request could go out with no Authorization
-   * header by the time the interceptor attaches it.
-   */
-  logout: async (token: string): Promise<void> => {
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.logout,
-      method: 'POST',
-      baseUrl: API_URL,
-      headers: { Authorization: `Bearer ${token}` },
-      // isConsole: true,
-      // isConsoleParams: true,
-    };
-    await apiRequest<void>(api_params);
   },
 };
 
