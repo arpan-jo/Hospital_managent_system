@@ -20,7 +20,7 @@ export interface VerifyEmailResult {
  * `AuthRepository.verifyOtp`; `resend` re-binds the email via `sendOtp`.
  */
 export const useVerifyEmailViewModel = (
-  identifier: string,
+  email: string,
   initialExpiresInSeconds?: number,
 ) => {
   const [digits, setDigits] = useState<string[]>(() =>
@@ -53,7 +53,7 @@ export const useVerifyEmailViewModel = (
   }> => {
     setIsResending(true);
     try {
-      const res = await AuthRepository.sendOtp(identifier, SIGNUP_ROLE);
+      const res = await AuthRepository.sendOtp(email, SIGNUP_ROLE);
       setDigits(Array(CODE_LENGTH).fill(''));
       setSecondsLeft(res?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS);
       return { ok: true, message: res?.message };
@@ -62,7 +62,7 @@ export const useVerifyEmailViewModel = (
     } finally {
       setIsResending(false);
     }
-  }, [identifier]);
+  }, [email]);
 
   const submit = async (): Promise<VerifyEmailResult> => {
     const code = digits.join('');
@@ -72,7 +72,7 @@ export const useVerifyEmailViewModel = (
 
     setIsLoading(true);
     try {
-      const res = await AuthRepository.verifyOtp(identifier, code);
+      const res = await AuthRepository.verifyOtp(email, code);
       return {
         status: res?.isValid ? 'verified' : 'invalid',
         message: res?.message,
@@ -95,7 +95,8 @@ export const useVerifyEmailViewModel = (
     isResending,
     submit,
     resend,
-    canResend: secondsLeft === 0,
+    /** A new code can only be asked for once the current one has run out, as on the web. */
+    isExpired: secondsLeft === 0,
     timeLabel: `${minutes}:${seconds}`,
   };
 };

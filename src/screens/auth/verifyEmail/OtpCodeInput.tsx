@@ -14,7 +14,11 @@ interface OtpCodeInputProps {
   onChangeDigit: (index: number, value: string) => void;
 }
 
-/** Six single-digit boxes with auto-advance-on-type and backspace-to-previous. */
+/**
+ * Six single-digit boxes with auto-advance-on-type and backspace-to-previous.
+ * A whole code pasted into any box fills them all — the code arrives by email,
+ * so copying it across is the usual way in.
+ */
 export const OtpCodeInput = memo<OtpCodeInputProps>(function OtpCodeInput({
   digits,
   onChangeDigit,
@@ -24,19 +28,40 @@ export const OtpCodeInput = memo<OtpCodeInputProps>(function OtpCodeInput({
 
   const handleChangeText = useCallback(
     (index: number, text: string) => {
-      const digit = text.replace(/[^0-9]/g, '').slice(-1);
+      const typed = text.replace(/[^0-9]/g, '');
+      const length = digits?.length ?? 0;
+
+      // A paste: the boxes take no length limit, so the whole code lands here.
+      // Past the code's length the box's own old digit is in front of it.
+      if (typed.length >= length) {
+        typed
+          .slice(-length)
+          .split('')
+          .forEach((digit, position) => onChangeDigit(position, digit));
+        inputRefs.current[length - 1]?.focus();
+        return;
+      }
+
+      const digit = typed.slice(-1);
       onChangeDigit(index, digit);
-      if (digit && index < digits.length - 1) {
+      if (digit && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [digits.length, onChangeDigit],
+    [digits?.length, onChangeDigit],
   );
 
   const handleKeyPress = useCallback(
     (index: number, e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-      if (e.nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
+      const key = e?.nativeEvent?.key;
+      if (key === 'Backspace' && !digits?.[index] && index > 0) {
         inputRefs.current[index - 1]?.focus();
+        return;
+      }
+      // Retyping the digit a box already holds changes no text, so no change
+      // event fires — the move to the next box has to come from the key press.
+      if (key && key === digits?.[index] && index < (digits?.length ?? 0) - 1) {
+        inputRefs.current[index + 1]?.focus();
       }
     },
     [digits],
@@ -44,7 +69,7 @@ export const OtpCodeInput = memo<OtpCodeInputProps>(function OtpCodeInput({
 
   return (
     <View style={styles.row}>
-      {digits.map((digit, index) => (
+      {digits?.map((digit, index) => (
         <TextInput
           key={index}
           ref={ref => {
@@ -54,7 +79,6 @@ export const OtpCodeInput = memo<OtpCodeInputProps>(function OtpCodeInput({
           onChangeText={text => handleChangeText(index, text)}
           onKeyPress={e => handleKeyPress(index, e)}
           keyboardType="number-pad"
-          maxLength={1}
           selectTextOnFocus
           style={[
             styles.box,

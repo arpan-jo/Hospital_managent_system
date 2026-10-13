@@ -1,27 +1,16 @@
 import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, View, Image, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useStores } from '@app/core';
-import {
-  CustomButton,
-  CustomThemeToggler,
-  CustomDialog,
-  fontFamilies,
-} from '@app/ui';
-import { images } from '../../../assets/images';
+import { CustomButton, CustomDialog, fontFamilies } from '@app/ui';
 import { useErrorDialog } from '../../../hooks/useErrorDialog';
-import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
-import { useKeyboardHeight } from '../../../hooks/useKeyboardHeight';
 import { AuthStackParamList } from '../../../navigation/AuthStackNavigator';
+import AuthScreenLayout from '../AuthScreenLayout';
 import OtpCodeInput from './OtpCodeInput';
 import { useVerifyEmailViewModel } from './useVerifyEmailViewModel';
 
@@ -31,13 +20,10 @@ export const VerifyEmailScreen = observer(() => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const route = useRoute<RouteProp<AuthStackParamList, 'VerifyEmail'>>();
-  const { identifier, expiresInSeconds } = route?.params ?? {};
+  const { email, expiresInSeconds } = route?.params ?? {};
   const { toastStore } = useStores();
-  const insets = useSafeAreaInsets();
-  const keyboardHeight = useKeyboardHeight();
-  const viewModel = useVerifyEmailViewModel(identifier, expiresInSeconds);
+  const viewModel = useVerifyEmailViewModel(email, expiresInSeconds);
   const errorDialog = useErrorDialog();
-  useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
   const goBack = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -47,16 +33,16 @@ export const VerifyEmailScreen = observer(() => {
 
   const handleVerify = useCallback(async () => {
     const { status, message, code } = await viewModel.submit();
-    if (status === 'invalid') {
+    if (status === 'invalid' || !code) {
       errorDialog.show(message || t('verifyEmail.invalidCode'));
       return;
     }
     toastStore.show(message || t('verifyEmail.verified'), 'success');
-    navigation.replace('SetPassword', { identifier, code });
-  }, [viewModel, navigation, identifier, toastStore, errorDialog, t]);
+    navigation.replace('SetPassword', { email, code });
+  }, [viewModel, navigation, email, toastStore, errorDialog, t]);
 
   const handleResend = useCallback(async () => {
-    if (!viewModel.canResend) {
+    if (!viewModel.isExpired) {
       return;
     }
     const { ok, message } = await viewModel.resend();
@@ -67,127 +53,76 @@ export const VerifyEmailScreen = observer(() => {
     }
   }, [viewModel, toastStore, errorDialog, t]);
 
-  const containerStyle = useMemo(
-    () => [styles.container, { backgroundColor: theme.colors.background }],
-    [theme.colors.background],
-  );
-
-  const titleStyle = useMemo(
-    () => [styles.title, { color: theme.colors.onSurface }],
-    [theme.colors.onSurface],
-  );
-
-  const subtitleStyle = useMemo(
-    () => [styles.subtitle, { color: theme.colors.onSurfaceVariant }],
-    [theme.colors.onSurfaceVariant],
-  );
-
-  const mutedStyle = useMemo(
-    () => [styles.muted, { color: theme.colors.onSurfaceVariant }],
-    [theme.colors.onSurfaceVariant],
-  );
-
-  const resendStyle = useMemo(
+  const expiryStyle = useMemo(
     () => [
-      styles.resend,
+      styles.muted,
       {
-        color: viewModel.canResend
-          ? theme.colors.primary
+        color: viewModel.isExpired
+          ? theme.colors.error
           : theme.colors.onSurfaceVariant,
       },
     ],
-    [viewModel.canResend, theme.colors.primary, theme.colors.onSurfaceVariant],
+    [viewModel.isExpired, theme.colors.error, theme.colors.onSurfaceVariant],
+  );
+
+  const resendColor = viewModel.isExpired
+    ? theme.colors.primary
+    : theme.colors.onSurfaceVariant;
+
+  const resendStyle = useMemo(
+    () => [styles.resend, { color: resendColor }],
+    [resendColor],
   );
 
   const linkStyle = useMemo(
-    () => [styles.link, { color: theme.colors.primary }],
+    () => [styles.link, styles.backLink, { color: theme.colors.primary }],
     [theme.colors.primary],
   );
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={containerStyle}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: (keyboardHeight || insets.bottom) + 24 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <>
+      <AuthScreenLayout
+        title={t('verifyEmail.title')}
+        subtitle={t('verifyEmail.subtitle', { email })}
+        onBack={goBack}
+        backLabel={t('verifyEmail.backToEmail')}
       >
-        <View style={styles.headerActions}>
-          <Pressable
-            onPress={goBack}
-            hitSlop={8}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel={t('verifyEmail.backToEmail')}
-          >
-            <Icon name="arrow-left" size={22} color={theme.colors.onSurface} />
-          </Pressable>
-          <CustomThemeToggler />
-        </View>
+        <OtpCodeInput
+          digits={viewModel.digits}
+          onChangeDigit={viewModel.setDigit}
+        />
 
-        <View style={styles.hero}>
-          <Image
-            source={images.logo}
-            style={styles.logo}
-            resizeMode="contain"
-            accessibilityRole="image"
-            accessibilityLabel="Hospital Management System"
-          />
-
-          <Text style={titleStyle}>{t('verifyEmail.title')}</Text>
-          <Text style={subtitleStyle}>
-            {t('verifyEmail.subtitle', { identifier })}
+        <View style={styles.expiryRow}>
+          <Text style={expiryStyle}>
+            {viewModel.isExpired
+              ? t('verifyEmail.expired')
+              : t('verifyEmail.expiresIn', { time: viewModel.timeLabel })}
           </Text>
-        </View>
-
-        <View style={styles.form}>
-          <OtpCodeInput
-            digits={viewModel.digits}
-            onChangeDigit={viewModel.setDigit}
-          />
-
-          <View style={styles.expiryRow}>
-            <Text style={mutedStyle}>
-              {t('verifyEmail.expiresIn', { time: viewModel.timeLabel })}
-            </Text>
-            <Pressable
-              onPress={handleResend}
-              hitSlop={8}
-              disabled={!viewModel.canResend || viewModel.isResending}
-              accessibilityRole="button"
-              style={styles.resendRow}
-            >
-              <Icon
-                name="refresh"
-                size={14}
-                color={
-                  viewModel.canResend
-                    ? theme.colors.primary
-                    : theme.colors.onSurfaceVariant
-                }
-              />
-              <Text style={resendStyle}>{t('verifyEmail.resendCode')}</Text>
-            </Pressable>
-          </View>
-
-          <CustomButton
-            mode="contained"
-            onPress={handleVerify}
-            loading={viewModel.isLoading}
-            style={styles.button}
+          <Pressable
+            onPress={handleResend}
+            hitSlop={8}
+            disabled={!viewModel.isExpired || viewModel.isResending}
+            accessibilityRole="button"
+            style={styles.resendRow}
           >
-            {t('verifyEmail.button')}
-          </CustomButton>
+            <Icon name="refresh" size={14} color={resendColor} />
+            <Text style={resendStyle}>{t('verifyEmail.resendCode')}</Text>
+          </Pressable>
         </View>
+
+        <CustomButton
+          mode="contained"
+          onPress={handleVerify}
+          loading={viewModel.isLoading}
+          style={styles.button}
+        >
+          {t('verifyEmail.button')}
+        </CustomButton>
 
         <Pressable onPress={goBack} hitSlop={8} accessibilityRole="button">
-          <Text style={[linkStyle, styles.backLink]}>
-            {t('verifyEmail.backToEmail')}
-          </Text>
+          <Text style={linkStyle}>{t('verifyEmail.backToEmail')}</Text>
         </Pressable>
-      </ScrollView>
+      </AuthScreenLayout>
 
       <CustomDialog
         visible={errorDialog.visible}
@@ -198,54 +133,11 @@ export const VerifyEmailScreen = observer(() => {
         onDismiss={errorDialog.dismiss}
         showCancel={false}
       />
-    </SafeAreaView>
+    </>
   );
 });
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 4,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hero: {
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  logo: {
-    width: 220,
-    height: 40,
-  },
-  title: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 24,
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  subtitle: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13.5,
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  form: {
-    marginTop: 28,
-  },
   expiryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

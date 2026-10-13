@@ -19,23 +19,20 @@ export type SetPasswordStatus =
 
 export interface SetPasswordResult {
   status: SetPasswordStatus;
+  /** Why it failed, in the backend's words. */
   message?: string;
 }
 
 export interface SetPasswordParams {
-  identifier: string;
-  /** Verified OTP. Present only on the email path. */
-  code?: string;
+  email: string;
+  /** The code VerifyEmail just confirmed; the register call checks it again. */
+  code: string;
 }
 
 /**
  * Final sign-up step: choose a password, register the account, then sign in
- * with the credentials just created — neither register response carries a
- * token, so the session has to come from a follow-up login (as on web).
- *
- * Which register endpoint is used depends on how the user got here: an email
- * sign-up arrives with a verified `code` and posts to `otp/register`, while a
- * phone sign-up has no OTP step and posts the identifier to `register`.
+ * with the credentials just created — the register response carries no token,
+ * so the session has to come from a follow-up login (as on web).
  */
 export const useSetPasswordViewModel = (params: SetPasswordParams) => {
   const signIn = useSignIn();
@@ -52,26 +49,20 @@ export const useSetPasswordViewModel = (params: SetPasswordParams) => {
     await handleSubmit(async data => {
       setIsLoading(true);
       try {
-        const res = params?.code
-          ? await AuthRepository.registerWithOtp({
-              email: params?.identifier,
-              code: params?.code,
-              password: data?.password,
-              role: SIGNUP_ROLE,
-            })
-          : await AuthRepository.register({
-              identifier: params?.identifier,
-              password: data?.password,
-              role: SIGNUP_ROLE,
-            });
+        await AuthRepository.registerWithOtp({
+          email: params?.email,
+          code: params?.code,
+          password: data?.password,
+          role: SIGNUP_ROLE,
+        });
 
         // Registration succeeded, so the account exists even if this login
         // fails; report that separately rather than as a failed sign-up.
         try {
-          await signIn(params?.identifier, data?.password);
-          result = { status: 'created', message: res?.message };
+          await signIn(params?.email, data?.password);
+          result = { status: 'created' };
         } catch {
-          result = { status: 'createdNeedsLogin', message: res?.message };
+          result = { status: 'createdNeedsLogin' };
         }
       } catch (e: any) {
         result = { status: 'failed', message: e?.message };

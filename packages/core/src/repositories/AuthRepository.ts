@@ -1,7 +1,6 @@
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
-import { toLoginIdentifier } from '../utils/bdPhone';
 
 export interface LoginResponse {
   userId: number;
@@ -34,26 +33,10 @@ export interface ForgotPasswordResponse {
 
 export interface RegisterWithOtpPayload {
   email: string;
+  /** The code `verifyOtp` just accepted; the API checks it once more. */
   code: string;
   password: string;
   role: string;
-  /** Doctor-only, collected on the sign-up screen. */
-  fullName?: string;
-  /** Doctor-only, collected on the sign-up screen. */
-  registrationType?: string;
-  signupSource?: string;
-}
-
-/** Phone sign-up, which has no OTP step and so carries no `code`. */
-export interface RegisterPayload {
-  identifier: string;
-  password: string;
-  role: string;
-  /** Doctor-only, collected on the sign-up screen. */
-  fullName?: string;
-  /** Doctor-only, collected on the sign-up screen. */
-  registrationType?: string;
-  signupSource?: string;
 }
 
 /**
@@ -66,21 +49,10 @@ export interface RegisterResponse {
   email: string;
   /** Comes back capitalised ("Patient"), unlike the lowercase role sent up. */
   role: string;
-  userRoleId: number | null;
   phone: string | null;
   isActive: boolean;
   createdAt: string;
-  userLastActivitiesTime: string | null;
-  /** Not in the 201 body today, but preferred over a local string if it lands. */
-  message?: string;
 }
-
-/**
- * The registration-type dropdown holds display labels ("Medical Officer"), but
- * the backend keys them as snake_case ("medical_officer").
- */
-const toRegistrationTypeKey = (value?: string): string =>
-  value?.trim()?.toLowerCase()?.replace(/\s+/g, '_') ?? '';
 
 export const AuthRepository = {
   sendOtp: async (email: string, role: string) => {
@@ -107,47 +79,15 @@ export const AuthRepository = {
 
   registerWithOtp: async (payload: RegisterWithOtpPayload) => {
     const data: RegisterWithOtpPayload = {
-      email: payload?.email?.trim(),
-      code: payload?.code?.trim(),
+      email: payload?.email?.trim() ?? '',
+      code: payload?.code?.trim() ?? '',
       password: payload?.password || '',
-      role: payload?.role?.toLowerCase(),
+      // The API takes the role in lower case only.
+      role: payload?.role?.toLowerCase() ?? '',
     };
-
-    // Doctor-only fields; omitted entirely for a patient rather than sent empty.
-    if (payload?.fullName) {
-      data.fullName = payload?.fullName?.trim() ?? '';
-    }
-    if (payload?.registrationType) {
-      data.registrationType = toRegistrationTypeKey(payload?.registrationType);
-    }
 
     const api_params: ApiRequestOptions = {
       url: ENDPOINTS.registerWithOtp,
-      method: 'POST',
-      data,
-      baseUrl: API_URL,
-    };
-
-    return apiRequest<RegisterResponse>(api_params);
-  },
-
-  register: async (payload: RegisterPayload) => {
-    const data: RegisterPayload = {
-      // A mobile number goes in its local form: the API rejects '+880…' and spaces.
-      identifier: toLoginIdentifier(payload?.identifier),
-      password: payload?.password || '',
-      role: payload?.role?.toLowerCase(),
-    };
-
-    if (payload?.fullName) {
-      data.fullName = payload?.fullName?.trim() ?? '';
-    }
-    if (payload?.registrationType) {
-      data.registrationType = toRegistrationTypeKey(payload?.registrationType);
-    }
-
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.register,
       method: 'POST',
       data,
       baseUrl: API_URL,

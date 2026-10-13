@@ -7,7 +7,6 @@ export const ENDPOINTS = {
   sendOtp: '/hms/auth/otp/send',
   verifyOtp: '/hms/auth/otp/verify',
   registerWithOtp: '/hms/auth/otp/register',
-  register: '/hms/auth/register',
   forgotPassword: '/hms/auth/forgot-password',
   fileUpload: '/hms/FileUpload/upload',
   /** Serves a stored blob. Anonymous, so the url needs no token. */

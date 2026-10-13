@@ -19,12 +19,3 @@ export const toLocalBdMobile = (value?: string | null): string =>
 /** True for a Bangladesh mobile number in any of the usual ways of writing one. */
 export const isBdMobile = (value?: string | null): boolean =>
   BD_MOBILE_PATTERN.test(toLocalBdMobile(value));
-
-/**
- * A sign-in identifier as the API expects it: an email as typed, a mobile
- * number in its local form.
- */
-export const toLoginIdentifier = (value?: string | null): string => {
-  const text = String(value ?? '').trim();
-  return text.includes('@') ? text : toLocalBdMobile(text);
-};

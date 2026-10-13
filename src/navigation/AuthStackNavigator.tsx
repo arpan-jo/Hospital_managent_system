@@ -11,13 +11,13 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
   Signup: undefined;
   VerifyEmail: {
-    identifier: string;
+    email: string;
     expiresInSeconds?: number;
   };
   SetPassword: {
-    identifier: string;
-    /** Verified OTP, required to register. Absent on the phone sign-up path. */
-    code?: string;
+    email: string;
+    /** Verified OTP, required to register. */
+    code: string;
   };
 };
 
