@@ -27,15 +27,6 @@ export const ENDPOINTS = {
   // fileDownload: '/api/FileUpload/download',
   filters: '/api/doctors/filters',
   doctors: '/api/doctors',
-  topDoctors: '/api/doctors/top',
-  /** `GET /api/reviews/doctor/{doctorUserId}` — a doctor's rating summary and review feed. */
-  doctorReviews: '/api/reviews/doctor',
-  /**
-   * The patient's own review of one visit: `POST /api/reviews` to leave it and
-   * `GET /api/reviews/appointment/{appointmentId}` to read it back. An
-   * appointment can only ever carry one.
-   */
-  reviews: '/api/reviews',
   appointments: '/api/appointments',
   /** What the doctor recorded during a visit, keyed by its appointment. */
   consultations: '/api/consultations',
@@ -45,8 +36,6 @@ export const ENDPOINTS = {
   medicineSchedule: '/api/medicine-schedule',
   patientDocuments: '/api/patient/documents',
   followUps: '/api/followups',
-  /** Renders a prescription's HTML to a PDF. */
-  prescriptionPdf: '/api/prescription-pdf',
 
   // ── Find Doctors: AI doctor finder — pepobot, on AI_ASSIST_URL ────────────
   /** A patient's symptoms into a recommended specialist and doctors from this hospital. */

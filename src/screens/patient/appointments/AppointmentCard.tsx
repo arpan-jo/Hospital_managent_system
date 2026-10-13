@@ -18,8 +18,6 @@ import { getAppointmentTab } from './useAppointmentsViewModel';
 interface AppointmentCardProps {
   appointment: Appointment;
   onViewDetails: (appointment: Appointment) => void;
-  /** Opens the details screen straight onto the review sheet. */
-  onWriteReview: (appointment: Appointment) => void;
 }
 
 type StatusColors = { color: string; tint: string };
@@ -91,7 +89,6 @@ export const TYPE_ICON: Record<string, string> = {
 export const AppointmentCard = memo<AppointmentCardProps>(function AppointmentCard({
   appointment,
   onViewDetails,
-  onWriteReview,
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -99,11 +96,6 @@ export const AppointmentCard = memo<AppointmentCardProps>(function AppointmentCa
   const handleViewDetails = useCallback(
     () => onViewDetails(appointment),
     [onViewDetails, appointment],
-  );
-
-  const handleWriteReview = useCallback(
-    () => onWriteReview(appointment),
-    [onWriteReview, appointment],
   );
 
   /**
@@ -229,25 +221,6 @@ export const AppointmentCard = memo<AppointmentCardProps>(function AppointmentCa
           </View>
         </Pressable>
       </View>
-
-      {/* A finished visit is the only one there is anything to rate. */}
-      {tab === 'completed' && (
-        <View style={styles.reviewRow}>
-          {appointment?.hasReview ? (
-            <>
-              <Icon name="star" size={13} color="#F5A623" />
-              <Text style={[styles.reviewed, { color: theme.colors.onSurfaceVariant }]}>
-                {t('appointments.reviewed')}
-              </Text>
-            </>
-          ) : (
-            <Pressable onPress={handleWriteReview} hitSlop={8} style={styles.reviewAction}>
-              <Icon name="star-outline" size={13} color="#B27400" />
-              <Text style={styles.writeReview}>{t('appointments.writeReview')}</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
     </View>
   );
 });
@@ -373,27 +346,6 @@ const styles = StyleSheet.create({
   viewDetails: {
     fontFamily: fontFamilies.semibold,
     fontSize: 12,
-  },
-  reviewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
-  },
-  reviewAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  reviewed: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 11.5,
-  },
-  writeReview: {
-    // Amber on both themes: it is an invitation, not the card's primary action.
-    color: '#B27400',
-    fontFamily: fontFamilies.semibold,
-    fontSize: 11.5,
   },
 });
 

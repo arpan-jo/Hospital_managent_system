@@ -48,7 +48,7 @@ export const offlineCache = {
       }
 
       return entry.data;
-    } catch (e) {
+    } catch {
       return null;
     }
   },
@@ -65,7 +65,7 @@ export const offlineCache = {
       }
       const entry: CacheEntry<T> = JSON.parse(saved);
       return entry.data;
-    } catch (e) {
+    } catch {
       return null;
     }
   },

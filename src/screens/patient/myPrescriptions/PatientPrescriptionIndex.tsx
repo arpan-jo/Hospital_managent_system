@@ -62,13 +62,7 @@ export const PatientPrescriptionIndex = observer(() => {
   //   [navigation],
   // );
 
-  const handleOpen = useCallback(
-    (prescription: PrescriptionListItem) =>
-      navigation.navigate('PrescriptionPreview', {
-        prescriptionId: prescription.id,
-      }),
-    [navigation],
-  );
+  const handleOpen = useCallback(() => notAvailableYet(), [notAvailableYet]);
 
   /** `url` is a blob name — the file itself is served by the download endpoint. */
   const handleViewAttachment = useCallback(

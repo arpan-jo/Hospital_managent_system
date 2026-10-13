@@ -118,7 +118,7 @@ All code changes are automatically validated before entering the codebase. Alway
 ### Automated Git Gates:
 *   **On `git commit`**: A pre-commit hook runs `lint-staged` which executes `eslint --fix` on staged files.
 *   **On `git push`**: A pre-push hook runs the full TypeScript build compilation check. Pushing is blocked if compilation fails.
-*   **On Pull Request / Merge**: A GitHub Actions workflow ([ci.yml](file:///home/arpan/react-native-template/template/.github/workflows/ci.yml)) validates the entire branch before permitting a merge.
+*   **On Pull Request / Merge**: A GitHub Actions workflow ([ci.yml](.github/workflows/ci.yml)) validates the entire branch before permitting a merge.
 
 ---
 

@@ -10,12 +10,8 @@ import { DoctorFlowStackParamList } from './appointmentRoutes';
 
 export type AppointmentsStackParamList = DoctorFlowStackParamList & {
   AppointmentsList: undefined;
-  /**
-   * Reached from a card's View Details — the screen re-reads the row by id.
-   * `openReview` arrives from the card's Write a Review shortcut and opens the
-   * review sheet on landing, the same as the web's `?review=1`.
-   */
-  AppointmentDetails: { appointmentId: string; openReview?: boolean };
+  /** Reached from a card's View Details — the screen re-reads the row by id. */
+  AppointmentDetails: { appointmentId: string };
 };
 
 const Stack = createNativeStackNavigator<AppointmentsStackParamList>();

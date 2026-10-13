@@ -48,17 +48,6 @@ export const PatientAppointmentIndex = observer(() => {
     [navigation],
   );
 
-  const handleWriteReview = useCallback(
-    (appointment: Appointment) => {
-      if (!appointment?.id) return;
-      navigation.navigate('AppointmentDetails', {
-        appointmentId: appointment?.id,
-        openReview: true,
-      });
-    },
-    [navigation],
-  );
-
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScreenHeader
@@ -120,7 +109,6 @@ export const PatientAppointmentIndex = observer(() => {
               key={appointment?.id}
               appointment={appointment}
               onViewDetails={handleViewDetails}
-              onWriteReview={handleWriteReview}
             />
           ))
         ) : (

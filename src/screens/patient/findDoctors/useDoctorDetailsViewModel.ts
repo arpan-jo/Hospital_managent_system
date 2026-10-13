@@ -4,7 +4,6 @@ import {
   DoctorDetailsInfo,
   DoctorDetailsRepository,
   DoctorLocation,
-  DoctorReviewSummary,
   groupThousands,
 } from '@app/core';
 import { RequestState } from './useFindDoctorsViewModel';
@@ -27,19 +26,6 @@ const EMPTY_DETAILS_REQUEST: RequestState<DoctorDetailsInfo | null> = {
   error: null,
 };
 
-const EMPTY_REVIEWS: DoctorReviewSummary = {
-  reviews: [],
-  totalCount: 0,
-  averageRating: 0,
-  ratingBreakdown: [0, 0, 0, 0, 0],
-};
-
-const EMPTY_REVIEWS_REQUEST: RequestState<DoctorReviewSummary> = {
-  isLoading: false,
-  data: EMPTY_REVIEWS,
-  error: null,
-};
-
 /**
  * Audio and video calls are switched off — on the portal (its own
  * `CALLS_ENABLED`) and in the app, which has no calling at all — so their
@@ -59,10 +45,6 @@ export const useDoctorDetailsViewModel = (doctorId: string) => {
   const [doctorDetailsRequest, setDoctorDetailsRequest] = useState<
     RequestState<DoctorDetailsInfo | null>
   >({ ...EMPTY_DETAILS_REQUEST, isLoading: true });
-
-  const [reviewsRequest, setReviewsRequest] = useState<
-    RequestState<DoctorReviewSummary>
-  >({ ...EMPTY_REVIEWS_REQUEST, isLoading: true });
 
   const [selectedLocationId, setSelectedLocationId] = useState('');
 
@@ -93,39 +75,9 @@ export const useDoctorDetailsViewModel = (doctorId: string) => {
     }
   }, [doctorId]);
 
-  const fetchDoctorReviews = useCallback(async () => {
-    // A deep link can land on this screen without an id — nothing to fetch.
-    if (!doctorId) {
-      setReviewsRequest(EMPTY_REVIEWS_REQUEST);
-      return;
-    }
-
-    setReviewsRequest(prev => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const response = await DoctorDetailsRepository.getDoctorReviews(doctorId);
-      setReviewsRequest({
-        isLoading: false,
-        data: response ?? EMPTY_REVIEWS,
-        error: null,
-      });
-    } catch (error: any) {
-      console.log('fetchDoctorReviews error ==>', error?.message);
-      setReviewsRequest({
-        isLoading: false,
-        data: EMPTY_REVIEWS,
-        error: error?.message ?? null,
-      });
-    }
-  }, [doctorId]);
-
   useEffect(() => {
     fetchDoctorDetails();
   }, [fetchDoctorDetails]);
-
-  useEffect(() => {
-    fetchDoctorReviews();
-  }, [fetchDoctorReviews]);
 
   const doctor = doctorDetailsRequest?.data ?? null;
 
@@ -207,8 +159,6 @@ export const useDoctorDetailsViewModel = (doctorId: string) => {
     doctorDetailsRequest,
     doctor,
     fetchDoctorDetails,
-    reviewsRequest,
-    fetchDoctorReviews,
     selectedLocation,
     selectedLocationId: selectedLocation?.locationId ?? '',
     selectLocation: setSelectedLocationId,

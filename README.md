@@ -1,18 +1,20 @@
-# React Native CLI Template (MVVM + MST + MMKV + i18n + Paper + Forms)
+# HMS App
 
-A professional, ready-to-use React Native CLI template configured with a **purely functional architecture** (Custom Hooks for ViewModels and plain observable structures), **MobX-State-Tree (MST)** for state management, **MMKV** for secure storage, **Axios** for API queries, **i18next** for localization, **React Hook Form** for validation, and a set of **31 custom reusable UI components** built on **React Native Paper** (Material Design MD3).
+Mobile app for the Hospital Management System (HMS). It currently covers the patient portal: find doctors, appointments, follow-ups, prescriptions, reports and profile.
+
+Built on the company React Native CLI template (MVVM + MST + MMKV + i18n + Paper + Forms): a **purely functional architecture** (Custom Hooks for ViewModels and plain observable structures), **MobX-State-Tree (MST)** for state management, **MMKV** for secure storage, **Axios** for API queries, **i18next** for localization, **React Hook Form** for validation, and a set of **31 custom reusable UI components** built on **React Native Paper** (Material Design MD3).
 
 ## 🤖 AI-Assisted Development
 To optimize token costs, reduce development time, and maintain strict null safety when using Generative AI agents and assistants (Claude, Cursor, Gemini, ChatGPT), please refer to:
-*   [AI Agent & Developer Guidelines](file:///home/arpan/react-native-template/template/AI_DEVELOPMENT_GUIDE.md)
-*   [Workspace Coding Instructions (.instructions.md)](file:///home/arpan/react-native-template/template/.instructions.md)
+*   [AI Agent & Developer Guidelines](AI_DEVELOPMENT_GUIDE.md)
+*   [Workspace Coding Instructions (.instructions.md)](.instructions.md)
 
 ---
 
 ## 📂 Project Structure & File Guide
 
 ```
-MyNewApp/
+HMS-APP/
 ├── App.tsx                   # Main entry point (contexts and setups)
 ├── index.js                  # Component registry
 ├── package.json              # Monorepo root configuration defining Yarn Workspaces
@@ -26,13 +28,14 @@ MyNewApp/
 ├── android/                  # Android Gradle build configs (linked for icons)
 ├── ios/                      # iOS Xcode project configs (linked for fonts & icons)
 ├── src/                      # Main App source (navigation routing & screens)
-│   ├── navigation/           # Navigation routers (Drawer, Bottom Tabs, Material Top Tabs, Stack)
+│   ├── assets/               # Bundled images
+│   ├── components/           # Components shared between screens
+│   ├── hooks/                # Hooks shared between screens
+│   ├── navigation/           # Navigation routers (Drawer, Bottom Tabs, Stack)
 │   └── screens/              # Screen-wise nested Views & ViewModel Hooks
-│       ├── login/            # Login view and VM hook
-│       ├── home/             # Home feed view and VM hook
-│       ├── dashboard/        # Interactive components showcase view
-│       ├── profile/          # User profile details view
-│       └── settings/         # Light/dark mode & English/Bangla switch view
+│       ├── auth/             # Login, sign-up, OTP verification and password screens
+│       ├── common/           # File viewer, profile sheets, settings (theme & language)
+│       └── patient/          # Find doctors, appointments, follow-ups, prescriptions, reports, profile
 └── packages/                 # Local Workspace Packages
     ├── core/                 # @app/core package (business logic, stores, network)
     │   ├── package.json      # Dependencies (axios, mmkv, mobx, i18next, etc.)
@@ -42,7 +45,7 @@ MyNewApp/
     │       ├── hooks/        # useDownload, useDocumentViewer hooks
     │       ├── store/        # MobX-State-Tree models & MMKV snapshots
     │       ├── network/      # Axios client configuration & endpoints
-    │       ├── repositories/ # Repositories abstraction layer (PostRepository, AuthRepository)
+    │       ├── repositories/ # Repositories abstraction layer (AuthRepository, AppointmentRepository, ...)
     │       ├── utils/        # i18n, secureStorage, offlineCache, crypto, downloader, documentViewer
     │       └── index.ts      # Package exports
     └── ui/                   # @app/ui package (reusable UI components & themes)
@@ -57,7 +60,7 @@ MyNewApp/
 
 ## 📦 Monorepo Workspace Packages
 
-This template is configured as a monorepo utilizing **Yarn Workspaces**. Dependencies and code assets are structured into local packages:
+This project is configured as a monorepo utilizing **Yarn Workspaces**. Dependencies and code assets are structured into local packages:
 
 1. **`@app/core`** (`packages/core/`):
    - Handles all business logic, local state management, network client logic, localization configuration, storage snapshots, downloader engine, documentViewer utils, and crypto functions.
@@ -724,36 +727,36 @@ To add a new screen (e.g. `Dashboard`):
 
 ## 🔗 Deep Linking Configuration
 
-The template is configured for deep linking (custom URL schemes and Universal/App Links) out-of-the-box:
+The app is configured for deep linking (custom URL schemes and Universal/App Links) out-of-the-box:
 
-*   **iOS URL Scheme:** Registered in `Info.plist` under `CFBundleURLTypes` using the placeholder `Managerium_Health` (auto-renamed to your project name upon initialization).
+*   **iOS URL Scheme:** Registered in `Info.plist` under `CFBundleURLTypes` using the scheme `Managerium_Health`.
 *   **iOS URL Handler:** Implemented inside `AppDelegate.swift` overriding `application(_:open:options:)` and Universal Links continuation.
 *   **Android Scheme & Hosts:** Configured in `AndroidManifest.xml` under `<intent-filter>` mapping the scheme `Managerium_Health` and host `Managerium_Health.com`.
 *   **React Navigation Mapping:** Configured inside `src/navigation/AppNavigator.tsx` pointing to nested screens:
     *   `login` -> Login Screen
-    *   `main/home` -> Authenticated Home Screen
-    *   `main/dashboard` -> Authenticated Dashboard Screen
-    *   `profile` -> Authenticated Profile Screen
-    *   `settings` -> Authenticated Settings Screen
+    *   `main/home` -> Find Doctors tab
+    *   `main/activity` -> Appointments tab
+    *   `main/me` -> Profile tab
+    *   `settings` -> Settings Screen
 
 ### How to Test Deep Linking
 
 #### Testing on Android Emulator:
 ```bash
 # Test URL Scheme (Custom URI)
-npx uri-scheme open "myAppName://profile" --android
+npx uri-scheme open "Managerium_Health://settings" --android
 
 # Test App Link (HTTP/HTTPS)
-npx uri-scheme open "https://myAppName.com/main/dashboard" --android
+npx uri-scheme open "https://Managerium_Health.com/main/home" --android
 ```
 
 #### Testing on iOS Simulator:
 ```bash
 # Test URL Scheme (Custom URI)
-npx uri-scheme open "myAppName://profile" --ios
+npx uri-scheme open "Managerium_Health://settings" --ios
 
 # Test Universal Link (HTTP/HTTPS)
-npx uri-scheme open "https://myAppName.com/main/dashboard" --ios
+npx uri-scheme open "https://Managerium_Health.com/main/home" --ios
 ```
 
 ## ➕ How to Add a New Workspace Package (Module)
@@ -965,7 +968,7 @@ We utilize **Husky** and **lint-staged** to validate files locally before change
 *   **Pre-Push Hook**: Runs the full compiler type check (`yarn tsc -p _tsconfig.json --noEmit`). If there are any compile errors, the push is blocked.
 
 ### 2. Remote CI Gating (GitHub Actions)
-For every pull request and merge targeting `main`, `master`, or `develop`, a remote pipeline ([ci.yml](file:///home/arpan/react-native-template/template/.github/workflows/ci.yml)) automatically runs:
+For every pull request and merge targeting `main`, `master`, or `development`, a remote pipeline ([ci.yml](.github/workflows/ci.yml)) automatically runs:
 1. Dependency installation checks with cached node modules.
 2. Code style validation (`yarn lint`).
 3. Strict type compilation verification (`yarn tsc -p _tsconfig.json --noEmit`).
@@ -974,26 +977,14 @@ Branches cannot be merged if any pipeline step fails.
 
 ---
 
-## ⚙️ Initializing a New Project
-
-Initialize a new project using the path to this template package:
-
-```bash
-npx @react-native-community/cli@latest init MyNewApp --template /absolute/path/to/react-native-template
-```
-
-### Steps to Run Post-Initialization:
+## ⚙️ Getting Started
 
 1. **Install dependencies:**
    ```bash
-   cd MyNewApp
    yarn install
    ```
 
-2. **Link Assets (Fonts and Icons):**
-   ```bash
-   npx react-native-asset
-   ```
+2. **Configure environment:** copy `.env.example` to `.env` and fill in the values.
 
 3. **Install Pods (for iOS):**
    ```bash
@@ -1003,6 +994,3 @@ npx @react-native-community/cli@latest init MyNewApp --template /absolute/path/t
 4. **Start and Run:**
    - Run Android: `yarn android`
    - Run iOS: `yarn ios`
- 
-<!-- using syncpack
-npx synpack set-semver axios 1.7.0 --># Managerium_Health

@@ -2,10 +2,6 @@ import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
 import { toTitleCase } from '../utils/format';
-import {
-  DoctorReviewItem,
-  toDoctorReviewItem,
-} from './DoctorDetailsRepository';
 
 /**
  * `strStatus` on tblAppointments — nvarchar(20) with no check constraint,
@@ -43,21 +39,6 @@ export type AppointmentType =
 
 /** `strPaymentMethod` — cash, mobile_banking and cheque are in use today. */
 export type PaymentMethod = 'cash' | 'card' | 'mobile_banking' | 'cheque';
-
-/** The lowest and highest star a review may carry — the API rejects anything else. */
-export const REVIEW_MIN_RATING = 1;
-export const REVIEW_MAX_RATING = 5;
-
-/** `strComment` is nvarchar(1000) — longer text is refused, so it is trimmed here. */
-export const REVIEW_COMMENT_MAX_LENGTH = 1000;
-
-export interface SubmitReviewPayload {
-  appointmentId: string | number;
-  /** 1-5. */
-  rating: number;
-  /** Optional — sent as null when the patient rated without writing anything. */
-  comment?: string;
-}
 
 export interface CreateAppointmentPayload {
   doctorUserId: string | number;
@@ -140,8 +121,6 @@ export interface Appointment {
   locationName: string;
   locationAddress: string;
   hasConsultation: boolean;
-  /** True once the patient has left their one-and-only review for this visit. */
-  hasReview: boolean;
   /** `paymentAmount` — the chamber fee for this appointment. */
   fee: number;
   paidAmount: number;
@@ -210,7 +189,6 @@ export const toAppointment = (raw: any): Appointment => ({
   locationName: toText(raw?.locationName),
   locationAddress: toText(raw?.locationAddress),
   hasConsultation: Boolean(raw?.hasConsultation),
-  hasReview: Boolean(raw?.hasReview),
   fee: toNumber(raw?.paymentAmount),
   paidAmount: toNumber(raw?.paidAmount),
   dueAmount: toNumber(raw?.dueAmount),
@@ -335,53 +313,6 @@ export const AppointmentRepository = {
     });
 
     return toCreatedAppointment(response);
-  },
-
-  /**
-   * `GET /api/reviews/appointment/{appointmentId}` — the patient's own review of
-   * this visit. Only worth calling when the appointment says `hasReview`: with
-   * nothing left yet the API answers 404, which would surface as an error.
-   */
-  getAppointmentReview: async (
-    appointmentId: string | number,
-  ): Promise<DoctorReviewItem | null> => {
-    const id = String(appointmentId ?? '').trim();
-    if (!id) return null;
-
-    const api_params: ApiRequestOptions = {
-      url: `${ENDPOINTS.reviews}/appointment/${encodeURIComponent(id)}`,
-      method: 'GET',
-      baseUrl: API_URL,
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return response ? toDoctorReviewItem(response) : null;
-  },
-
-  /**
-   * `POST /api/reviews`. An appointment can only be reviewed once — the API
-   * refuses a second one — and it answers with the saved row.
-   */
-  submitReview: async (
-    payload: SubmitReviewPayload,
-  ): Promise<DoctorReviewItem | null> => {
-    const comment = payload?.comment?.trim() ?? '';
-
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.reviews,
-      method: 'POST',
-      baseUrl: API_URL,
-      data: {
-        appointmentId: toNumber(payload?.appointmentId),
-        rating: toNumber(payload?.rating),
-        // Blank is sent as null rather than '' — the column is nullable and the
-        // reviews feed hides a comment-less entry's empty paragraph on null.
-        comment: comment ? comment.slice(0, REVIEW_COMMENT_MAX_LENGTH) : null,
-      },
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return response ? toDoctorReviewItem(response) : null;
   },
 };
 

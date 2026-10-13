@@ -1,7 +1,7 @@
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
-import { DoctorGender } from './DoctorRepository';
+import { DoctorGender } from './FindDoctorsRepository';
 
 /** One bookable window inside a day, as published by `GET /api/doctors/{id}`. */
 export interface DoctorTimeSlot {
@@ -52,24 +52,9 @@ export interface DoctorConsultationOption {
   durationMinutes: number;
 }
 
-/** One entry in a doctor's review feed, from `GET /api/reviews/doctor/{id}`. */
-export interface DoctorReviewItem {
-  id: string;
-  patientName: string;
-  patientPhotoUrl: string;
-  rating: number;
-  comment: string;
-  /** 'YYYY-MM-DD' — `updatedAt` when the patient edited the review, else `createdAt`. */
-  date: string;
-}
-
-export interface DoctorReviewSummary {
-  reviews: DoctorReviewItem[];
-  totalCount: number;
-  /** 0 when nobody has reviewed this doctor yet. */
-  averageRating: number;
-  /** Always 5 entries: index 0 = 1-star count ... index 4 = 5-star count. */
-  ratingBreakdown: number[];
+export interface DoctorEducation {
+  degree: string;
+  institution: string;
 }
 
 export interface DoctorDetailsInfo {
@@ -260,37 +245,6 @@ const toDoctorDetails = (raw: any): DoctorDetailsInfo => {
   };
 };
 
-/**
- * Exported because `/api/reviews/appointment/{id}` answers with the very same
- * `DoctorReviewDto` — the appointment repository maps through this rather than
- * keeping a second copy that would drift the moment a field is added.
- */
-export const toDoctorReviewItem = (raw: any): DoctorReviewItem => ({
-  id: toText(raw?.reviewId),
-  patientName: toText(raw?.patientName),
-  patientPhotoUrl: toText(raw?.patientPhotoUrl),
-  rating: toNumber(raw?.rating),
-  comment: toText(raw?.comment),
-  date: toText(raw?.updatedAt ?? raw?.createdAt)?.slice(0, 10) ?? '',
-});
-
-const EMPTY_RATING_BREAKDOWN = [0, 0, 0, 0, 0];
-
-const toDoctorReviewSummary = (raw: any): DoctorReviewSummary => {
-  const breakdown = Array.isArray(raw?.ratingBreakdown) ? raw?.ratingBreakdown : [];
-
-  return {
-    reviews: Array.isArray(raw?.reviews)
-      ? raw?.reviews?.map(toDoctorReviewItem) ?? []
-      : [],
-    totalCount: toNumber(raw?.totalCount),
-    averageRating: toNumber(raw?.averageRating),
-    ratingBreakdown: EMPTY_RATING_BREAKDOWN?.map(
-      (_, index) => toNumber(breakdown?.[index]),
-    ),
-  };
-};
-
 export const DoctorDetailsRepository = {
   getDoctorDetails: async (
     doctorId: string,
@@ -306,22 +260,6 @@ export const DoctorDetailsRepository = {
     const response = await apiRequest<any>(api_params);
 
     return response ? toDoctorDetails(response) : null;
-  },
-
-  getDoctorReviews: async (
-    doctorId: string,
-  ): Promise<DoctorReviewSummary | null> => {
-    const id = toText(doctorId);
-    if (!id) return null;
-
-    const api_params: ApiRequestOptions = {
-      url: `${ENDPOINTS.doctorReviews}/${encodeURIComponent(id)}`,
-      method: 'GET',
-      baseUrl: API_URL,
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return response ? toDoctorReviewSummary(response) : null;
   },
 };
 

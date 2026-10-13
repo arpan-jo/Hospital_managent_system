@@ -778,6 +778,13 @@
     slash "^3.0.0"
     strip-ansi "^6.0.0"
 
+"@jest/create-cache-key-function@^29.7.0":
+  version "29.7.0"
+  resolved "https://registry.yarnpkg.com/@jest/create-cache-key-function/-/create-cache-key-function-29.7.0.tgz#793be38148fab78e65f40ae30c36785f4ad859f0"
+  integrity sha512-4QqS3LY5PBmTRHj9sAg1HLoPzqAI0uOX6wI/TRqHIcOxlFidy6YEmCQJk6FSZjNLGCeubDMfmkWL+qaLKhSGQA==
+  dependencies:
+    "@jest/types" "^29.6.3"
+
 "@jest/environment@^29.7.0":
   version "29.7.0"
   resolved "https://registry.npmjs.org/@jest/environment/-/environment-29.7.0.tgz"
@@ -1311,6 +1318,17 @@
   resolved "https://registry.npmjs.org/@react-native/gradle-plugin/-/gradle-plugin-0.85.1.tgz"
   integrity sha512-KeTntbnsH/NOdzZrSE8tgep+9jEMlEfklVDtgxnjjb5nDhhBD016judwyo9bsinZnuwXxmemXnOOqOfcEawxbg==
 
+"@react-native/jest-preset@0.85.1":
+  version "0.85.1"
+  resolved "https://registry.yarnpkg.com/@react-native/jest-preset/-/jest-preset-0.85.1.tgz#39d2d57fb3f4ca9f4227d742fe1393ffce0cf721"
+  integrity sha512-SoD4J18a+yZXjpc/0R2Kaxh++yCEAsMuiVX/lYnIUahBv/Fz/kkaXkrU9Cw4IYtg2YbHkOBNgAeSRfEHwEu44g==
+  dependencies:
+    "@jest/create-cache-key-function" "^29.7.0"
+    "@react-native/js-polyfills" "0.85.1"
+    babel-jest "^29.7.0"
+    jest-environment-node "^29.7.0"
+    regenerator-runtime "^0.13.2"
+
 "@react-native/js-polyfills@0.85.1":
   version "0.85.1"
   resolved "https://registry.npmjs.org/@react-native/js-polyfills/-/js-polyfills-0.85.1.tgz"
@@ -1335,11 +1353,6 @@
     "@react-native/metro-babel-transformer" "0.85.1"
     metro-config "^0.84.0"
     metro-runtime "^0.84.0"
-
-"@react-native/new-app-screen@0.85.1":
-  version "0.85.1"
-  resolved "https://registry.npmjs.org/@react-native/new-app-screen/-/new-app-screen-0.85.1.tgz"
-  integrity sha512-wZhWa9cy3GVmJf/YbNtIho65t7I39fsgUrHoxk0GGWB5InpZVYTS3wDRsUXhwsW/TCceJUFkvI0PTciAA8Ww5g==
 
 "@react-native/normalize-color@*":
   version "2.1.0"
@@ -1405,15 +1418,6 @@
     color "^4.2.3"
     use-latest-callback "^0.2.4"
     use-sync-external-store "^1.5.0"
-
-"@react-navigation/material-top-tabs@^7.1.0":
-  version "7.6.2"
-  resolved "https://registry.npmjs.org/@react-navigation/material-top-tabs/-/material-top-tabs-7.6.2.tgz"
-  integrity sha512-213beQ4B8Y84IIIDD9a2SRRmY1jLItrLlI4tLoiFprwE0Qcczd11LXHq6If2CjyLCfShPfc7iXcsCVqg5GOAQQ==
-  dependencies:
-    "@react-navigation/elements" "^2.9.25"
-    color "^4.2.3"
-    react-native-tab-view "^4.3.1"
 
 "@react-navigation/native-stack@^7.0.14":
   version "7.17.5"
@@ -4478,11 +4482,6 @@ js-yaml@^4.1.0:
   dependencies:
     argparse "^2.0.1"
 
-jsbarcode@^3.12.3:
-  version "3.12.3"
-  resolved "https://registry.yarnpkg.com/jsbarcode/-/jsbarcode-3.12.3.tgz#c2c903f1fe91873853f81f524ca496c4dbf20120"
-  integrity sha512-CuHU9hC6dPsHF5oVFMo8NW76uQVjH4L22CsP4hW+dNnGywJHC/B0ThA1CTDVLnxKLrrpYdicBLnd2xsgTfRnvg==
-
 jsc-safe-url@^0.2.2:
   version "0.2.4"
   resolved "https://registry.npmjs.org/jsc-safe-url/-/jsc-safe-url-0.2.4.tgz"
@@ -5581,11 +5580,6 @@ react-native-nitro-sound@0.2.15:
   dependencies:
     "@react-native-community/slider" "^5.2.0"
 
-react-native-pager-view@^6.5.1:
-  version "6.9.1"
-  resolved "https://registry.npmjs.org/react-native-pager-view/-/react-native-pager-view-6.9.1.tgz"
-  integrity sha512-uUT0MMMbNtoSbxe9pRvdJJKEi9snjuJ3fXlZhG8F2vVMOBJVt/AFtqMPUHu9yMflmqOr08PewKzj9EPl/Yj+Gw==
-
 react-native-paper@^5.15.3:
   version "5.15.3"
   resolved "https://registry.npmjs.org/react-native-paper/-/react-native-paper-5.15.3.tgz"
@@ -5623,13 +5617,6 @@ react-native-screens@^4.25.2:
   dependencies:
     react-freeze "^1.0.0"
     warn-once "^0.1.0"
-
-react-native-tab-view@^4.3.1:
-  version "4.3.1"
-  resolved "https://registry.npmjs.org/react-native-tab-view/-/react-native-tab-view-4.3.1.tgz"
-  integrity sha512-z2x4ZAJfdiy3Rk78/2tIfKu1DezMKHWOfIIw4bpfPlwVqg3i2ViFtvZJTadKWZpZJEnG43cfhJPNDzH5RZTK2Q==
-  dependencies:
-    use-latest-callback "^0.2.4"
 
 react-native-vector-icons@^10.3.0:
   version "10.3.0"

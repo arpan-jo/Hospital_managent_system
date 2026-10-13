@@ -1,17 +1,17 @@
 {
-  "name": "MyNewApp",
+  "name": "hms-app",
   "version": "0.0.1",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "android": "react-native run-android",
+    "android": "react-native run-android --active-arch-only",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "prepare": "cd .. && husky template/.husky"
+    "prepare": "husky"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -24,16 +24,13 @@
     "@react-native-community/datetimepicker": "^9.1.0",
     "@react-native-documents/picker": "^12.0.1",
     "@react-native-documents/viewer": "^4.0.0",
-    "@react-native/new-app-screen": "0.85.1",
     "@react-navigation/bottom-tabs": "^7.0.19",
     "@react-navigation/drawer": "^7.0.19",
-    "@react-navigation/material-top-tabs": "^7.1.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/native-stack": "^7.0.14",
     "axios": "^1.18.0",
     "crypto-js": "^4.2.0",
     "i18next": "^23.15.1",
-    "jsbarcode": "^3.12.3",
     "mobx": "^6.13.1",
     "mobx-react-lite": "^4.0.7",
     "mobx-state-tree": "^7.2.0",
@@ -47,7 +44,6 @@
     "react-native-mmkv": "^4.3.1",
     "react-native-nitro-modules": "^0.35.9",
     "react-native-nitro-sound": "0.2.15",
-    "react-native-pager-view": "^6.5.1",
     "react-native-paper": "^5.15.3",
     "react-native-pdf": "^7.0.5",
     "react-native-reanimated": "^4.4.1",
@@ -64,6 +60,7 @@
     "@react-native-community/cli-platform-ios": "20.1.0",
     "@react-native/babel-preset": "0.85.1",
     "@react-native/eslint-config": "0.85.1",
+    "@react-native/jest-preset": "0.85.1",
     "@react-native/metro-config": "0.85.1",
     "@react-native/typescript-config": "0.85.1",
     "@types/crypto-js": "^4.2.2",

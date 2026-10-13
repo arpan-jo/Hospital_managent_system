@@ -1,6 +1,5 @@
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
-  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,17 +16,15 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { getFileUrl, DoctorSummary, TopDoctor, useStores } from '@app/core';
+import { DoctorSummary, useStores } from '@app/core';
 import {
   CustomAvatar,
-  CustomButton,
   CustomChip,
   CustomNoData,
   CustomSearchbar,
   fontFamilies,
 } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
-import { StarRow } from '../../../components/doctor/DoctorAboutSections';
 import { DrawerParamList } from '../../../navigation/DrawerNavigator';
 import { FindDoctorsStackParamList } from '../../../navigation/FindDoctorsStackNavigator';
 import {
@@ -39,92 +36,6 @@ import FilterBottomSheet from './FilterBottomSheet';
 import { AiDoctorFinder } from './aiFinder/AiDoctorFinder';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useRequirePatientProfile } from '../../../hooks/useRequirePatientProfile';
-
-const TopRatedCard = memo<{
-  doctor: TopDoctor;
-  onPress: (doctor: TopDoctor) => void;
-  onBook: (doctor: TopDoctor) => void;
-}>(function TopRatedCard({ doctor, onPress, onBook }) {
-  const theme = useTheme();
-  const { t } = useTranslation();
-
-  const photoUri = getFileUrl(doctor?.photoUrl);
-
-  return (
-    <Pressable
-      onPress={() => onPress(doctor)}
-      style={[styles.topRatedCard, { backgroundColor: theme.colors.surface }]}
-    >
-      <CustomAvatar
-        type={photoUri ? 'image' : 'text'}
-        value={photoUri || doctor?.name || '?'}
-        fallback={doctor?.name}
-        size={48}
-      />
-      <Text
-        numberOfLines={1}
-        style={[styles.topRatedName, { color: theme.colors.onSurface }]}
-      >
-        {doctor?.name || t('common.na')}
-      </Text>
-      <Text
-        numberOfLines={1}
-        style={[
-          styles.topRatedSpecialty,
-          { color: theme.colors.onSurfaceVariant },
-        ]}
-      >
-        {doctor?.specialty || doctor?.designation || t('common.na')}
-      </Text>
-      <View style={styles.topRatedMetaBox}>
-        {(doctor?.reviewCount ?? 0) > 0 ? (
-          <View style={styles.topRatedRatingCol}>
-            <StarRow rating={doctor?.averageRating ?? 0} size={10} />
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.topRatedRatingText,
-                { color: theme.colors.onSurfaceVariant },
-              ]}
-            >
-              {t('findDoctors.ratingCount', {
-                rating: (doctor?.averageRating ?? 0).toFixed(1),
-                count: doctor?.reviewCount ?? 0,
-              })}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.topRatedRatingRow}>
-            <Icon
-              name="check-decagram"
-              size={11}
-              color={theme.colors.onSurfaceVariant}
-            />
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.topRatedRatingText,
-                { color: theme.colors.onSurfaceVariant },
-              ]}
-            >
-              {t('findDoctors.consults', {
-                count: doctor?.completedAppointments ?? 0,
-              })}
-            </Text>
-          </View>
-        )}
-      </View>
-      <CustomButton
-        mode="contained"
-        onPress={() => onBook(doctor)}
-        style={styles.topRatedBook}
-        labelStyle={styles.topRatedBookLabel}
-      >
-        {t('findDoctors.book')}
-      </CustomButton>
-    </Pressable>
-  );
-});
 
 export const PatientFindDoctorIndex = observer(() => {
   const theme = useTheme();
@@ -151,38 +62,22 @@ export const PatientFindDoctorIndex = observer(() => {
   );
 
   const openDetails = useCallback(
-    (doctor: DoctorSummary | TopDoctor) =>
+    (doctor: DoctorSummary) =>
       navigation.navigate('DoctorDetails', { doctorId: doctor?.id ?? '' }),
     [navigation],
   );
 
-  // Serves both Book (Top Rated) and Book Appointment (the result list). Booking
-  // is always *for* a patient profile, and a freshly registered account has
-  // none, so the gate sends them to create one before the booking screen.
+  // Booking is always *for* a patient profile, and a freshly registered account
+  // has none, so the gate sends them to create one before the booking screen.
   const openBooking = useCallback(
-    async (doctor: DoctorSummary | TopDoctor) => {
+    async (doctor: DoctorSummary) => {
       if (!(await ensureProfile())) return;
       navigation.navigate('CreateAppointment', { doctorId: doctor?.id ?? '' });
     },
     [navigation, ensureProfile],
   );
 
-  const topRatedKeyExtractor = useCallback((item: TopDoctor) => item?.id, []);
-  const renderTopRated = useCallback(
-    ({ item }: { item: TopDoctor }) => (
-      <TopRatedCard doctor={item} onPress={openDetails} onBook={openBooking} />
-    ),
-    [openDetails, openBooking],
-  );
-
   const hasActiveFilters = (viewModel.activeFilterCount ?? 0) > 0;
-  // Broader than the filter-badge count: a specialty pill or a search term
-  // narrows the list too, so Top Rated (an unfiltered "editor's pick" carousel)
-  // hides for all of them, same as the web app.
-  const isBrowsingUnfiltered =
-    !hasActiveFilters &&
-    !viewModel.appliedFilters?.specialty &&
-    !viewModel.searchQuery?.trim();
 
   const resultsLabel = useMemo(
     () =>
@@ -325,34 +220,6 @@ export const PatientFindDoctorIndex = observer(() => {
           </ScrollView>
         )}
 
-        {isBrowsingUnfiltered &&
-        (viewModel.topDoctorsRequest?.isLoading ||
-          (viewModel.topDoctorsRequest?.data?.length ?? 0) > 0) ? (
-          <>
-            <View style={styles.sectionHeaderRow}>
-              <Text
-                style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
-              >
-                {t('findDoctors.topRatedDoctors')}
-              </Text>
-            </View>
-            {viewModel.topDoctorsRequest?.isLoading ? (
-              <View style={styles.topRatedLoader}>
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              </View>
-            ) : (
-              <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={viewModel.topDoctorsRequest?.data}
-                keyExtractor={topRatedKeyExtractor}
-                renderItem={renderTopRated}
-                contentContainerStyle={styles.topRatedList}
-              />
-            )}
-          </>
-        ) : null}
-
         <View style={styles.sectionHeaderRow}>
           <Text
             style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
@@ -482,68 +349,6 @@ const styles = StyleSheet.create({
   resultsCount: {
     fontFamily: fontFamilies.semibold,
     fontSize: 12,
-  },
-  topRatedList: {
-    gap: 10,
-    paddingBottom: 20,
-  },
-  topRatedCard: {
-    width: 116,
-    borderRadius: 14,
-    padding: 12,
-    alignItems: 'center',
-    elevation: 1,
-    shadowColor: '#0B1030',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  topRatedName: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  topRatedSpecialty: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 10,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  topRatedMetaBox: {
-    height: 30,
-    marginTop: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topRatedRatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  topRatedRatingCol: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  topRatedRatingText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 10,
-  },
-  topRatedBook: {
-    marginVertical: 0,
-    marginTop: 8,
-    paddingVertical: 0,
-    borderRadius: 8,
-    width: '100%',
-  },
-  topRatedBookLabel: {
-    fontSize: 11,
-    marginVertical: 6,
-  },
-  topRatedLoader: {
-    height: 150,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   listLoader: {
     paddingVertical: 32,

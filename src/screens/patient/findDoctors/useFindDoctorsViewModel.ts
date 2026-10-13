@@ -5,7 +5,6 @@ import {
   DoctorListQuery,
   DoctorSummary,
   FindDoctorsRepository,
-  TopDoctor,
 } from '@app/core';
 
 export const ALL_SPECIALTIES = 'All';
@@ -60,10 +59,6 @@ export const useFindDoctorsViewModel = (initialSpecialty?: string) => {
     RequestState<DoctorSummary[]>
   >({ isLoading: true, data: [], error: null });
 
-  const [topDoctorsRequest, setTopDoctorsRequest] = useState<
-    RequestState<TopDoctor[]>
-  >({ isLoading: true, data: [], error: null });
-
   const [filterOptionsRequest, setFilterOptionsRequest] = useState<
     RequestState<DoctorFilterResponse>
   >({ isLoading: true, data: EMPTY_FILTER_OPTIONS, error: null });
@@ -116,35 +111,9 @@ export const useFindDoctorsViewModel = (initialSpecialty?: string) => {
     }
   }, []);
 
-  const fetchTopDoctors = useCallback(async () => {
-    setTopDoctorsRequest(prev => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const response = await FindDoctorsRepository.getTopDoctors();
-      // Only doctors with an actual track record qualify — the API ranks by
-      // completed-appointment count but doesn't drop zero-count doctors when
-      // there aren't enough others to fill the limit.
-      const withTrackRecord =
-        response?.filter(item => (item?.completedAppointments ?? 0) > 0) ?? [];
-      setTopDoctorsRequest({
-        isLoading: false,
-        data: withTrackRecord,
-        error: null,
-      });
-    } catch (error: any) {
-      console.log('fetchTopDoctors error ==>', error?.message);
-      setTopDoctorsRequest({
-        isLoading: false,
-        data: [],
-        error: error?.message ?? null,
-      });
-    }
-  }, []);
-
   useEffect(() => {
     fetchFilterOptions();
-    fetchTopDoctors();
-  }, [fetchFilterOptions, fetchTopDoctors]);
+  }, [fetchFilterOptions]);
 
   useEffect(() => {
     const timer = setTimeout(
@@ -206,10 +175,8 @@ export const useFindDoctorsViewModel = (initialSpecialty?: string) => {
 
   return {
     doctorListRequest,
-    topDoctorsRequest,
     filterOptionsRequest,
     fetchDoctorList,
-    fetchTopDoctors,
     fetchFilterOptions,
     searchQuery,
     setSearchQuery,

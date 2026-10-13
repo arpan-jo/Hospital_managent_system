@@ -55,6 +55,7 @@ if (rootStore.languageStore.language) {
 // Sync updates to MMKV automatically
 onSnapshot(rootStore, (snapshot) => {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { toastStore, ...persistentSnapshot } = snapshot;
     storage.set(ROOT_STORAGE_KEY, JSON.stringify(persistentSnapshot));
   } catch (e) {

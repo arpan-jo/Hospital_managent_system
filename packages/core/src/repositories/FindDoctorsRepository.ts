@@ -1,7 +1,8 @@
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
-import { DoctorGender } from './DoctorRepository';
+
+export type DoctorGender = 'Male' | 'Female';
 
 export type DoctorFilterResponse = {
   specialties: string[];
@@ -33,22 +34,6 @@ export interface DoctorSummary {
   availableDays: number[] | null;
 }
 
-export interface TopDoctor {
-  id: string;
-  name: string;
-  specialty: string;
-  designation: string;
-  qualification: string;
-  minFee: number;
-  maxFee: number;
-  photoUrl: string;
-  hospital: string;
-  completedAppointments: number;
-  /** 0 when nobody has reviewed this doctor yet — the card falls back to the consult count. */
-  averageRating: number;
-  reviewCount: number;
-}
-
 export interface DoctorListQuery {
   specialty?: string;
   location?: string;
@@ -56,8 +41,6 @@ export interface DoctorListQuery {
   availability?: string;
   search?: string;
 }
-
-export const TOP_DOCTORS_LIMIT = 5;
 
 const toDoctorListParams = (query?: DoctorListQuery) => {
   const params: Record<string, string> = {};
@@ -149,23 +132,6 @@ export const toDoctorSummary = (raw: any): DoctorSummary => ({
   availableDays: toAvailableDays(raw?.availableDays),
 });
 
-const toTopDoctor = (raw: any): TopDoctor => ({
-  id: toText(raw?.userId),
-  name: toText(raw?.fullName),
-  specialty: toText(raw?.primarySpecialization),
-  designation: toText(raw?.designation),
-  qualification: toQualification(raw),
-  minFee: toNumber(raw?.minConsultationFee),
-  maxFee: toNumber(raw?.maxConsultationFee),
-  photoUrl: toText(raw?.photoUrl),
-  hospital: toText(raw?.hospitalClinic),
-  completedAppointments: toNumber(raw?.completedAppointments),
-  // averageRating is only ever null when reviewCount is 0, so reviewCount
-  // alone is a safe "has this doctor been rated?" check for the UI.
-  averageRating: toNumber(raw?.averageRating),
-  reviewCount: toNumber(raw?.reviewCount),
-});
-
 export const FindDoctorsRepository = {
   getFilters: async (): Promise<DoctorFilterResponse> => {
     const api_params: ApiRequestOptions = {
@@ -191,18 +157,6 @@ export const FindDoctorsRepository = {
     const response = await apiRequest<any>(api_params);
 
     return Array.isArray(response) ? response?.map(toDoctorSummary) ?? [] : [];
-  },
-
-  getTopDoctors: async (limit = TOP_DOCTORS_LIMIT): Promise<TopDoctor[]> => {
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.topDoctors,
-      method: 'GET',
-      baseUrl: API_URL,
-      params: { limit },
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return Array.isArray(response) ? response?.map(toTopDoctor) ?? [] : [];
   },
 };
 

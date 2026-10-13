@@ -20,11 +20,9 @@ import {
 } from '@app/core';
 import { CustomAvatar, CustomButton, CustomDialog, CustomNoData, fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
-import { StarRow } from '../../../components/doctor/DoctorAboutSections';
 import { AppointmentsStackParamList } from '../../../navigation/AppointmentsStackNavigator';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useAppointmentDetailsViewModel } from './useAppointmentDetailsViewModel';
-import ReviewEntrySheet from './ReviewEntrySheet';
 import {
   getDueColor,
   getStatusColors,
@@ -91,11 +89,6 @@ export const AppointmentDetailsScreen = observer(() => {
   const appointmentId = route?.params?.appointmentId ?? '';
   const viewModel = useAppointmentDetailsViewModel(appointmentId);
   const [isCancelDialogVisible, setIsCancelDialogVisible] = useState(false);
-  // The list's "Write a Review" shortcut lands here with the sheet already open,
-  // the same as the web's `?review=1`.
-  const [isReviewSheetVisible, setIsReviewSheetVisible] = useState(
-    Boolean(route?.params?.openReview),
-  );
 
   const appointment = viewModel?.appointment;
   const months = Array.from({ length: 12 }, (_, index) => t(`months.${index}`));
@@ -119,22 +112,6 @@ export const AppointmentDetailsScreen = observer(() => {
     // A failure stays put so the patient can retry.
     if (updated && navigation?.canGoBack()) navigation.goBack();
   }, [viewModel, toastStore, t, navigation]);
-
-  const handleSubmitReview = useCallback(
-    async (rating: number, comment: string) => {
-      const saved = await viewModel?.submitReview?.(rating, comment);
-
-      toastStore?.show(
-        saved
-          ? t('appointmentDetails.review.submitted')
-          : t('appointmentDetails.review.failed'),
-        saved ? 'success' : 'error',
-      );
-
-      return Boolean(saved);
-    },
-    [viewModel, toastStore, t],
-  );
 
   if (viewModel?.isLoading) {
     return (
@@ -659,53 +636,6 @@ export const AppointmentDetailsScreen = observer(() => {
           </View>
         )}
 
-        {/* Only a finished visit can be rated, and only once. */}
-        {viewModel?.canReview && (
-          <View style={[styles.card, styles.assessmentCard, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="star-outline" size={16} color={theme.colors.onSurface} />
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                {t('appointmentDetails.review.sectionTitle')}
-              </Text>
-            </View>
-
-            {viewModel?.isReviewLoading ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            ) : viewModel?.review ? (
-              <>
-                <View style={styles.reviewHeaderRow}>
-                  <StarRow rating={viewModel?.review?.rating ?? 0} size={16} />
-                  <Text style={[styles.reviewDate, { color: theme.colors.onSurfaceVariant }]}>
-                    {formatLongDate(viewModel?.review?.date ?? '', months)}
-                  </Text>
-                </View>
-                {!!viewModel?.review?.comment && (
-                  <Text style={[styles.notesText, { color: theme.colors.onSurfaceVariant }]}>
-                    {viewModel?.review?.comment}
-                  </Text>
-                )}
-                <Text style={[styles.reviewHint, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('appointmentDetails.review.onlyOnce')}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={[styles.notesText, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('appointmentDetails.review.prompt')}
-                </Text>
-                <CustomButton
-                  mode="contained"
-                  icon="star-outline"
-                  onPress={() => setIsReviewSheetVisible(true)}
-                  style={styles.reviewButton}
-                >
-                  {t('appointmentDetails.review.write')}
-                </CustomButton>
-              </>
-            )}
-          </View>
-        )}
-
         {viewModel?.canCancel && (
           <CustomButton
             mode="outlined"
@@ -725,14 +655,6 @@ export const AppointmentDetailsScreen = observer(() => {
           </CustomButton>
         )}
       </ScrollView>
-
-      <ReviewEntrySheet
-        visible={isReviewSheetVisible}
-        doctorName={appointment?.doctorName}
-        isSubmitting={viewModel?.isSubmittingReview}
-        onClose={() => setIsReviewSheetVisible(false)}
-        onSubmit={handleSubmitReview}
-      />
 
       <CustomDialog
         visible={isCancelDialogVisible}
@@ -934,25 +856,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.regular,
     fontSize: 13,
     lineHeight: 19,
-  },
-  reviewHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  reviewDate: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-  },
-  reviewHint: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-  },
-  reviewButton: {
-    marginVertical: 0,
-    marginTop: 4,
-    borderRadius: 12,
   },
   followUpBanner: {
     flexDirection: 'row',

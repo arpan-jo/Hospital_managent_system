@@ -21,22 +21,18 @@ import {
   fontFamilies,
 } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
-import {
-  DoctorAboutSection,
-  DoctorReviewsSection,
-} from '../../../components/doctor/DoctorAboutSections';
+import { DoctorAboutSection } from '../../../components/doctor/DoctorAboutSections';
 import { DoctorFlowStackParamList } from '../../../navigation/appointmentRoutes';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useRequirePatientProfile } from '../../../hooks/useRequirePatientProfile';
 import { useDoctorDetailsViewModel } from './useDoctorDetailsViewModel';
 
-type DetailsTab = 'details' | 'about' | 'reviews';
+type DetailsTab = 'details' | 'about';
 
 const TAB_LABEL_KEY: Record<DetailsTab, string> = {
   details: 'details.title',
   about: 'doctorProfile.tabAbout',
-  reviews: 'doctorProfile.tabReviews',
 };
 
 const TABS = Object.keys(TAB_LABEL_KEY) as DetailsTab[];
@@ -94,9 +90,8 @@ const FieldGrid = memo<{ rows: Array<Array<[string, string]>> }>(function FieldG
 });
 
 /**
- * Everything about one doctor — Details, About and Reviews — with Make
- * Appointment as the way out. Profile data comes from `GET /api/doctors/{id}`
- * and reviews from `GET /api/reviews/doctor/{id}`, both through
+ * Everything about one doctor — Details and About — with Make Appointment as
+ * the way out. Profile data comes from `GET /api/doctors/{id}` through
  * `useDoctorDetailsViewModel`; sections the API has no field for (contact
  * number) are left out rather than faked.
  */
@@ -202,17 +197,6 @@ export const DoctorDetails = observer(() => {
       awards: doctor?.awards,
     }),
     [doctor, viewModel?.aboutSummary],
-  );
-
-  const reviews = viewModel?.reviewsRequest?.data;
-  const reviewsInfo = useMemo(
-    () => ({
-      averageRating: reviews?.averageRating,
-      totalCount: reviews?.totalCount,
-      ratingBreakdown: reviews?.ratingBreakdown,
-      reviews: reviews?.reviews,
-    }),
-    [reviews],
   );
 
   // Booking is always *for* a patient profile, and a freshly registered account
@@ -523,12 +507,6 @@ export const DoctorDetails = observer(() => {
         ) : null}
 
         {tab === 'about' ? <DoctorAboutSection doctor={aboutInfo} /> : null}
-        {tab === 'reviews' ? (
-          <DoctorReviewsSection
-            doctor={reviewsInfo}
-            isLoading={viewModel?.reviewsRequest?.isLoading}
-          />
-        ) : null}
       </ScrollView>
 
       <View
