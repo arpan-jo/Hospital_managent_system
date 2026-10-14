@@ -5,8 +5,8 @@ import AppointmentDetailsScreen from '../screens/patient/appointments/Appointmen
 
 export type AppointmentsStackParamList = {
   AppointmentsList: undefined;
-  /** Reached from a card's View Details — the screen re-reads the row by id. */
-  AppointmentDetails: { appointmentId: string };
+  /** Reached from a card — the screen reads the appointment in full by id. */
+  AppointmentDetails: { appointmentId: number };
 };
 
 const Stack = createNativeStackNavigator<AppointmentsStackParamList>();

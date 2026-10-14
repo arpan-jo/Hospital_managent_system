@@ -25,8 +25,8 @@ export const ENDPOINTS = {
   consultationCreateAppointment:
     '/hms/AppointmentConsultation/CreateAppointment',
   appointments: '/hms/appointments',
-  /** What the doctor recorded during a visit, keyed by its appointment. */
-  consultations: '/hms/consultations',
+  /** One appointment in full, for its patient. */
+  portalAppointmentDetail: '/hms/portal/appointments/GetAppointmentDetail',
   prescriptions: '/hms/prescriptions',
   prescriptionDoctors: '/hms/prescriptions/doctors',
   patientDocuments: '/hms/patient/documents',

@@ -1,671 +1,503 @@
-import React, { useCallback, useState } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
+  AppointmentDetail,
   AppointmentStatus,
-  ConsultationVitals,
   formatLongDate,
-  formatMoney,
   getFileUrl,
+  groupThousands,
   stripHonorific,
-  TestPriority,
   to12Hour,
-  useStores,
 } from '@app/core';
-import { CustomAvatar, CustomButton, CustomDialog, CustomNoData, fontFamilies } from '@app/ui';
+import { CustomAvatar, CustomButton, CustomDialog, fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { AppointmentsStackParamList } from '../../../navigation/AppointmentsStackNavigator';
+import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useAppointmentDetailsViewModel } from './useAppointmentDetailsViewModel';
 import {
-  getDueColor,
-  getStatusColors,
   STATUS_LABEL_KEY,
-  TYPE_ICON,
-  TYPE_LABEL_KEY,
-} from './AppointmentCard';
+  appointmentType,
+  doctorDisplayName,
+  isRemoteType,
+  paymentBadge,
+  statusTone,
+} from './appointmentUi';
 
-/** The happy path a booking walks through, in order — the header's progress row. */
-const STATUS_FLOW: AppointmentStatus[] = ['pending', 'confirmed', 'completed'];
+type DetailTab = 'overview' | 'consultation' | 'prescriptions';
 
-/** One pre-assessment answer or the doctor's note; drawn only when it was given. */
-const AssessmentField = React.memo<{ label: string; value: string; accent?: string }>(
-  function AssessmentField({ label, value, accent }) {
-    const theme = useTheme();
-    if (!value) return null;
+const DETAIL_TABS: { key: DetailTab; labelKey: string; icon: string }[] = [
+  { key: 'overview', labelKey: 'appointmentDetails.tabOverview', icon: 'view-dashboard-outline' },
+  { key: 'consultation', labelKey: 'appointmentDetails.tabConsultation', icon: 'stethoscope' },
+  { key: 'prescriptions', labelKey: 'appointmentDetails.tabPrescriptions', icon: 'pill' },
+];
 
-    return (
-      <View style={[styles.assessment, { backgroundColor: theme.colors.surfaceVariant }]}>
-        <Text style={[styles.assessmentLabel, { color: accent ?? theme.colors.onSurfaceVariant }]}>
-          {label}
-        </Text>
-        <Text style={[styles.assessmentValue, { color: theme.colors.onSurface }]}>{value}</Text>
-      </View>
-    );
-  },
-);
+const money = (amount: number) => `৳${groupThousands(amount)}`;
 
-/** One reading of the vitals grid; drawn only when it was taken. */
-const VitalChip = React.memo<{ icon: string; label: string; value: string; color: string }>(
-  function VitalChip({ icon, label, value, color }) {
-    const theme = useTheme();
-    if (!value) return null;
+// ─── Small pieces ──────────────────────────────────────────────────────────
 
-    return (
-      <View style={[styles.vitalChip, { backgroundColor: theme.colors.surfaceVariant }]}>
-        <Icon name={icon} size={13} color={color} />
-        <View style={styles.vitalText}>
-          <Text style={[styles.vitalLabel, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
-          <Text style={[styles.vitalValue, { color: theme.colors.onSurface }]}>{value}</Text>
-        </View>
-      </View>
-    );
-  },
-);
-
-/** Test-order urgency, in the same tint/colour shape the status chip uses. */
-const PRIORITY_COLORS: Record<TestPriority, { color: string; tint: string }> = {
-  routine: { color: '#2F45E5', tint: '#E9EDFD' },
-  urgent: { color: '#B27400', tint: '#FEF3E0' },
-  stat: { color: '#B3261E', tint: '#FDECEF' },
-};
-
-export const AppointmentDetailsScreen = observer(() => {
+const Card = memo<{ title?: string; icon?: string; children: React.ReactNode }>(function Card({
+  title,
+  icon,
+  children,
+}) {
   const theme = useTheme();
-  const { t } = useTranslation();
-  const route = useRoute<RouteProp<AppointmentsStackParamList, 'AppointmentDetails'>>();
-  const navigation = useNavigation<NativeStackNavigationProp<AppointmentsStackParamList>>();
-  const insets = useSafeAreaInsets();
-  const { toastStore } = useStores();
-  // Light background — needs dark icons so the status bar stays legible.
-  useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
-
-  const appointmentId = route?.params?.appointmentId ?? '';
-  const viewModel = useAppointmentDetailsViewModel(appointmentId);
-  const [isCancelDialogVisible, setIsCancelDialogVisible] = useState(false);
-
-  const appointment = viewModel?.appointment;
-  const months = Array.from({ length: 12 }, (_, index) => t(`months.${index}`));
-
-  const handleCall = useCallback((phone?: string) => {
-    if (!phone) return;
-    Linking.openURL(`tel:${phone}`).catch(() => undefined);
-  }, []);
-
-  const handleConfirmCancel = useCallback(async () => {
-    setIsCancelDialogVisible(false);
-    const updated = await viewModel?.cancelAppointment();
-
-    toastStore?.show(
-      updated ? t('appointmentDetails.cancelled') : t('appointmentDetails.cancelFailed'),
-      updated ? 'success' : 'error',
-    );
-
-    // Nothing is left to do on this screen once it is cancelled, so go back to
-    // the list — its focus effect refetches, so the row lands under Cancelled.
-    // A failure stays put so the patient can retry.
-    if (updated && navigation?.canGoBack()) navigation.goBack();
-  }, [viewModel, toastStore, t, navigation]);
-
-  if (viewModel?.isLoading) {
-    return (
-      <SafeAreaView
-        edges={['top', 'left', 'right']}
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-      >
-        <ScreenHeader title={t('appointmentDetails.title')} leading="back" />
-        <View style={styles.loader}>
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+  return (
+    <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+      {title ? (
+        <View style={styles.cardTitleRow}>
+          {icon ? <Icon name={icon} size={16} color={theme.colors.primary} /> : null}
+          <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>{title}</Text>
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!appointment) {
-    return (
-      <SafeAreaView
-        edges={['top', 'left', 'right']}
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-      >
-        <ScreenHeader title={t('appointmentDetails.title')} leading="back" />
-        <CustomNoData
-          message={viewModel?.error ?? t('appointmentDetails.notFound')}
-          style={styles.noData}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  const status = getStatusColors(appointment?.status, theme.dark);
-  const statusLabelKey = STATUS_LABEL_KEY[appointment?.status] ?? STATUS_LABEL_KEY.pending;
-  const stepIndex = STATUS_FLOW.indexOf(appointment?.status);
-  const photoUri = getFileUrl(appointment?.doctorPhotoUrl);
-  const typeKey = TYPE_LABEL_KEY[appointment?.type ?? ''];
-  const typeLabel = typeKey ? t(typeKey) : appointment?.type ?? '';
-  const dueAmount = appointment?.dueAmount ?? 0;
-  /**
-   * A zero due does not mean settled — older rows sit at `dueAmount: 0` with
-   * `paymentStatus: "unpaid"`, so only `paid` counts as paid and those rows
-   * show the full fee as outstanding.
-   */
-  const isPaid = dueAmount <= 0 && appointment?.paid;
-  const outstanding = dueAmount > 0 ? dueAmount : appointment?.fee ?? 0;
-  const hasPreAssessment = Boolean(
-    appointment?.reason ||
-      appointment?.symptoms ||
-      appointment?.problemDescription ||
-      appointment?.currentMedication ||
-      appointment?.allergies,
+      ) : null}
+      {children}
+    </View>
   );
+});
 
-  const consultation = viewModel?.consultation;
-  const hasSummary = Boolean(
-    consultation?.diagnosis || consultation?.doctorAdvice || consultation?.notes,
+/** A label on the left, its value on the right; hidden when there is no value. */
+const Row = memo<{
+  label: string;
+  value?: string;
+  strong?: boolean;
+  last?: boolean;
+  right?: React.ReactNode;
+  onPress?: () => void;
+}>(function Row({ label, value, strong, last, right, onPress }) {
+  const theme = useTheme();
+  if (!value && !right) return null;
+
+  const valueText = (
+    <Text
+      style={[
+        strong ? styles.rowValueStrong : styles.rowValue,
+        { color: onPress ? theme.colors.primary : theme.colors.onSurface },
+      ]}
+    >
+      {value}
+    </Text>
   );
-  const vitals: ConsultationVitals | null = consultation?.vitals ?? null;
-  const prescriptions = consultation?.prescriptions ?? [];
-  const testOrders = consultation?.testOrders ?? [];
 
   return (
-    <SafeAreaView
-      edges={['top', 'left', 'right']}
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    <View
+      style={[
+        styles.row,
+        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.outlineVariant },
+      ]}
     >
-      <ScreenHeader title={t('appointmentDetails.title')} leading="back" />
+      <Text style={[styles.rowLabel, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
+      <View style={styles.rowRight}>
+        {value ? (onPress ? <Pressable onPress={onPress} hitSlop={6}>{valueText}</Pressable> : valueText) : null}
+        {right}
+      </View>
+    </View>
+  );
+});
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        // +100 clears the floating tab bar — this stack is the Activity tab.
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
-      >
-        {/* Cancelled and absent fall outside the pending -> completed flow, so
-            they show the plain status chip instead of a half-walked stepper. */}
-        {stepIndex >= 0 ? (
-          <View style={styles.stepperRow}>
-            {STATUS_FLOW.map((step, index) => {
-              const done = index <= stepIndex;
-              const stepColor = getStatusColors(step, theme.dark);
-              return (
-                <React.Fragment key={step}>
-                  {index > 0 && (
-                    <Icon
-                      name="chevron-right"
-                      size={14}
-                      color={theme.colors.onSurfaceVariant}
-                    />
-                  )}
-                  <View
-                    style={[
-                      styles.step,
-                      {
-                        backgroundColor: done ? stepColor?.tint : theme.colors.surface,
-                        borderColor: done ? stepColor?.tint : theme.colors.outlineVariant,
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.stepDot,
-                        { backgroundColor: done ? stepColor?.color : theme.colors.outlineVariant },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.stepText,
-                        { color: done ? stepColor?.color : theme.colors.onSurfaceVariant },
-                      ]}
-                    >
-                      {t(STATUS_LABEL_KEY[step])}
-                    </Text>
-                  </View>
-                </React.Fragment>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={styles.stepperRow}>
-            <View style={[styles.step, { backgroundColor: status?.tint, borderColor: status?.tint }]}>
-              <View style={[styles.stepDot, { backgroundColor: status?.color }]} />
-              <Text style={[styles.stepText, { color: status?.color }]}>{t(statusLabelKey)}</Text>
-            </View>
-          </View>
-        )}
+const Tile = memo<{ icon: string; label: string; value: string }>(function Tile({ icon, label, value }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.tile, { backgroundColor: theme.colors.surfaceVariant }]}>
+      <Icon name={icon} size={16} color={theme.colors.primary} />
+      <Text style={[styles.tileLabel, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.tileValue, { color: theme.colors.onSurface }]}>
+        {value}
+      </Text>
+    </View>
+  );
+});
 
-        <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.doctorRow}>
-            <CustomAvatar
-              type={photoUri ? 'image' : 'text'}
-              value={photoUri || stripHonorific(appointment?.doctorName) || '?'}
-              fallback={stripHonorific(appointment?.doctorName)}
-              size={52}
-            />
-            <View style={styles.doctorInfo}>
-              <Text numberOfLines={1} style={[styles.doctorName, { color: theme.colors.onSurface }]}>
-                {appointment?.doctorName || t('common.na')}
-              </Text>
-              <Text numberOfLines={1} style={[styles.specialty, { color: theme.colors.primary }]}>
-                {appointment?.doctorSpecialty ?? ''}
-              </Text>
-              {!!appointment?.doctorDesignation && (
-                <Text
-                  numberOfLines={1}
-                  style={[styles.designation, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  {appointment?.doctorDesignation}
-                </Text>
-              )}
-              {!!appointment?.locationName && (
-                <View style={styles.chamberRow}>
-                  <Icon name="map-marker-outline" size={12} color={theme.colors.onSurfaceVariant} />
-                  <Text
-                    numberOfLines={2}
-                    style={[styles.chamberText, { color: theme.colors.onSurfaceVariant }]}
-                  >
-                    {appointment?.locationName}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.badgeColumn}>
-              <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
-                <Icon name="pound" size={11} color={theme.colors.onSurfaceVariant} />
-                <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('appointmentDetails.token', { no: appointment?.token ?? 0 })}
-                </Text>
-              </View>
-              {!!typeLabel && (
-                <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
-                  <Icon
-                    name={TYPE_ICON[appointment?.type ?? ''] ?? 'stethoscope'}
-                    size={11}
-                    color={theme.colors.onSurfaceVariant}
-                  />
-                  <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>
-                    {typeLabel}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
+const EmptyPanel = memo<{ icon: string; title: string; description: string }>(function EmptyPanel({
+  icon,
+  title,
+  description,
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.card, styles.emptyPanel, { backgroundColor: theme.colors.surface }]}>
+      <View style={[styles.emptyIcon, { backgroundColor: theme.colors.primaryContainer }]}>
+        <Icon name={icon} size={24} color={theme.colors.primary} />
+      </View>
+      <Text style={[styles.emptyTitle, { color: theme.colors.onSurface }]}>{title}</Text>
+      <Text style={[styles.emptyDesc, { color: theme.colors.onSurfaceVariant }]}>{description}</Text>
+    </View>
+  );
+});
 
-          <View style={[styles.infoGrid, { borderTopColor: theme.colors.outlineVariant }]}>
-            <View style={styles.infoCell}>
-              <View style={styles.infoLabelRow}>
-                <Icon name="calendar-blank-outline" size={12} color={theme.colors.onSurfaceVariant} />
-                <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('appointmentDetails.date')}
-                </Text>
-              </View>
-              <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>
-                {formatLongDate(appointment?.date ?? '', months)}
-              </Text>
-            </View>
-            <View style={styles.infoCell}>
-              <View style={styles.infoLabelRow}>
-                <Icon name="clock-outline" size={12} color={theme.colors.onSurfaceVariant} />
-                <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('appointmentDetails.time')}
-                </Text>
-              </View>
-              <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>
-                {to12Hour(appointment?.time ?? '')}
-              </Text>
-            </View>
-          </View>
+/** Pending → confirmed → completed; a cancelled or missed visit gets one banner instead. */
+const StatusTimeline = memo<{ status: AppointmentStatus }>(function StatusTimeline({ status }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
 
-          <View style={[styles.infoGrid, styles.infoGridSpaced]}>
-            <View style={styles.infoCell}>
-              <View style={styles.infoLabelRow}>
-                <Icon name="alert-circle-outline" size={12} color={theme.colors.onSurfaceVariant} />
-                <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {isPaid
-                    ? t('appointmentDetails.amount')
-                    : t('appointmentDetails.amountDue')}
-                </Text>
+  if (status === 'cancelled' || status === 'no_show') {
+    const tone = statusTone(status, theme.dark);
+    return (
+      <View style={[styles.banner, { backgroundColor: tone.tint }]}>
+        <Icon
+          name={status === 'cancelled' ? 'close-circle-outline' : 'account-off-outline'}
+          size={18}
+          color={tone.color}
+        />
+        <Text style={[styles.bannerText, { color: tone.color }]}>
+          {t(status === 'cancelled' ? 'appointmentDetails.bannerCancelled' : 'appointmentDetails.bannerAbsent')}
+        </Text>
+      </View>
+    );
+  }
+
+  const steps: AppointmentStatus[] = ['pending', 'confirmed', 'completed'];
+  const reached = steps.indexOf(status);
+
+  return (
+    <View style={styles.timeline}>
+      {steps.map((step, index) => {
+        const done = index <= reached;
+        const color = done ? theme.colors.primary : theme.colors.outlineVariant;
+        return (
+          <React.Fragment key={step}>
+            <View style={styles.step}>
+              <View
+                style={[
+                  styles.stepDot,
+                  { backgroundColor: done ? theme.colors.primary : theme.colors.surface, borderColor: color },
+                ]}
+              >
+                {done ? <Icon name="check" size={12} color={theme.colors.onPrimary} /> : null}
               </View>
               <Text
                 style={[
-                  styles.infoValue,
-                  { color: isPaid ? theme.colors.onSurface : getDueColor(theme.dark) },
+                  styles.stepLabel,
+                  { color: done ? theme.colors.onSurface : theme.colors.onSurfaceVariant },
                 ]}
               >
-                {`৳${formatMoney(isPaid ? appointment?.fee ?? 0 : outstanding)}`}
+                {t(STATUS_LABEL_KEY[step])}
               </Text>
             </View>
-            <View style={styles.infoCell}>
-              <View style={styles.infoLabelRow}>
-                <Icon name="map-marker-outline" size={12} color={theme.colors.onSurfaceVariant} />
-                <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('appointmentDetails.location')}
+            {index < steps.length - 1 ? (
+              <View
+                style={[
+                  styles.stepLine,
+                  { backgroundColor: index < reached ? theme.colors.primary : theme.colors.outlineVariant },
+                ]}
+              />
+            ) : null}
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+});
+
+// ─── The screen ────────────────────────────────────────────────────────────
+
+/** One appointment in full, as the portal's detail page shows it. */
+export const AppointmentDetailsScreen = observer(() => {
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const navigation = useNavigation();
+  const route = useRoute<RouteProp<AppointmentsStackParamList, 'AppointmentDetails'>>();
+  const insets = useSafeAreaInsets();
+  useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
+
+  const viewModel = useAppointmentDetailsViewModel(Number(route?.params?.appointmentId ?? 0));
+  const detail = viewModel.detail;
+
+  const [tab, setTab] = useState<DetailTab>('overview');
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  const months = useMemo(() => Array.from({ length: 12 }, (_, index) => t(`months.${index}`)), [t]);
+
+  const goBack = useCallback(() => {
+    if (navigation.canGoBack()) navigation.goBack();
+  }, [navigation]);
+
+  const handleConfirmCancel = useCallback(() => {
+    setIsConfirmingCancel(false);
+    viewModel.cancel();
+  }, [viewModel]);
+
+  const containerStyle = [styles.container, { backgroundColor: theme.colors.background }];
+
+  if (!detail) {
+    return (
+      <SafeAreaView edges={['top', 'left', 'right']} style={containerStyle}>
+        <ScreenHeader title={t('appointmentDetails.title')} leading="back" />
+        <View style={styles.state}>
+          {viewModel.isLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : (
+            <>
+              <View style={[styles.emptyIcon, { backgroundColor: theme.colors.errorContainer }]}>
+                <Icon
+                  name={viewModel.isNotFound ? 'calendar-question' : 'alert-circle-outline'}
+                  size={24}
+                  color={theme.colors.error}
+                />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.colors.onSurface }]}>
+                {viewModel.isNotFound
+                  ? t('appointmentDetails.notFound')
+                  : viewModel.error || t('common.somethingWentWrong')}
+              </Text>
+              {viewModel.isNotFound ? (
+                <Text style={[styles.emptyDesc, { color: theme.colors.onSurfaceVariant }]}>
+                  {t('appointmentDetails.notFoundDesc')}
                 </Text>
-              </View>
-              <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>
-                {appointment?.locationAddress || t('common.na')}
+              ) : null}
+              <CustomButton
+                mode="outlined"
+                onPress={viewModel.isNotFound ? goBack : viewModel.reload}
+                style={styles.stateButton}
+              >
+                {viewModel.isNotFound ? t('appointmentDetails.goBack') : t('common.retry')}
+              </CustomButton>
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const status = detail.status;
+  const tone = statusTone(status, theme.dark);
+  const type = appointmentType(detail.type);
+  const isRemote = isRemoteType(detail.type);
+  const photoUri = getFileUrl(detail.doctorPhotoUrl);
+  const date = formatLongDate(detail.date, months) || '—';
+  const time = to12Hour(detail.time) || '—';
+  const token = detail.token ? `#${detail.token}` : '—';
+  const payment = paymentBadge(detail.paymentStatus, theme.dark);
+  const showDesignation =
+    !!detail.doctorDesignation && detail.doctorDesignation !== detail.doctorSpecialty;
+
+  return (
+    <SafeAreaView edges={['top', 'left', 'right']} style={containerStyle}>
+      <ScreenHeader
+        title={t('appointmentDetails.title')}
+        leading="back"
+        right={
+          <View style={[styles.statusPill, { backgroundColor: tone.tint }]}>
+            <View style={[styles.statusDot, { backgroundColor: tone.color }]} />
+            <Text style={[styles.statusText, { color: tone.color }]}>{t(STATUS_LABEL_KEY[status])}</Text>
+          </View>
+        }
+      />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
+      >
+        {/* Doctor */}
+        <Card>
+          <View style={styles.doctorRow}>
+            <CustomAvatar
+              type={photoUri ? 'image' : 'text'}
+              value={photoUri || stripHonorific(detail.doctorName) || '?'}
+              fallback={stripHonorific(detail.doctorName)}
+              size={60}
+            />
+            <View style={styles.doctorInfo}>
+              <Text numberOfLines={2} style={[styles.doctorName, { color: theme.colors.onSurface }]}>
+                {doctorDisplayName(detail.doctorName) || t('appointments.doctor')}
               </Text>
+              {detail.doctorSpecialty ? (
+                <Text numberOfLines={1} style={[styles.doctorSpecialty, { color: theme.colors.primary }]}>
+                  {detail.doctorSpecialty}
+                </Text>
+              ) : null}
+              {showDesignation ? (
+                <Text numberOfLines={1} style={[styles.doctorDesignation, { color: theme.colors.onSurfaceVariant }]}>
+                  {detail.doctorDesignation}
+                </Text>
+              ) : null}
+              <View style={[styles.typeBadge, { backgroundColor: theme.colors.primaryContainer }]}>
+                <Icon name={type.icon} size={12} color={theme.colors.primary} />
+                <Text style={[styles.typeText, { color: theme.colors.primary }]}>{t(type.labelKey)}</Text>
+              </View>
             </View>
           </View>
+
+          <View style={styles.tiles}>
+            <Tile icon="calendar-blank-outline" label={t('appointments.date')} value={date} />
+            <Tile icon="clock-outline" label={t('appointments.time')} value={time} />
+            <Tile icon="ticket-confirmation-outline" label={t('appointments.token')} value={token} />
+          </View>
+
+          {isRemote || detail.locationName ? (
+            <View style={[styles.location, { backgroundColor: theme.colors.surfaceVariant }]}>
+              <Icon
+                name={isRemote ? 'monitor-cellphone' : 'map-marker-outline'}
+                size={18}
+                color={theme.colors.primary}
+              />
+              <View style={styles.locationBody}>
+                <Text style={[styles.locationLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  {t(isRemote ? 'appointmentDetails.consultationMode' : 'appointmentDetails.visitLocation')}
+                </Text>
+                <Text style={[styles.locationName, { color: theme.colors.onSurface }]}>
+                  {isRemote ? t('appointments.remote') : detail.locationName}
+                </Text>
+                {!isRemote && detail.locationAddress ? (
+                  <Text style={[styles.locationAddress, { color: theme.colors.onSurfaceVariant }]}>
+                    {detail.locationAddress}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+        </Card>
+
+        {/* Booking summary */}
+        <Card title={t('appointmentDetails.bookingSummary')} icon="receipt">
+          <Row label={t('appointmentDetails.patient')} value={detail.patientName || '—'} />
+          <Row label={t('appointmentDetails.patientCode')} value={detail.patientCode} />
+          <Row label={t('appointmentDetails.consultation')} value={t(type.labelKey)} />
+          <Row label={t('appointments.date')} value={date} />
+          <Row label={t('appointments.time')} value={time} />
+          <Row label={t('appointments.token')} value={detail.token ? token : ''} />
+          {!isRemote ? <Row label={t('appointmentDetails.office')} value={detail.locationName} /> : null}
+          <Row label={t('appointmentDetails.paid')} value={detail.paidAmount > 0 ? money(detail.paidAmount) : ''} />
+          <Row label={t('appointmentDetails.due')} value={detail.dueAmount > 0 ? money(detail.dueAmount) : ''} />
+          <Row
+            label={t('appointmentDetails.fee')}
+            value={detail.fee > 0 ? money(detail.fee) : '—'}
+            strong
+            last
+            right={
+              <View style={[styles.payBadge, { backgroundColor: payment.tone.tint }]}>
+                <Text style={[styles.payText, { color: payment.tone.color }]}>{t(payment.labelKey)}</Text>
+              </View>
+            }
+          />
+        </Card>
+
+        {/* Sections */}
+        <View
+          accessibilityRole="tablist"
+          style={[styles.tabs, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}
+        >
+          {DETAIL_TABS.map(item => {
+            const selected = tab === item.key;
+            const color = selected ? theme.colors.onPrimary : theme.colors.onSurfaceVariant;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => setTab(item.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                style={[styles.tab, selected ? { backgroundColor: theme.colors.primary } : null]}
+              >
+                <Icon name={item.icon} size={14} color={color} />
+                <Text numberOfLines={1} style={[styles.tabText, { color }]}>
+                  {t(item.labelKey)}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
-        <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.sectionTitleRow}>
-            <Icon name="account-outline" size={16} color={theme.colors.onSurface} />
-            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              {t('appointmentDetails.patientInformation')}
-            </Text>
-          </View>
-
-          <View style={[styles.detailRow, { borderTopColor: theme.colors.outlineVariant }]}>
-            <View style={styles.detailLabelRow}>
-              <Icon name="account-outline" size={13} color={theme.colors.onSurfaceVariant} />
-              <Text style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                {t('appointmentDetails.fullName')}
-              </Text>
-            </View>
-            <Text style={[styles.detailValue, { color: theme.colors.onSurface }]}>
-              {appointment?.patientName || t('common.na')}
-            </Text>
-          </View>
-
-          <View style={[styles.detailRow, { borderTopColor: theme.colors.outlineVariant }]}>
-            <View style={styles.detailLabelRow}>
-              <Icon name="pound" size={13} color={theme.colors.onSurfaceVariant} />
-              <Text style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                {t('appointmentDetails.patientCode')}
-              </Text>
-            </View>
-            <Text style={[styles.detailValue, { color: theme.colors.primary }]}>
-              {appointment?.patientCode || t('common.na')}
-            </Text>
-          </View>
-
-          <View style={[styles.detailRow, { borderTopColor: theme.colors.outlineVariant }]}>
-            <View style={styles.detailLabelRow}>
-              <Icon name="heart-pulse" size={13} color={theme.colors.onSurfaceVariant} />
-              <Text style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                {t('appointmentDetails.age')}
-              </Text>
-            </View>
-            <Text style={[styles.detailValue, { color: theme.colors.onSurface }]}>
-              {t('appointmentDetails.ageValue', { count: appointment?.patientAge ?? 0 })}
-            </Text>
-          </View>
-
-          <View style={[styles.detailRow, { borderTopColor: theme.colors.outlineVariant }]}>
-            <View style={styles.detailLabelRow}>
-              <Icon name="gender-male-female" size={13} color={theme.colors.onSurfaceVariant} />
-              <Text style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                {t('appointmentDetails.gender')}
-              </Text>
-            </View>
-            <Text style={[styles.detailValue, { color: theme.colors.onSurface }]}>
-              {appointment?.patientGender || t('common.na')}
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={() => handleCall(appointment?.patientPhone)}
-            style={[styles.detailRow, { borderTopColor: theme.colors.outlineVariant }]}
-          >
-            <View style={styles.detailLabelRow}>
-              <Icon name="phone-outline" size={13} color={theme.colors.onSurfaceVariant} />
-              <Text style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                {t('appointmentDetails.phone')}
-              </Text>
-            </View>
-            <Text style={[styles.detailValue, { color: theme.colors.primary }]}>
-              {appointment?.patientPhone || t('common.na')}
-            </Text>
-          </Pressable>
-        </View>
-
-        {hasPreAssessment && (
-          <View style={[styles.card, styles.assessmentCard, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="clipboard-text-outline" size={16} color={theme.colors.onSurface} />
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                {t('appointmentDetails.preAssessment')}
-              </Text>
-            </View>
-            <AssessmentField
-              label={t('appointmentDetails.reason')}
-              value={appointment?.reason ?? ''}
-            />
-            <AssessmentField
-              label={t('appointmentDetails.symptoms')}
-              value={appointment?.symptoms ?? ''}
-            />
-            <AssessmentField
-              label={t('appointmentDetails.problemDescription')}
-              value={appointment?.problemDescription ?? ''}
-            />
-            <AssessmentField
-              label={t('appointmentDetails.currentMedication')}
-              value={appointment?.currentMedication ?? ''}
-            />
-            {/* Allergies carry a warning colour of their own — they change
-                what the doctor may prescribe. */}
-            <AssessmentField
-              label={t('appointmentDetails.allergies')}
-              value={appointment?.allergies ?? ''}
-              accent="#B27400"
-            />
-          </View>
+        {tab === 'overview' ? (
+          <OverviewTab detail={detail} />
+        ) : tab === 'consultation' ? (
+          <EmptyPanel
+            icon="stethoscope"
+            title={t('appointmentDetails.noConsultation')}
+            description={t('appointmentDetails.noConsultationDesc')}
+          />
+        ) : (
+          <EmptyPanel
+            icon="pill"
+            title={t('appointmentDetails.noPrescription')}
+            description={t('appointmentDetails.noPrescriptionDesc')}
+          />
         )}
 
-        {!!appointment?.doctorNotes && (
-          <View style={[styles.card, styles.assessmentCard, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="stethoscope" size={16} color={theme.colors.onSurface} />
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                {t('appointmentDetails.doctorNotes')}
-              </Text>
-            </View>
-            <Text style={[styles.notesText, { color: theme.colors.onSurfaceVariant }]}>
-              {appointment.doctorNotes}
+        {viewModel.canCancel ? (
+          <View style={styles.cancelBlock}>
+            <CustomButton
+              mode="outlined"
+              icon="close-circle-outline"
+              onPress={() => setIsConfirmingCancel(true)}
+              loading={viewModel.isCancelling}
+              disabled={viewModel.isCancelling}
+              textColor={theme.colors.error}
+              style={[styles.cancelButton, { borderColor: theme.colors.error }]}
+            >
+              {t('appointmentDetails.cancel')}
+            </CustomButton>
+            <Text style={[styles.cancelNote, { color: theme.colors.onSurfaceVariant }]}>
+              {t('appointmentDetails.cancelNote')}
             </Text>
           </View>
-        )}
-
-        {hasSummary && (
-          <View style={[styles.card, styles.assessmentCard, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="clipboard-pulse-outline" size={16} color={theme.colors.onSurface} />
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                {t('appointmentDetails.consultation.summary')}
-              </Text>
-            </View>
-            <AssessmentField
-              label={t('appointmentDetails.consultation.diagnosis')}
-              value={consultation?.diagnosis ?? ''}
-              accent="#2F45E5"
-            />
-            <AssessmentField
-              label={t('appointmentDetails.consultation.clinicalNotes')}
-              value={consultation?.notes ?? ''}
-            />
-            <AssessmentField
-              label={t('appointmentDetails.consultation.doctorAdvice')}
-              value={consultation?.doctorAdvice ?? ''}
-              accent="#1B9C5D"
-            />
-            {!!consultation?.followUpDate && (
-              <View style={[styles.followUpBanner, { backgroundColor: theme.colors.primaryContainer }]}>
-                <Icon name="calendar-check-outline" size={18} color={theme.colors.primary} />
-                <View>
-                  <Text style={[styles.followUpLabel, { color: theme.colors.primary }]}>
-                    {t('appointmentDetails.consultation.followUpScheduled')}
-                  </Text>
-                  <Text style={[styles.followUpDate, { color: theme.colors.primary }]}>
-                    {formatLongDate(consultation.followUpDate, months)}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {!!vitals && (
-          <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="heart-pulse" size={16} color={theme.colors.onSurface} />
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                {t('appointmentDetails.consultation.vitals')}
-              </Text>
-            </View>
-            <View style={styles.vitalsGrid}>
-              <VitalChip
-                icon="heart-outline"
-                label={t('appointmentDetails.consultation.bloodPressure')}
-                value={vitals.bloodPressure}
-                color="#B3261E"
-              />
-              <VitalChip
-                icon="pulse"
-                label={t('appointmentDetails.consultation.heartRate')}
-                value={vitals.heartRate ? `${vitals.heartRate} bpm` : ''}
-                color="#E85D75"
-              />
-              <VitalChip
-                icon="thermometer"
-                label={t('appointmentDetails.consultation.temperature')}
-                value={vitals.temperature ? `${vitals.temperature}°C` : ''}
-                color="#C2610A"
-              />
-              <VitalChip
-                icon="weather-windy"
-                label={t('appointmentDetails.consultation.oxygenSaturation')}
-                value={vitals.oxygenSaturation ? `${vitals.oxygenSaturation}%` : ''}
-                color="#2F45E5"
-              />
-              <VitalChip
-                icon="lungs"
-                label={t('appointmentDetails.consultation.respiratoryRate')}
-                value={vitals.respiratoryRate ? `${vitals.respiratoryRate}/min` : ''}
-                color="#0E7490"
-              />
-              <VitalChip
-                icon="weight-kilogram"
-                label={t('appointmentDetails.consultation.weight')}
-                value={vitals.weight ? `${vitals.weight} kg` : ''}
-                color="#7C3AED"
-              />
-              <VitalChip
-                icon="human-male-height"
-                label={t('appointmentDetails.consultation.height')}
-                value={vitals.height ? `${vitals.height} cm` : ''}
-                color="#1B9C5D"
-              />
-            </View>
-          </View>
-        )}
-
-        {prescriptions.length > 0 && (
-          <View style={[styles.card, styles.listCard, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="pill" size={16} color={theme.colors.onSurface} />
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                {`${t('appointmentDetails.consultation.prescriptions')} (${prescriptions.length})`}
-              </Text>
-            </View>
-            {prescriptions.map(item => (
-              <View key={item?.id} style={[styles.listRow, { backgroundColor: theme.colors.surfaceVariant }]}>
-                <Icon name="pill" size={15} color={theme.colors.primary} />
-                <View style={styles.listInfo}>
-                  <Text numberOfLines={1} style={[styles.listTitle, { color: theme.colors.onSurface }]}>
-                    {item?.medicine || '—'}
-                  </Text>
-                  {!!item?.dosage && (
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.listSubtitle, { color: theme.colors.onSurfaceVariant }]}
-                    >
-                      {item.dosage}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.listTrailing}>
-                  <Text style={[styles.listTrailingTop, { color: theme.colors.onSurface }]}>
-                    {item?.frequency || ''}
-                  </Text>
-                  <Text style={[styles.listTrailingBottom, { color: theme.colors.onSurfaceVariant }]}>
-                    {item?.duration || ''}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {testOrders.length > 0 && (
-          <View style={[styles.card, styles.listCard, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="test-tube" size={16} color={theme.colors.onSurface} />
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                {`${t('appointmentDetails.consultation.testOrders')} (${testOrders.length})`}
-              </Text>
-            </View>
-            {testOrders.map(item => (
-              <View key={item?.id} style={[styles.listRow, { backgroundColor: theme.colors.surfaceVariant }]}>
-                <Icon name="test-tube" size={15} color="#7C3AED" />
-                <View style={styles.listInfo}>
-                  <Text numberOfLines={1} style={[styles.listTitle, { color: theme.colors.onSurface }]}>
-                    {item?.testName || '—'}
-                  </Text>
-                  {!!item?.category && (
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.listSubtitle, { color: theme.colors.onSurfaceVariant }]}
-                    >
-                      {item.category}
-                    </Text>
-                  )}
-                </View>
-                <View style={[styles.priorityChip, { backgroundColor: PRIORITY_COLORS[item?.priority]?.tint }]}>
-                  <Text style={[styles.priorityText, { color: PRIORITY_COLORS[item?.priority]?.color }]}>
-                    {t(`appointmentDetails.consultation.priority.${item?.priority}`)}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {viewModel?.canCancel && (
-          <CustomButton
-            mode="outlined"
-            icon="close-circle-outline"
-            onPress={() => setIsCancelDialogVisible(true)}
-            loading={viewModel?.isCancelling}
-            disabled={viewModel?.isCancelling}
-            // Tonal danger: the fill is the error colour at low opacity so it
-            // reads the same on both themes. The old pink card put a second
-            // rounded box around the button and washed out in the dark theme.
-            buttonColor={theme.dark ? 'rgba(242,184,181,0.10)' : '#FDECEF'}
-            textColor={theme.colors.error}
-            style={[styles.cancelButton, { borderColor: theme.colors.error }]}
-            labelStyle={styles.cancelLabel}
-          >
-            {t('appointmentDetails.cancel')}
-          </CustomButton>
-        )}
+        ) : null}
       </ScrollView>
 
       <CustomDialog
-        visible={isCancelDialogVisible}
+        visible={isConfirmingCancel}
         title={t('appointmentDetails.cancelTitle')}
         message={t('appointmentDetails.cancelMessage')}
         confirmText={t('appointmentDetails.cancel')}
-        cancelText={t('common.cancel')}
+        cancelText={t('appointmentDetails.keep')}
         onConfirm={handleConfirmCancel}
-        onDismiss={() => setIsCancelDialogVisible(false)}
+        onDismiss={() => setIsConfirmingCancel(false)}
       />
     </SafeAreaView>
+  );
+});
+
+/** Where the visit stands, who it is for, and what the patient wrote. */
+const OverviewTab = memo<{ detail: AppointmentDetail }>(function OverviewTab({ detail }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
+
+  const callPatient = useCallback(() => {
+    if (detail?.patientPhone) Linking.openURL(`tel:${detail.patientPhone}`).catch(() => {});
+  }, [detail?.patientPhone]);
+
+  const gender = detail?.patientGender
+    ? `${detail.patientGender.charAt(0).toUpperCase()}${detail.patientGender.slice(1)}`
+    : '';
+
+  return (
+    <>
+      <Card title={t('appointmentDetails.status')} icon="progress-check">
+        <StatusTimeline status={detail?.status} />
+      </Card>
+
+      <Card title={t('appointmentDetails.patientInformation')} icon="account-outline">
+        <Row label={t('appointmentDetails.fullName')} value={detail?.patientName} />
+        <Row label={t('appointmentDetails.patientCode')} value={detail?.patientCode} />
+        <Row
+          label={t('appointmentDetails.age')}
+          value={detail?.patientAge !== null ? t('appointmentDetails.ageValue', { count: detail?.patientAge ?? 0 }) : ''}
+        />
+        <Row label={t('appointmentDetails.gender')} value={gender} />
+        <Row label={t('appointmentDetails.bloodGroup')} value={detail?.patientBloodType} />
+        <Row
+          label={t('appointmentDetails.phone')}
+          value={detail?.patientPhone}
+          onPress={detail?.patientPhone ? callPatient : undefined}
+          last
+        />
+      </Card>
+
+      {detail?.reason ? (
+        <Card title={t('appointmentDetails.reason')} icon="text-box-outline">
+          <Text style={[styles.paragraph, { color: theme.colors.onSurface }]}>{detail.reason}</Text>
+        </Card>
+      ) : null}
+
+      {detail?.doctorNotes ? (
+        <Card title={t('appointmentDetails.doctorNotes')} icon="note-text-outline">
+          <Text style={[styles.paragraph, { color: theme.colors.onSurface }]}>{detail.doctorNotes}</Text>
+        </Card>
+      ) : null}
+    </>
   );
 });
 
@@ -673,288 +505,286 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loader: {
-    paddingVertical: 40,
-  },
-  noData: {
-    marginTop: 40,
-  },
-  scrollContent: {
+  scroll: {
     paddingHorizontal: 16,
     paddingTop: 4,
   },
-  stepperRow: {
-    flexDirection: 'row',
+  state: {
+    flex: 1,
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginBottom: 12,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
   },
-  step: {
+  stateButton: {
+    marginTop: 18,
+    borderRadius: 12,
+    minWidth: 150,
+  },
+  statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
   },
-  stepDot: {
+  statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  stepText: {
+  statusText: {
     fontFamily: fontFamilies.semibold,
     fontSize: 11,
   },
   card: {
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 14,
-    marginBottom: 14,
-    elevation: 1,
+    marginBottom: 12,
+    elevation: 2,
     shadowColor: '#0B1030',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
   },
-  doctorRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  doctorInfo: {
-    flex: 1,
-    marginLeft: 12,
-    marginRight: 8,
-  },
-  doctorName: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 15,
-  },
-  specialty: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  designation: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11.5,
-    marginTop: 1,
-  },
-  chamberRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 4,
-    marginTop: 6,
-  },
-  chamberText: {
-    flex: 1,
-    fontFamily: fontFamilies.regular,
-    fontSize: 11.5,
-    lineHeight: 16,
-  },
-  badgeColumn: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  badgeText: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 10,
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    marginTop: 14,
-    paddingTop: 12,
-  },
-  infoGridSpaced: {
-    borderTopWidth: 0,
-    marginTop: 12,
-    paddingTop: 0,
-  },
-  infoCell: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  infoLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  infoLabel: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 10,
-    letterSpacing: 0.4,
-  },
-  infoValue: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    marginTop: 3,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingBottom: 12,
-  },
-  sectionTitle: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 14,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    paddingVertical: 11,
-    gap: 12,
-  },
-  detailLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  detailLabel: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 12.5,
-  },
-  detailValue: {
-    flex: 1,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    textAlign: 'right',
-  },
-  assessmentCard: {
-    gap: 8,
-  },
-  assessment: {
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  assessmentLabel: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  assessmentValue: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 12.5,
-    lineHeight: 18,
-    marginTop: 3,
-  },
-  notesText: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  followUpBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  followUpLabel: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 10,
-  },
-  followUpDate: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 13,
-    marginTop: 1,
-  },
-  vitalsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  vitalChip: {
+  cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    // Two per row, so a long reading never squeezes its label onto two lines.
-    width: '48%',
-    flexGrow: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    marginBottom: 6,
   },
-  vitalText: {
-    flex: 1,
-  },
-  vitalLabel: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 9.5,
-  },
-  vitalValue: {
+  cardTitle: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 12.5,
+    fontSize: 14,
   },
-  listCard: {
-    gap: 8,
-  },
-  listRow: {
+  doctorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
   },
-  listInfo: {
+  doctorInfo: {
     flex: 1,
+    marginLeft: 14,
   },
-  listTitle: {
+  doctorName: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 16.5,
+  },
+  doctorSpecialty: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 12.5,
+    marginTop: 2,
+  },
+  doctorDesignation: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    marginTop: 1,
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 8,
+  },
+  typeText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 11,
+  },
+  tiles: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  tile: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    gap: 2,
+  },
+  tileLabel: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 10,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  tileValue: {
     fontFamily: fontFamilies.semibold,
     fontSize: 12.5,
   },
-  listSubtitle: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 10.5,
-    marginTop: 1,
+  location: {
+    flexDirection: 'row',
+    gap: 10,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
   },
-  listTrailing: {
-    alignItems: 'flex-end',
+  locationBody: {
+    flex: 1,
   },
-  listTrailingTop: {
+  locationLabel: {
     fontFamily: fontFamilies.medium,
-    fontSize: 11,
+    fontSize: 10.5,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
-  listTrailingBottom: {
+  locationName: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13.5,
+    marginTop: 2,
+  },
+  locationAddress: {
     fontFamily: fontFamilies.regular,
-    fontSize: 9.5,
-    marginTop: 1,
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 17,
   },
-  priorityChip: {
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    gap: 12,
+  },
+  rowLabel: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12.5,
+  },
+  rowRight: {
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rowValue: {
+    flexShrink: 1,
+    textAlign: 'right',
+    fontFamily: fontFamilies.medium,
+    fontSize: 13,
+  },
+  rowValueStrong: {
+    flexShrink: 1,
+    textAlign: 'right',
+    fontFamily: fontFamilies.bold,
+    fontSize: 15,
+  },
+  payBadge: {
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 3,
   },
-  priorityText: {
+  payText: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 9.5,
+    fontSize: 10.5,
+  },
+  tabs: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 12,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  tabText: {
+    flexShrink: 1,
+    fontFamily: fontFamilies.semibold,
+    fontSize: 12,
+  },
+  emptyPanel: {
+    alignItems: 'center',
+    paddingVertical: 28,
+  },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  emptyDesc: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12.5,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 4,
+  },
+  bannerText: {
+    flex: 1,
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
+  },
+  timeline: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 8,
+  },
+  step: {
+    alignItems: 'center',
+    width: 74,
+  },
+  stepDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepLabel: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 11.5,
+    marginTop: 6,
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    marginTop: 11,
+    marginHorizontal: -14,
+  },
+  paragraph: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 13.5,
+    lineHeight: 20,
+  },
+  cancelBlock: {
+    marginTop: 4,
+    alignItems: 'center',
   },
   cancelButton: {
-    marginTop: 0,
-    marginBottom: 14,
-    paddingVertical: 0,
+    alignSelf: 'stretch',
     borderRadius: 12,
   },
-  cancelLabel: {
-    fontSize: 13,
-    fontFamily: fontFamilies.semibold,
-    marginVertical: 10,
+  cancelNote: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    marginTop: 8,
   },
 });
 

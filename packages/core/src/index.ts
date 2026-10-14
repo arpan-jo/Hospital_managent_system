@@ -28,7 +28,6 @@ export * from './repositories/AppointmentBookingRepository';
 export * from './repositories/FileRepository';
 export * from './repositories/PatientRepository';
 export * from './repositories/AppointmentRepository';
-export * from './repositories/ConsultationRepository';
 export * from './repositories/PatientFollowUpRepository';
 export * from './repositories/PatientReportRepository';
 export * from './repositories/PatientPrescriptionRepository';

@@ -1,119 +1,103 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Appointment, AppointmentRepository, toISODate } from '@app/core';
-import { RequestState } from '../findDoctors/useFindDoctorsViewModel';
+import {
+  AppointmentRepository,
+  AppointmentStatus,
+  AppointmentSummary,
+  serverMessageOf,
+} from '@app/core';
 
-/** The four tabs on the list — not the same set as the API's five statuses. */
 export type AppointmentTab = 'upcoming' | 'completed' | 'cancelled' | 'absent';
 
-export const APPOINTMENT_TABS: AppointmentTab[] = [
-  'upcoming',
-  'completed',
-  'cancelled',
-  'absent',
-];
+export const APPOINTMENT_TABS: AppointmentTab[] = ['upcoming', 'completed', 'cancelled', 'absent'];
+
+/** The portal's grouping — by status alone: pending and confirmed are both still to come. */
+export const tabOfStatus = (status: AppointmentStatus): AppointmentTab => {
+  if (status === 'pending' || status === 'confirmed') return 'upcoming';
+  if (status === 'completed') return 'completed';
+  if (status === 'cancelled') return 'cancelled';
+  return 'absent';
+};
+
+const EMPTY_COUNTS: Record<AppointmentTab, number> = {
+  upcoming: 0,
+  completed: 0,
+  cancelled: 0,
+  absent: 0,
+};
 
 /**
- * The tab an appointment belongs to. Status alone does not decide it: a pending
- * or confirmed row whose date has already gone by was never attended, so the
- * web counts it under "Absent" alongside `no_show` — only rows still dated today
- * or later stay in "Upcoming". The comparison is date-only, like the web, so
- * this morning's 9:00 slot keeps showing as upcoming for the rest of the day.
+ * My Appointments, as the portal lists them: every booking, newest first,
+ * split into Upcoming / Completed / Cancelled / Absent by status. Read again
+ * each time the screen comes into view, so a booking or a cancel made
+ * elsewhere shows at once.
  */
-export const getAppointmentTab = (
-  appointment?: Appointment,
-): AppointmentTab | null => {
-  switch (appointment?.status) {
-    case 'completed':
-      return 'completed';
-    case 'cancelled':
-      return 'cancelled';
-    case 'no_show':
-      return 'absent';
-    case 'pending':
-    case 'confirmed': {
-      const date = appointment?.date ?? '';
-      // A blank date cannot be judged past, so it stays with the upcoming rows.
-      return date && date < toISODate(new Date()) ? 'absent' : 'upcoming';
-    }
-    default:
-      return null;
-  }
-};
-
-const EMPTY_REQUEST: RequestState<Appointment[]> = {
-  isLoading: false,
-  data: [],
-  error: null,
-};
-
 export const useAppointmentsViewModel = () => {
-  const [appointmentsRequest, setAppointmentsRequest] =
-    useState<RequestState<Appointment[]>>(EMPTY_REQUEST);
+  const [appointments, setAppointments] = useState<AppointmentSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  /** Null once read; otherwise the server's words, '' when it sent none. */
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<AppointmentTab>('upcoming');
 
-  const fetchAppointments = useCallback(async () => {
-    setAppointmentsRequest(prev => ({ ...prev, isLoading: true, error: null }));
-
+  const load = useCallback(async (mode: 'initial' | 'quiet' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setIsLoading(true);
+    if (mode === 'refresh') setIsRefreshing(true);
     try {
       const response = await AppointmentRepository.getAppointments();
-      // console.log('appontment response app', JSON.stringify(response, null, 2));
-      setAppointmentsRequest({
-        isLoading: false,
-        data: response ?? [],
-        error: null,
-      });
-    } catch (error: any) {
-      console.log('getAppointments error ==>', error?.message);
-      setAppointmentsRequest({
-        isLoading: false,
-        data: [],
-        error: error?.message ?? null,
-      });
+      setAppointments(response ?? []);
+      setError(null);
+    } catch (e: any) {
+      console.log('getAppointments error ==>', e?.message);
+      // A quiet re-read that fails keeps what is already on screen.
+      if (mode !== 'quiet') {
+        setAppointments([]);
+        setError(serverMessageOf(e));
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
-  // Re-reads on focus so an appointment booked from the Home tab shows up when
-  // the patient comes back here, without a pull-to-refresh.
+  // The first visit shows a loader; coming back re-reads behind what is shown.
+  const hasLoadedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      fetchAppointments();
-    }, [fetchAppointments]),
-  );
-
-  const appointments = useMemo(
-    () => appointmentsRequest?.data ?? [],
-    [appointmentsRequest],
+      load(hasLoadedRef.current ? 'quiet' : 'initial');
+      hasLoadedRef.current = true;
+    }, [load]),
   );
 
   const counts = useMemo(
     () =>
-      APPOINTMENT_TABS.reduce(
-        (acc, tab) => ({
-          ...acc,
-          [tab]:
-            appointments?.filter(item => getAppointmentTab(item) === tab)
-              ?.length ?? 0,
-        }),
-        {} as Record<AppointmentTab, number>,
-      ),
+      appointments?.reduce(
+        (acc, item) => {
+          const tab = tabOfStatus(item?.status);
+          acc[tab] = (acc[tab] ?? 0) + 1;
+          return acc;
+        },
+        { ...EMPTY_COUNTS },
+      ) ?? EMPTY_COUNTS,
     [appointments],
   );
 
-  const filteredAppointments = useMemo(
-    () =>
-      appointments?.filter(item => getAppointmentTab(item) === activeTab) ?? [],
+  const visible = useMemo(
+    () => appointments?.filter(item => tabOfStatus(item?.status) === activeTab) ?? [],
     [appointments, activeTab],
   );
 
   return {
-    appointments: filteredAppointments,
+    appointments: visible,
+    total: appointments?.length ?? 0,
     counts,
     activeTab,
     setActiveTab,
-    isLoading: appointmentsRequest?.isLoading ?? false,
-    error: appointmentsRequest?.error ?? null,
-    refetch: fetchAppointments,
+    isLoading,
+    isRefreshing,
+    error,
+    retry: () => load('initial'),
+    refresh: () => load('refresh'),
   };
 };
 

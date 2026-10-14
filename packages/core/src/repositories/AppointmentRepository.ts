@@ -1,87 +1,68 @@
+/**
+ * The patient's own appointments, as the portal's Appointments pages read
+ * them: the list from `/hms/appointments`, one appointment in full from the
+ * portal detail endpoint, and cancelling one.
+ */
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
-import { toTitleCase } from '../utils/format';
 
-/**
- * `strStatus` on tblAppointments — nvarchar(20) with no check constraint,
- * defaulting to `pending`. These five are the values the API actually returns;
- * the appointments list groups them into its four tabs.
- */
-export type AppointmentStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'completed'
-  | 'cancelled'
-  | 'no_show';
-
-export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
+export const APPOINTMENT_STATUSES = [
   'pending',
   'confirmed',
   'completed',
   'cancelled',
   'no_show',
-];
+] as const;
+export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 
-export interface Appointment {
-  id: string;
-  /** `doctorUserId`. */
-  doctorId: string;
-  /**
-   * `patientUserId`. One account holds several patient profiles, so the doctor's
-   * patient screen needs it together with {@link Appointment.patientCode}.
-   */
-  patientUserId: number;
-  locationId: string;
-  /** 'YYYY-MM-DD'. */
+/** Payment as the detail reports it; the API also writes "Refund" after a refund. */
+export type AppointmentPaymentStatus = 'paid' | 'partial' | 'unpaid' | 'refund';
+
+/** One row of the list. Only these fields are reliable there — the rest come from the detail. */
+export interface AppointmentSummary {
+  id: number;
+  /** 'YYYY-MM-DD', the clinic's own day. */
   date: string;
-  /** Raw 'HH:mm' as stored — screens format it for display. */
+  /** 'HH:mm', clinic-local. */
   time: string;
   status: AppointmentStatus;
-  /**
-   * `strType`. Free text, so it is not narrowed: the portal books `new_patient`,
-   * `follow_up` and `report`, and doctor-created rows carry others, e.g. `visit`.
-   */
+  /** As booked: new_patient, follow_up, report, … */
   type: string;
-  /** Chief complaint. */
-  reason: string;
+  /** 0 when the appointment has none. */
   token: number;
-  doctorNotes: string;
-  createdAt: string;
-  patientName: string;
-  patientCode: string;
-  patientAge: number;
-  patientGender: string;
-  patientBloodType: string;
-  patientPhone: string;
-  patientAddress: string;
-  /** Blob name — run it through `getFileUrl` before rendering. */
-  patientPhotoUrl: string;
   doctorName: string;
   doctorSpecialty: string;
   doctorDesignation: string;
-  /** Blob name — run it through `getFileUrl` before rendering. */
+  /** A stored file's id or a url — run it through `getFileUrl`. */
   doctorPhotoUrl: string;
-  locationName: string;
-  locationAddress: string;
-  hasConsultation: boolean;
-  /** `paymentAmount` — the chamber fee for this appointment. */
+  /** The consultation fee; 0 when none was recorded. */
   fee: number;
+}
+
+/** One appointment in full — `PortalAppointmentDetailDto`. */
+export interface AppointmentDetail extends AppointmentSummary {
+  reason: string;
+  doctorNotes: string;
+  /** Always false today: the backend no longer keeps consultations. */
+  hasConsultation: boolean;
   paidAmount: number;
   dueAmount: number;
-  paymentStatus: string;
-  paymentMethod: string;
-  paymentReference: string;
-  discountValue: number;
-  /** 'percent' or 'amount'. */
-  discountMode: string;
-  /** Derived from `paymentStatus`, so cards do not repeat the comparison. */
-  paid: boolean;
-  symptoms: string;
-  allergies: string;
-  problemDescription: string;
-  currentMedication: string;
+  paymentStatus: AppointmentPaymentStatus;
+  doctorEmployeeId: number;
+  patientRegistrationId: number;
+  patientName: string;
+  patientCode: string;
+  patientPhone: string;
+  patientGender: string;
+  /** Null when the patient has no date of birth. */
+  patientAge: number | null;
+  patientBloodType: string;
+  locationName: string;
+  locationAddress: string;
 }
+
+const NOT_FOUND = 404;
 
 const toText = (value: any): string => String(value ?? '').trim();
 
@@ -90,70 +71,59 @@ const toNumber = (value: any): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-/** Anything the API has not seen before is treated as still pending. */
-const toStatus = (raw: any): AppointmentStatus => {
+/**
+ * The API stores status in mixed case ("Confirmed", "cancelled", …). Read it
+ * the portal's way: lower case, and anything unknown as pending.
+ */
+export const normalizeAppointmentStatus = (raw: any): AppointmentStatus => {
   const status = toText(raw)?.toLowerCase() as AppointmentStatus;
   return APPOINTMENT_STATUSES.includes(status) ? status : 'pending';
 };
 
-/**
- * Defensive mapping — the payload is wide and every field can come back null.
- *
- * Exported because `/api/appointments/paged` answers with the very same rows:
- * the doctor's list maps them through this rather than keeping a second copy
- * that would drift the moment a field is added.
- */
-export const toAppointment = (raw: any): Appointment => ({
-  id: toText(raw?.appointmentId),
-  doctorId: toText(raw?.doctorUserId),
-  patientUserId: toNumber(raw?.patientUserId),
-  locationId: toText(raw?.locationId),
-  date: toText(raw?.appointmentDate)?.slice(0, 10) ?? '',
+const toPaymentStatus = (raw: any): AppointmentPaymentStatus => {
+  const status = toText(raw)?.toLowerCase();
+  if (status === 'paid' || status === 'partial' || status === 'refund') return status;
+  return 'unpaid';
+};
+
+const toSummary = (raw: any): AppointmentSummary => ({
+  id: toNumber(raw?.appointmentId),
+  date: toText(raw?.appointmentDate),
   time: toText(raw?.time),
-  status: toStatus(raw?.status),
-  type: toText(raw?.type),
-  reason: toText(raw?.reason),
+  status: normalizeAppointmentStatus(raw?.status),
+  type: toText(raw?.type)?.toLowerCase() ?? '',
   token: toNumber(raw?.tokenNumber),
-  doctorNotes: toText(raw?.doctorNotes),
-  createdAt: toText(raw?.createdAt),
-  patientName: toText(raw?.patientName),
-  patientCode: toText(raw?.patientCode),
-  patientAge: toNumber(raw?.patientAge),
-  // Stored lowercase; every screen shows it as a label, so it is cased here
-  // rather than in each of them.
-  patientGender: toTitleCase(raw?.patientGender),
-  patientBloodType: toText(raw?.patientBloodType),
-  patientPhone: toText(raw?.patientPhone),
-  patientAddress: toText(raw?.patientAddress),
-  patientPhotoUrl: toText(raw?.patientPhotoUrl),
   doctorName: toText(raw?.doctorName),
   doctorSpecialty: toText(raw?.doctorSpecialty),
   doctorDesignation: toText(raw?.doctorDesignation),
   doctorPhotoUrl: toText(raw?.doctorPhotoUrl),
-  locationName: toText(raw?.locationName),
-  locationAddress: toText(raw?.locationAddress),
-  hasConsultation: Boolean(raw?.hasConsultation),
   fee: toNumber(raw?.paymentAmount),
+});
+
+const toDetail = (raw: any): AppointmentDetail => ({
+  ...toSummary(raw),
+  reason: toText(raw?.reason),
+  doctorNotes: toText(raw?.doctorNotes),
+  hasConsultation: Boolean(raw?.hasConsultation),
   paidAmount: toNumber(raw?.paidAmount),
   dueAmount: toNumber(raw?.dueAmount),
-  paymentStatus: toText(raw?.paymentStatus),
-  paymentMethod: toText(raw?.paymentMethod),
-  paymentReference: toText(raw?.paymentReference),
-  discountValue: toNumber(raw?.discountValue),
-  discountMode: toText(raw?.discountMode),
-  paid: toText(raw?.paymentStatus)?.toLowerCase() === 'paid',
-  symptoms: toText(raw?.symptoms),
-  allergies: toText(raw?.allergies),
-  problemDescription: toText(raw?.problemDescription),
-  currentMedication: toText(raw?.currentMedication),
+  paymentStatus: toPaymentStatus(raw?.paymentStatus),
+  doctorEmployeeId: toNumber(raw?.doctorEmployeeId),
+  patientRegistrationId: toNumber(raw?.patientRegistrationId),
+  patientName: toText(raw?.patientName),
+  patientCode: toText(raw?.patientCode),
+  patientPhone: toText(raw?.patientPhone),
+  patientGender: toText(raw?.patientGender),
+  patientAge:
+    raw?.patientAge === null || raw?.patientAge === undefined ? null : toNumber(raw?.patientAge),
+  patientBloodType: toText(raw?.patientBloodType),
+  locationName: toText(raw?.locationName),
+  locationAddress: toText(raw?.locationAddress),
 });
 
 export const AppointmentRepository = {
-  /**
-   * `GET /api/appointments`. The token identifies the patient, so the list
-   * comes back already scoped to them — newest appointment first.
-   */
-  getAppointments: async (): Promise<Appointment[]> => {
+  /** `GET /hms/appointments` — the patient's appointments, newest first. */
+  getAppointments: async (): Promise<AppointmentSummary[]> => {
     const api_params: ApiRequestOptions = {
       url: ENDPOINTS.appointments,
       method: 'GET',
@@ -161,42 +131,42 @@ export const AppointmentRepository = {
     };
     const response = await apiRequest<any>(api_params);
 
-    return Array.isArray(response) ? response?.map(toAppointment) ?? [] : [];
-  },
-
-  /** `GET /api/appointments/{id}` — the same row shape as the list. */
-  getAppointmentById: async (
-    id: string | number,
-  ): Promise<Appointment | null> => {
-    const api_params: ApiRequestOptions = {
-      url: `${ENDPOINTS.appointments}/${encodeURIComponent(String(id ?? ''))}`,
-      method: 'GET',
-      baseUrl: API_URL,
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return response ? toAppointment(response) : null;
+    return Array.isArray(response) ? response?.map(toSummary) ?? [] : [];
   },
 
   /**
-   * `PATCH /api/appointments/{id}/status`. Answers with the whole updated row,
-   * so callers can drop what they were holding and keep this instead.
+   * `GET /hms/portal/appointments/GetAppointmentDetail?appointmentId=` — null
+   * when there is no such appointment, or it is not the patient's.
    */
-  updateStatus: async (
-    id: string | number,
-    status: AppointmentStatus,
-  ): Promise<Appointment | null> => {
+  getAppointmentDetail: async (appointmentId: number): Promise<AppointmentDetail | null> => {
+    const id = toNumber(appointmentId);
+    if (!id) return null;
+
     const api_params: ApiRequestOptions = {
-      url: `${ENDPOINTS.appointments}/${encodeURIComponent(
-        String(id ?? ''),
-      )}/status`,
+      url: ENDPOINTS.portalAppointmentDetail,
+      method: 'GET',
+      baseUrl: API_URL,
+      params: { appointmentId: id },
+    };
+
+    try {
+      const response = await apiRequest<any>(api_params);
+      return toNumber(response?.appointmentId) ? toDetail(response) : null;
+    } catch (error: any) {
+      if (error?.status === NOT_FOUND) return null;
+      throw error;
+    }
+  },
+
+  /** `PATCH /hms/appointments/{id}/status` with `{ status: 'cancelled' }`, as the portal sends it. */
+  cancelAppointment: async (appointmentId: number): Promise<void> => {
+    const api_params: ApiRequestOptions = {
+      url: `${ENDPOINTS.appointments}/${toNumber(appointmentId)}/status`,
       method: 'PATCH',
       baseUrl: API_URL,
-      data: { status },
+      data: { status: 'cancelled' },
     };
-    const response = await apiRequest<any>(api_params);
-
-    return response ? toAppointment(response) : null;
+    await apiRequest<any>(api_params);
   },
 };
 
