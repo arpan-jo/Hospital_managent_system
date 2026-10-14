@@ -1,16 +1,8 @@
 /**
- * The patient's prescriptions, end to end: the list, the printed record behind
- * one row, and the documents a card lists.
- *
- * Two keys, not one. A row's id keys the record itself — the detail. The
- * payload calls it `consultationId`, but it is the **prescription id**
- * (`tblPrescriptionEntries`): every row of `GET /api/prescriptions` lines up
- * with the prescription of the same id, `medicineCount` included. The name is
- * the API's; the meaning is what the calls actually do. The row's `patientCode`
- * keys the documents — those hang off the patient, not off the visit.
- *
- * The doctor-side prescription *setup* lives on its own screens and does not
- * share this data.
+ * The patient's prescriptions, as the portal's My Prescriptions page has them:
+ * the list from `GetMyPrescriptions`, each one opened as the PDF the server
+ * draws (`GetPrescriptionPdf`), and the documents a card lists — those hang off
+ * the patient (`patientCode`), not off the prescription.
  */
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
@@ -18,115 +10,27 @@ import { ENDPOINTS } from '../network/endpoints';
 import FileRepository, { UploadFile } from './FileRepository';
 import PatientReportRepository from './PatientReportRepository';
 
-/** One row of `GET /api/prescriptions` — the account's prescriptions, the
- *  signed-in patient's own and their family members'. */
-export interface PrescriptionListItem {
-  /** `consultationId` on the payload — a prescription id, see the file header. */
-  id: string;
-  /** Sent as 0 on every row so far; kept because the payload carries it. */
-  appointmentId: string;
-  /** 'YYYY-MM-DD' — `appointmentDate` on the payload. */
-  issuedAt: string;
+/** Where the prescription was written. */
+export type PrescriptionVisitType = 'opd' | 'emergency' | 'ipd';
+
+/**
+ * One row of `GET /hms/portal/medical-records/GetMyPrescriptions` — the
+ * account's prescriptions, the patient's own and their family members', newest
+ * first.
+ */
+export interface PortalPrescription {
+  id: number;
+  /** "RX-…"; '' when the record has none. */
+  code: string;
+  /** ISO time in UTC — show it as the patient's own day. */
+  prescribedAt: string;
+  departmentName: string;
   doctorName: string;
-  /** `doctorSpecialty`, trimmed — the payload pads it (" Cardiology"). */
-  specialty: string;
-  /** Blob name — run it through `getFileUrl` before rendering. */
-  doctorPhotoUrl: string;
-  /** Sent as null on every row so far. */
-  diagnosis: string;
+  visitType: PrescriptionVisitType;
   medicineCount: number;
+  patientRegistrationId: number;
   patientName: string;
-  /** Joins a row to a family member — the list carries no patient id. */
   patientCode: string;
-}
-
-/** An option of `GET /api/prescriptions/doctors`. */
-export interface PrescriptionDoctor {
-  /** `userId` — what the list's `doctorUserId` filter expects. */
-  id: string;
-  name: string;
-}
-
-/**
- * The filters `GET /api/prescriptions` takes. There is deliberately no patient
- * filter: the endpoint has none, so the member chip and the name/code search
- * are applied on the client against `patientCode` / `patientName`.
- */
-export interface PrescriptionListQuery {
-  doctorUserId?: string;
-  /** 'YYYY-MM-DD'. */
-  fromDate?: string;
-  /** 'YYYY-MM-DD'. */
-  toDate?: string;
-}
-
-/**
- * One dose line of a medicine. Most medicines have a single line; a course the
- * doctor split into stages ("2 days at 1+0+1, then 3 days at 2+0+2") arrives as
- * several, and the record prints one row each.
- */
-export interface MedicineDoseLine {
-  /** The doctor's own pattern, verbatim — "1-0-1", "1+0+1". */
-  dose: string;
-  /** "5 Days" as the record prints it; '' when no number was recorded. */
-  duration: string;
-  /** "After meal", "Before meal", … */
-  instruction: string;
-}
-
-/** One medicine of a prescription (`PrescriptionDto`, `tblPrescriptions`). */
-export interface PrescribedMedicine {
-  /** `prescriptionId`. */
-  id: string;
-  /** Brand and strength as the doctor wrote it, e.g. "Paracetamol 500mg". */
-  name: string;
-  /** Generic name, printed beside the brand — '' unless the Rx carries both. */
-  generic: string;
-  dosage: string;
-  /** `formType` — Tablet, Syrup, Capsule … */
-  form: string;
-  /** The doctor's own pattern, stored verbatim, e.g. "1-0-1". */
-  frequency: string;
-  /** "5 Days" as the record prints it; '' when no number was recorded. */
-  duration: string;
-  /** `instructions` — "After meal", "Before meal", … */
-  instruction: string;
-  /** Every dose row of the course — one entry mirrors `frequency`/`duration`. */
-  doses: MedicineDoseLine[];
-  route: string;
-  type: string;
-  /** Marked to continue past this prescription. */
-  isContinue: boolean;
-}
-
-/** `GET /api/prescriptions/{prescriptionId}` — the record behind one row. */
-export interface PrescriptionDetail {
-  /** `consultationId` on the payload — a prescription id, see the file header. */
-  id: string;
-  appointmentId: string;
-  /** Printed reference, e.g. "RX-20260811-0027". */
-  rxId: string;
-  /** 'YYYY-MM-DD'. */
-  issuedAt: string;
-  doctorName: string;
-  specialty: string;
-  doctorQualification: string;
-  /** Blob name — run it through `getFileUrl` before rendering. */
-  doctorPhotoUrl: string;
-  hospital: string;
-  bmdcRegNo: string;
-  chamberAddress: string;
-  patientName: string;
-  patientAge: number;
-  patientGender: string;
-  patientMrNo: string;
-  patientCode: string;
-  diagnosis: string;
-  doctorAdvice: string;
-  consultationNotes: string;
-  /** 'YYYY-MM-DD', or '' when no follow-up was set. */
-  nextVisit: string;
-  medicines: PrescribedMedicine[];
 }
 
 /**
@@ -146,7 +50,7 @@ export const ATTACHMENT_CATEGORIES = [
 export type AttachmentCategory = (typeof ATTACHMENT_CATEGORIES)[number];
 
 /**
- * One row of `GET /api/patient/documents` — a file the patient attached.
+ * One row of `GET /hms/patient/documents` — a file the patient attached.
  *
  * A document belongs to a **patient**, not to a visit: `patientCode` is the only
  * key the web narrows by, so every prescription card of the same patient lists
@@ -172,7 +76,7 @@ export interface PrescriptionAttachment {
   notes: string;
 }
 
-/** `POST /api/patient/documents` body (`CreatePatientDocumentDto`). */
+/** `POST /hms/patient/documents` body (`CreatePatientDocumentDto`). */
 export interface CreateAttachmentPayload {
   /** Documents are filed against the patient — see `PrescriptionAttachment`. */
   patientCode: string;
@@ -187,89 +91,23 @@ export interface CreateAttachmentPayload {
 
 const toText = (value: any): string => String(value ?? '').trim();
 
-/** "120.00" -> "120"; the payload pads vitals and durations with zeros. */
-const trimDecimals = (value: any): string => toText(value).replace(/\.0+$/, '');
+const toVisitType = (raw: any): PrescriptionVisitType => {
+  const value = toText(raw)?.toLowerCase();
+  return value === 'emergency' || value === 'ipd' ? value : 'opd';
+};
 
 /** Defensive mapping — every field on the payload can come back null. */
-const toPrescriptionListItem = (raw: any): PrescriptionListItem => ({
-  id: toText(raw?.consultationId),
-  appointmentId: toText(raw?.appointmentId),
-  issuedAt: toText(raw?.appointmentDate).slice(0, 10),
+const toPortalPrescription = (raw: any): PortalPrescription => ({
+  id: Number(raw?.prescriptionId ?? 0) || 0,
+  code: toText(raw?.prescriptionCode),
+  prescribedAt: toText(raw?.prescribedAt),
+  departmentName: toText(raw?.departmentName),
   doctorName: toText(raw?.doctorName),
-  specialty: toText(raw?.doctorSpecialty),
-  doctorPhotoUrl: toText(raw?.doctorPhotoUrl),
-  diagnosis: toText(raw?.diagnosis),
-  medicineCount: Number(raw?.medicineCount ?? 0),
+  visitType: toVisitType(raw?.visitType),
+  medicineCount: Number(raw?.medicineCount ?? 0) || 0,
+  patientRegistrationId: Number(raw?.patientRegistrationId ?? 0) || 0,
   patientName: toText(raw?.patientName),
   patientCode: toText(raw?.patientCode),
-});
-
-const toPrescriptionDoctor = (raw: any): PrescriptionDoctor => ({
-  id: toText(raw?.userId),
-  name: toText(raw?.fullName),
-});
-
-/**
- * The course length as the record prints it. `GET /api/prescriptions/{id}`
- * sends `duration` already joined with its unit ("5 Days") — and sends the bare
- * unit ("Days") when the doctor left the number out, which says nothing and is
- * dropped. Rows that still carry `durationUnit` separately are joined here.
- */
-const toDuration = (raw: any): string => {
-  const value = trimDecimals(raw?.duration);
-  const unit = toText(raw?.durationUnit);
-  const text =
-    unit && !value.toLowerCase().includes(unit.toLowerCase())
-      ? [value, unit].filter(Boolean).join(' ')
-      : value;
-
-  return /\d/.test(text) ? text : '';
-};
-
-const toMedicine = (raw: any, index: number): PrescribedMedicine => {
-  const frequency = toText(raw?.frequency);
-  const duration = toDuration(raw);
-  const instruction = toText(raw?.instructions);
-
-  return {
-    id: toText(raw?.prescriptionId) || String(index),
-    name: toText(raw?.medicine),
-    // The consultation's own rows carry one name; only the pad splits the two.
-    generic: '',
-    dosage: toText(raw?.dosage),
-    form: toText(raw?.formType),
-    frequency,
-    duration,
-    instruction,
-    doses: [{ dose: frequency, duration, instruction }],
-    route: toText(raw?.route),
-    type: toText(raw?.type),
-    isContinue: Boolean(raw?.isContinue),
-  };
-};
-
-const toPrescriptionDetail = (raw: any): PrescriptionDetail => ({
-  id: toText(raw?.consultationId),
-  appointmentId: toText(raw?.appointmentId),
-  rxId: toText(raw?.rxId),
-  issuedAt: toText(raw?.appointmentDate).slice(0, 10),
-  doctorName: toText(raw?.doctorName),
-  specialty: toText(raw?.doctorSpecialty),
-  doctorQualification: toText(raw?.doctorQualification),
-  doctorPhotoUrl: toText(raw?.doctorPhotoUrl),
-  hospital: toText(raw?.doctorHospital),
-  bmdcRegNo: toText(raw?.doctorBmdcNo),
-  chamberAddress: toText(raw?.doctorClinicAddress),
-  patientName: toText(raw?.patientName),
-  patientAge: Number(raw?.patientAge ?? 0),
-  patientGender: toText(raw?.patientGender),
-  patientMrNo: toText(raw?.patientMrNo),
-  patientCode: toText(raw?.patientCode),
-  diagnosis: toText(raw?.diagnosis),
-  doctorAdvice: toText(raw?.doctorAdvice),
-  consultationNotes: toText(raw?.consultationNotes),
-  nextVisit: toText(raw?.followUpDate).slice(0, 10),
-  medicines: Array.isArray(raw?.medicines) ? raw.medicines.map(toMedicine) : [],
 });
 
 const toAttachment = (raw: any, index: number): PrescriptionAttachment => ({
@@ -308,65 +146,34 @@ const toList = <T>(
 };
 
 export const PatientPrescriptionRepository = {
+  /** `GET /hms/portal/medical-records/GetMyPrescriptions` — every prescription on the account. */
+  getMyPrescriptions: async (): Promise<PortalPrescription[]> => {
+    const api_params: ApiRequestOptions = {
+      url: ENDPOINTS.portalPrescriptions,
+      method: 'GET',
+      baseUrl: API_URL,
+    };
+    const response = await apiRequest<any>(api_params);
+
+    return toList(response, toPortalPrescription, 'prescriptions');
+  },
+
   /**
-   * `GET /api/prescriptions`. The token scopes the rows to the account, so the
-   * response already covers the patient and their family members.
+   * Where one prescription's PDF is served. The route is outside the API's
+   * encryption, so the id goes in plain; it needs the patient's login, which
+   * `getFileHeaders` adds.
    */
-  getPrescriptions: async (
-    query: PrescriptionListQuery = {},
-  ): Promise<PrescriptionListItem[]> => {
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.prescriptions,
-      method: 'GET',
-      baseUrl: API_URL,
-      // Blank filters are left off so the server never reads '' as a value.
-      params: {
-        ...(query?.doctorUserId ? { doctorUserId: query.doctorUserId } : {}),
-        ...(query?.fromDate ? { fromDate: query.fromDate } : {}),
-        ...(query?.toDate ? { toDate: query.toDate } : {}),
-      },
-    };
-    const response = await apiRequest<any>(api_params);
+  getPdfUrl: (prescriptionId: number): string =>
+    `${API_URL}${ENDPOINTS.portalPrescriptionPdf}?prescriptionId=${Number(prescriptionId ?? 0) || 0}`,
 
-    return toList(response, toPrescriptionListItem, 'prescriptions');
-  },
-
-  /** `GET /api/prescriptions/doctors` — only doctors who issued a record. */
-  getDoctors: async (): Promise<PrescriptionDoctor[]> => {
-    const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.prescriptionDoctors,
-      method: 'GET',
-      baseUrl: API_URL,
-    };
-    const response = await apiRequest<any>(api_params);
-
-    return toList(response, toPrescriptionDoctor, 'doctors');
-  },
-
-  /** `GET /api/prescriptions/{prescriptionId}` — the record behind one row. */
-  getPrescriptionDetail: async (
-    prescriptionId: string,
-  ): Promise<PrescriptionDetail> => {
-    const api_params: ApiRequestOptions = {
-      url: `${ENDPOINTS.prescriptions}/${prescriptionId}`,
-      method: 'GET',
-      baseUrl: API_URL,
-    };
-    const response = await apiRequest<any>(api_params);
-
-    // An error envelope on a 200 would otherwise map to a blank record.
-    if (!response?.consultationId) {
-      throw new Error(
-        toText(response?.message) ||
-          'Could not read this prescription from the server.',
-      );
-    }
-
-    return toPrescriptionDetail(response);
+  /** The name a saved PDF gets, as the portal names it. */
+  getPdfFileName: (code?: string | null): string => {
+    const safe = toText(code).replace(/\s+/g, '_');
+    return safe ? `Prescription_${safe}.pdf` : 'Prescription.pdf';
   },
 
   /**
-   * `GET /api/patient/documents?patientCode=…` — every document of one family
+   * `GET /hms/patient/documents?patientCode=…` — every document of one family
    * member, which is the whole list a prescription card shows. Left blank the
    * endpoint answers the account's own documents.
    */
@@ -389,7 +196,7 @@ export const PatientPrescriptionRepository = {
     FileRepository.upload(file),
 
   /**
-   * `POST /api/patient/documents` — files an uploaded file under a patient.
+   * `POST /hms/patient/documents` — files an uploaded file under a patient.
    * The same endpoint backs the Reports screen, so the call lives once, in
    * `PatientReportRepository`; this keeps the attachment-shaped signature.
    */
@@ -405,7 +212,7 @@ export const PatientPrescriptionRepository = {
     });
   },
 
-  /** `DELETE /api/patient/documents/{documentId}`. */
+  /** `DELETE /hms/patient/documents/{documentId}`. */
   deleteDocument: async (documentId: string): Promise<void> =>
     PatientReportRepository.deleteReport(documentId),
 };

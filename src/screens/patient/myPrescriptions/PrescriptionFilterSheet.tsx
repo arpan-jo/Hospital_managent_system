@@ -13,18 +13,20 @@ import {
   fontFamilies,
 } from '@app/ui';
 import { EMPTY_FILTERS, PrescriptionFilters } from './useMyPrescriptionsViewModel';
+import { doctorTitle } from './prescriptionUi';
 
 interface PrescriptionFilterSheetProps {
   visible: boolean;
   onClose: () => void;
   filters: PrescriptionFilters;
-  doctors: { id: string; name: string }[];
+  /** The doctors on the list, by name. */
+  doctors: string[];
   onApply: (filters: PrescriptionFilters) => void;
-  onReset: () => void;
 }
 
+/** The portal's filters — doctor, a search and dates — applied together on Apply. */
 export const PrescriptionFilterSheet = memo<PrescriptionFilterSheetProps>(
-  function PrescriptionFilterSheet({ visible, onClose, filters, doctors, onApply, onReset }) {
+  function PrescriptionFilterSheet({ visible, onClose, filters, doctors, onApply }) {
     const theme = useTheme();
     const { t } = useTranslation();
     const [draft, setDraft] = useState<PrescriptionFilters>(filters);
@@ -37,18 +39,13 @@ export const PrescriptionFilterSheet = memo<PrescriptionFilterSheetProps>(
     const doctorItems: DropdownItem<string>[] = useMemo(
       () => [
         { label: t('myPrescriptions.allDoctors'), value: '' },
-        ...(doctors ?? []).map(doctor => ({
-          label: doctor?.name ?? '',
-          value: doctor?.id ?? '',
-        })),
+        ...(doctors ?? []).map(name => ({ label: doctorTitle(name), value: name })),
       ],
       [t, doctors],
     );
 
-    const handleReset = () => {
-      setDraft(EMPTY_FILTERS);
-      onReset();
-    };
+    // Clears the form only; Apply decides.
+    const handleReset = () => setDraft(EMPTY_FILTERS);
 
     const handleApply = () => onApply(draft);
 
@@ -73,19 +70,15 @@ export const PrescriptionFilterSheet = memo<PrescriptionFilterSheetProps>(
           <CustomDropdown
             label={t('myPrescriptions.doctor')}
             items={doctorItems}
-            value={draft?.doctorId ?? ''}
+            value={draft?.doctorName ?? ''}
             placeholder={t('myPrescriptions.allDoctors')}
-            onValueChange={value => setDraft(prev => ({ ...prev, doctorId: value }))}
+            onValueChange={value => setDraft(prev => ({ ...prev, doctorName: value }))}
           />
 
-          {/*
-            Name / code search runs on the client: `GET /api/prescriptions` takes
-            only a doctor and a date range, no patient filter of any kind.
-          */}
           <CustomInput
             label={t('myPrescriptions.patientOrMember')}
-            value={draft?.patientQuery ?? ''}
-            onChangeText={value => setDraft(prev => ({ ...prev, patientQuery: value }))}
+            value={draft?.query ?? ''}
+            onChangeText={value => setDraft(prev => ({ ...prev, query: value }))}
             placeholder={t('myPrescriptions.patientPlaceholder')}
             leftIcon="magnify"
           />

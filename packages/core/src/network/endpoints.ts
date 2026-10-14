@@ -27,8 +27,12 @@ export const ENDPOINTS = {
   appointments: '/hms/appointments',
   /** One appointment in full, for its patient. */
   portalAppointmentDetail: '/hms/portal/appointments/GetAppointmentDetail',
-  prescriptions: '/hms/prescriptions',
-  prescriptionDoctors: '/hms/prescriptions/doctors',
+  /** The patient's prescriptions, and one drawn as a PDF (outside the API's encryption). */
+  portalPrescriptions: '/hms/portal/medical-records/GetMyPrescriptions',
+  portalPrescriptionPdf: '/hms/portal/medical-records/GetPrescriptionPdf',
+  /** Today's Medicines, as the portal binds it (both 404 on dev as of 2026-10-14). */
+  todayMedicines: '/hms/prescriptions/today',
+  medicineSchedule: '/hms/medicine-schedule',
   patientDocuments: '/hms/patient/documents',
   followUps: '/hms/followups',
 

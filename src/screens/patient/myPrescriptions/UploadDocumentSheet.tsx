@@ -5,17 +5,18 @@ import {
   ATTACHMENT_CATEGORIES,
   formatDayMonthYear,
   fromISODate,
-  PrescriptionListItem,
+  PortalPrescription,
 } from '@app/core';
 import { DropdownItem } from '@app/ui';
 import UploadFileSheet, { UploadFileResult } from '../../../components/UploadFileSheet';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { UploadDocumentInput } from './useMyPrescriptionsViewModel';
+import { doctorTitle, prescriptionDay } from './prescriptionUi';
 
 interface UploadDocumentSheetProps {
   visible: boolean;
   /** The prescription the document attaches to — its doctor/date fill the subtitle. */
-  prescription: PrescriptionListItem | null;
+  prescription: PortalPrescription | null;
   onClose: () => void;
   /** Resolves false when the upload failed, which keeps the sheet open. */
   onUpload: (input: UploadDocumentInput) => Promise<boolean>;
@@ -55,10 +56,9 @@ export const UploadDocumentSheet = ({
 
   const subtitle = useMemo(() => {
     if (!prescription) return undefined;
-    const date = prescription?.issuedAt
-      ? formatDayMonthYear(fromISODate(prescription.issuedAt), monthNames)
-      : '';
-    return [date, prescription?.doctorName].filter(Boolean).join(' · ');
+    const day = prescriptionDay(prescription?.prescribedAt);
+    const date = day ? formatDayMonthYear(fromISODate(day), monthNames) : '';
+    return [date, doctorTitle(prescription?.doctorName)].filter(Boolean).join(' · ');
   }, [prescription, monthNames]);
 
   const handleUpload = useCallback(

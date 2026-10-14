@@ -1,13 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Pdf from 'react-native-pdf';
-import { fileExtensionLabel, getFileHeaders, useDocumentViewer } from '@app/core';
-import { CustomButton, fontFamilies } from '@app/ui';
+import { fileExtensionLabel, getFileHeaders, useDownload, useStores } from '@app/core';
+import { fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 
@@ -19,6 +19,12 @@ export interface FileViewerParams {
   filename?: string;
   /** Shown in the header; falls back to the filename. */
   title?: string;
+  /** A second line under the title. */
+  subtitle?: string;
+  /** Offer a download button in the header. */
+  canDownload?: boolean;
+  /** Read the file afresh each time — it is drawn on request and can change. */
+  fresh?: boolean;
 }
 
 type FileViewerRoute = RouteProp<{ FileViewer: FileViewerParams }, 'FileViewer'>;
@@ -27,8 +33,8 @@ const IMAGE_EXTENSIONS = ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'BMP', 'HEIC'];
 
 /**
  * A file is rendered in the app when it is something the app can draw — a PDF
- * or an image. Anything else (a Word file, a spreadsheet) is handed to the
- * phone's own viewer, which is the only thing that knows how to open it.
+ * or an image. Anything else (a Word file, a spreadsheet) gets a message, and
+ * the download button where the screen offers one.
  */
 const toFileKind = (name: string): 'pdf' | 'image' | 'other' => {
   const extension = fileExtensionLabel(name);
@@ -37,18 +43,25 @@ const toFileKind = (name: string): 'pdf' | 'image' | 'other' => {
 };
 
 /**
- * Opens one attached document. PDFs used to go out to whatever app the phone
- * had — and on a phone with none, nothing happened at all — so they are drawn
- * here instead, beside the images that already were.
+ * Opens one file — a PDF or an image — in the app. One that cannot be shown,
+ * or fails to load, gets a message on the screen; it is never handed to
+ * another app.
  */
 export const FileViewerScreen = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const route = useRoute<FileViewerRoute>();
   // Params are read defensively: a deep link can land here without them.
-  const { url = '', filename = '', title = '' }: Partial<FileViewerParams> =
-    route.params ?? {};
-  const { view } = useDocumentViewer();
+  const {
+    url = '',
+    filename = '',
+    title = '',
+    subtitle = '',
+    canDownload = false,
+    fresh = false,
+  }: Partial<FileViewerParams> = route.params ?? {};
+  const { download, isDownloading } = useDownload();
+  const { toastStore } = useStores();
   const [isLoading, setLoading] = useState(true);
   const [hasFailed, setFailed] = useState(false);
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
@@ -67,20 +80,46 @@ export const FileViewerScreen = () => {
     setFailed(true);
   }, []);
 
-  /** The phone's own viewer — the only way out for a file this screen cannot draw. */
-  const handleOpenExternally = useCallback(
-    () => view({ uri: url, filename: filename || undefined }),
-    [view, url, filename],
-  );
-
   const canRender = Boolean(url) && kind !== 'other' && !hasFailed;
+
+  const handleDownload = useCallback(async () => {
+    if (!url || isDownloading) return;
+    const filePath = await download({ url, filename: filename || 'file' });
+    toastStore.show(
+      t(filePath ? 'fileViewer.downloaded' : 'fileViewer.downloadFailed'),
+      filePath ? 'success' : 'error',
+    );
+  }, [url, filename, isDownloading, download, toastStore, t]);
 
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      <ScreenHeader title={title || filename || t('fileViewer.title')} leading="back" />
+      <ScreenHeader
+        title={title || filename || t('fileViewer.title')}
+        subtitle={subtitle || undefined}
+        leading="back"
+        right={
+          // A file that would not load would not download either.
+          canDownload && url && !hasFailed ? (
+            <Pressable
+              onPress={handleDownload}
+              disabled={isDownloading}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('fileViewer.download')}
+              style={[styles.download, { backgroundColor: theme.colors.primaryContainer }]}
+            >
+              {isDownloading ? (
+                <ActivityIndicator size={16} color={theme.colors.primary} />
+              ) : (
+                <Icon name="download-outline" size={20} color={theme.colors.primary} />
+              )}
+            </Pressable>
+          ) : undefined
+        }
+      />
 
       <View style={[styles.stage, { backgroundColor: theme.colors.surfaceVariant }]}>
         {canRender ? (
@@ -88,7 +127,7 @@ export const FileViewerScreen = () => {
             {kind === 'pdf' ? (
               <Pdf
                 // Stored files are authenticated — see `getFileHeaders`.
-                source={{ uri: url, cache: true, headers: getFileHeaders(url) }}
+                source={{ uri: url, cache: !fresh, headers: getFileHeaders(url) }}
                 trustAllCerts={false}
                 style={styles.viewer}
                 onLoadComplete={handleLoaded}
@@ -116,15 +155,16 @@ export const FileViewerScreen = () => {
               <Icon name="file-question-outline" size={24} color={theme.colors.primary} />
             </View>
 
-            <Text style={[styles.fallbackText, { color: theme.colors.onSurfaceVariant }]}>
+            <Text style={[styles.fallbackTitle, { color: theme.colors.onSurface }]}>
               {t(hasFailed ? 'fileViewer.failed' : 'fileViewer.unsupported')}
             </Text>
-
-            {url ? (
-              <CustomButton mode="contained" icon="open-in-new" onPress={handleOpenExternally}>
-                {t('fileViewer.openExternally')}
-              </CustomButton>
-            ) : null}
+            <Text style={[styles.fallbackText, { color: theme.colors.onSurfaceVariant }]}>
+              {hasFailed
+                ? t('fileViewer.failedHint')
+                : t('fileViewer.unsupportedHint', {
+                    type: fileExtensionLabel(filename || url) || t('fileViewer.thisFile'),
+                  })}
+            </Text>
           </View>
         )}
       </View>
@@ -135,6 +175,13 @@ export const FileViewerScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  download: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stage: {
     flex: 1,
@@ -167,9 +214,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fallbackTitle: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 15,
+    textAlign: 'center',
+  },
   fallbackText: {
     fontFamily: fontFamilies.regular,
     fontSize: 13,
+    lineHeight: 19,
     textAlign: 'center',
   },
 });

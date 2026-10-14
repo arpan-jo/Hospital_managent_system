@@ -29,6 +29,11 @@ describe('serverMessageOf', () => {
     expect(serverMessageOf(null)).toBe('');
   });
 
+  it('does not take an undecrypted body for a message', () => {
+    expect(serverMessageOf(failure('/+c2s6hnikGG63EeZklWTQ=='))).toBe('');
+    expect(serverMessageOf(failure('Unauthorized'))).toBe('Unauthorized');
+  });
+
   it("does not take a proxy's error page for a message", () => {
     expect(serverMessageOf(failure('<html><body>502 Bad Gateway</body></html>'))).toBe('');
   });

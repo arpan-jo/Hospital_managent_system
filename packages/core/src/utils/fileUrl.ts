@@ -5,6 +5,9 @@ import { rootStore } from '../store';
 /** The one path whose files are ours — anything else is somebody's public url. */
 const FILE_PREFIX = `${API_URL}${ENDPOINTS.fileDownload}`;
 
+/** Prescription PDFs the server draws — they need the patient's login. */
+const PRESCRIPTION_PDF_PREFIX = `${API_URL}${ENDPOINTS.portalPrescriptionPdf}`;
+
 /**
  * Where a stored blob is served — the same url the web portal builds. The
  * download endpoint is anonymous, so the url carries no token.
@@ -23,13 +26,17 @@ export const getFileUrl = (blobName?: string | null): string => {
 /**
  * The bearer header for one of our file urls, and nothing for any other host.
  *
- * The endpoint does not ask for it today; it is sent so a download made
- * through `react-native-blob-util` keeps working if the endpoint gains auth.
+ * Stored files do not ask for it today (it is sent so a download made through
+ * `react-native-blob-util` keeps working if they ever do); a prescription PDF
+ * does — it is the patient's own.
  */
 export const getFileHeaders = (
   url?: string | null,
 ): Record<string, string> | undefined => {
-  if (!String(url ?? '').startsWith(FILE_PREFIX)) return undefined;
+  const text = String(url ?? '');
+  if (!text.startsWith(FILE_PREFIX) && !text.startsWith(PRESCRIPTION_PDF_PREFIX)) {
+    return undefined;
+  }
 
   const token = rootStore?.authStore?.authToken;
   return token ? { Authorization: `Bearer ${token}` } : undefined;
