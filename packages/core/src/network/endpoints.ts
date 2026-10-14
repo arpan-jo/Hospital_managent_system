@@ -34,7 +34,8 @@ export const ENDPOINTS = {
   todayMedicines: '/hms/prescriptions/today',
   medicineSchedule: '/hms/medicine-schedule',
   patientDocuments: '/hms/patient/documents',
-  followUps: '/hms/followups',
+  /** The patient's follow-ups. */
+  portalFollowUps: '/hms/portal/followups/GetMyFollowUps',
 
   // ── Find Doctors: AI doctor finder — pepobot, on AI_ASSIST_URL ────────────
   /** A patient's symptoms into a recommended specialist and doctors from this hospital. */

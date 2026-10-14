@@ -36,7 +36,10 @@ export const useRequirePatientProfile = () => {
     if (isPatientProfileComplete(profileStore.patientProfileData)) return true;
     if (isCheckingRef.current) return false;
 
-    const drawer = navigation.getParent<DrawerNavigationProp<DrawerParamList>>();
+    // A drawer screen such as Follow-ups has no parent: its own navigation is the drawer's.
+    const drawer =
+      navigation.getParent<DrawerNavigationProp<DrawerParamList>>() ??
+      (navigation as unknown as DrawerNavigationProp<DrawerParamList>);
     // Straight to the form, with the profile screen under it to go back to.
     const openProfileForm = () =>
       drawer?.navigate('MainTabs', {

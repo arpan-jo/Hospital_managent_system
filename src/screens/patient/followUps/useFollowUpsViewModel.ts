@@ -1,81 +1,100 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   FOLLOW_UP_BUCKETS,
   FollowUp,
   FollowUpBucket,
-  followUpBucket,
   PatientFollowUpRepository,
+  followUpBucket,
+  serverMessageOf,
+  toISODate,
 } from '@app/core';
-import { RequestState } from '../findDoctors/useFindDoctorsViewModel';
 
-const EMPTY_REQUEST: RequestState<FollowUp[]> = {
-  isLoading: false,
-  data: [],
-  error: null,
+/** Why the list could not be read: the server's words ('' when none) and its status (0 when unreached). */
+export type FollowUpsError = { message: string; status: number };
+
+const EMPTY_COUNTS: Record<FollowUpBucket, number> = {
+  upcoming: 0,
+  overdue: 0,
+  completed: 0,
+  cancelled: 0,
 };
 
+/**
+ * My Follow-ups, as the portal shows them: every follow-up a doctor ordered,
+ * split into Upcoming / Overdue / Completed / Cancelled. Read again each time
+ * the screen comes into view, so one ordered at a visit shows at once.
+ */
 export const useFollowUpsViewModel = () => {
-  const [followUpsRequest, setFollowUpsRequest] =
-    useState<RequestState<FollowUp[]>>(EMPTY_REQUEST);
-  const [activeTab, setActiveTab] = useState<FollowUpBucket>('pending');
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<FollowUpsError | null>(null);
+  const [activeTab, setActiveTab] = useState<FollowUpBucket>('upcoming');
 
-  const fetchFollowUps = useCallback(async () => {
-    setFollowUpsRequest(prev => ({ ...prev, isLoading: true, error: null }));
-
+  const load = useCallback(async (mode: 'initial' | 'quiet' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setIsLoading(true);
+    if (mode === 'refresh') setIsRefreshing(true);
     try {
       const response = await PatientFollowUpRepository.getFollowUps();
-      setFollowUpsRequest({ isLoading: false, data: response ?? [], error: null });
-    } catch (error: any) {
-      console.log('getFollowUps error ==>', error?.message);
-      setFollowUpsRequest({
-        isLoading: false,
-        data: [],
-        error: error?.message ?? null,
-      });
+      setFollowUps(response ?? []);
+      setError(null);
+    } catch (e: any) {
+      console.log('getFollowUps error ==>', e?.message);
+      // A quiet re-read that fails keeps what is already on screen.
+      if (mode !== 'quiet') {
+        setFollowUps([]);
+        setError({ message: serverMessageOf(e), status: Number(e?.status ?? 0) || 0 });
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
-  // Re-reads on focus so a visit the doctor just scheduled shows up when the
-  // patient opens the screen again, without a pull-to-refresh.
+  // The first visit shows a loader; coming back re-reads behind what is shown.
+  const hasLoadedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      fetchFollowUps();
-    }, [fetchFollowUps]),
+      load(hasLoadedRef.current ? 'quiet' : 'initial');
+      hasLoadedRef.current = true;
+    }, [load]),
   );
 
-  const followUps = useMemo(
-    () => followUpsRequest?.data ?? [],
-    [followUpsRequest],
-  );
+  // "Overdue" is judged against today on the phone's calendar, read once per list.
+  const bucketed = useMemo(() => {
+    const today = toISODate(new Date());
+    return followUps?.map(item => ({ item, bucket: followUpBucket(item, today) })) ?? [];
+  }, [followUps]);
 
   const counts = useMemo(
     () =>
-      FOLLOW_UP_BUCKETS.reduce(
-        (acc, bucket) => ({
-          ...acc,
-          [bucket]:
-            followUps?.filter(item => followUpBucket(item) === bucket)?.length ??
-            0,
-        }),
-        {} as Record<FollowUpBucket, number>,
+      bucketed.reduce(
+        (acc, entry) => {
+          acc[entry.bucket] = (acc[entry.bucket] ?? 0) + 1;
+          return acc;
+        },
+        { ...EMPTY_COUNTS },
       ),
-    [followUps],
+    [bucketed],
   );
 
-  const filteredFollowUps = useMemo(
-    () => followUps?.filter(item => followUpBucket(item) === activeTab) ?? [],
-    [followUps, activeTab],
+  const visible = useMemo(
+    () => bucketed.filter(entry => entry.bucket === activeTab),
+    [bucketed, activeTab],
   );
 
   return {
-    followUps: filteredFollowUps,
+    tabs: FOLLOW_UP_BUCKETS,
+    followUps: visible,
     counts,
     activeTab,
     setActiveTab,
-    isLoading: followUpsRequest?.isLoading ?? false,
-    error: followUpsRequest?.error ?? null,
-    refresh: fetchFollowUps,
+    isLoading,
+    isRefreshing,
+    error,
+    retry: () => load('initial'),
+    refresh: () => load('refresh'),
   };
 };
 

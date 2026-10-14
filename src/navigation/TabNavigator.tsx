@@ -16,12 +16,14 @@ import ProfileStackNavigator, {
 import FindDoctorsStackNavigator, {
   FindDoctorsStackParamList,
 } from './FindDoctorsStackNavigator';
-import AppointmentsStackNavigator from './AppointmentsStackNavigator';
+import AppointmentsStackNavigator, {
+  AppointmentsStackParamList,
+} from './AppointmentsStackNavigator';
 import MyPrescriptionsStackNavigator from './MyPrescriptionsStackNavigator';
 
 export type TabParamList = {
   HomeTab: NavigatorScreenParams<FindDoctorsStackParamList> | undefined;
-  ActivityTab: undefined;
+  ActivityTab: NavigatorScreenParams<AppointmentsStackParamList> | undefined;
   PrescriptionsTab: undefined;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };

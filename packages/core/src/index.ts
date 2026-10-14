@@ -30,6 +30,7 @@ export * from './repositories/PatientRepository';
 export * from './repositories/AppointmentRepository';
 export * from './repositories/TodayMedicinesRepository';
 export * from './utils/medicineSlots';
+export * from './utils/followUps';
 export * from './repositories/PatientFollowUpRepository';
 export * from './repositories/PatientReportRepository';
 export * from './repositories/PatientPrescriptionRepository';

@@ -1,165 +1,188 @@
-import React, { useCallback } from 'react';
-import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { FOLLOW_UP_BUCKETS, FollowUp, FollowUpBucket } from '@app/core';
-import { fontFamilies } from '@app/ui';
+import { FollowUp, FollowUpBucket } from '@app/core';
+import { CustomButton, fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
+import { DrawerParamList } from '../../../navigation/DrawerNavigator';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
-import FollowUpCard from './FollowUpCard';
+import { useRequirePatientProfile } from '../../../hooks/useRequirePatientProfile';
+import FollowUpCard, { BUCKET_LABEL_KEY } from './FollowUpCard';
 import { useFollowUpsViewModel } from './useFollowUpsViewModel';
 
-const TAB_LABEL_KEY: Record<FollowUpBucket, string> = {
-  pending: 'followUps.tabUpcoming',
-  overdue: 'followUps.tabOverdue',
-  completed: 'followUps.tabCompleted',
-  cancelled: 'followUps.tabCancelled',
+/** What each tab says when it has nothing — the portal's own lines. */
+const EMPTY_KEY: Record<FollowUpBucket, { title: string; hint: string }> = {
+  upcoming: { title: 'followUps.emptyUpcoming', hint: 'followUps.emptyUpcomingHint' },
+  overdue: { title: 'followUps.emptyOverdue', hint: 'followUps.emptyOverdueHint' },
+  completed: { title: 'followUps.emptyCompleted', hint: 'followUps.emptyCompletedHint' },
+  cancelled: { title: 'followUps.emptyCancelled', hint: 'followUps.emptyCancelledHint' },
 };
 
-/**
- * Patient's Follow-ups list — a drawer-level screen, not nested in a stack, so
- * cards are informational only (no "view details" push, unlike Appointments).
- */
+/** My Follow-ups: every follow-up a doctor ordered, in the portal's four tabs. */
 export const PatientFollowUpIndex = observer(() => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const insets = useSafeAreaInsets();
   const viewModel = useFollowUpsViewModel();
-  // Light background — needs dark icons so the status bar stays legible.
+  const { ensureProfile } = useRequirePatientProfile();
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
-  const keyExtractor = useCallback((item: FollowUp) => item?.id, []);
-  const renderItem = useCallback(
-    ({ item }: { item: FollowUp }) => <FollowUpCard followUp={item} />,
-    [],
+  const months = useMemo(() => Array.from({ length: 12 }, (_, index) => t(`months.${index}`)), [t]);
+
+  /** "Book Appointment": the doctor's page, where the visit is booked — behind the profile gate, as from Find Doctors. */
+  const openDoctor = useCallback(
+    async (followUp: FollowUp) => {
+      const employeeId = followUp?.doctorId ?? 0;
+      if (!employeeId) return;
+      if (!(await ensureProfile(employeeId))) return;
+      navigation.navigate('MainTabs', {
+        screen: 'HomeTab',
+        params: { screen: 'DoctorDetails', params: { employeeId }, initial: false },
+      });
+    },
+    [navigation, ensureProfile],
   );
+
+  /** "View Consultation": the appointment it was ordered at, with My Appointments under it. */
+  const openConsultation = useCallback(
+    (followUp: FollowUp) => {
+      const appointmentId = followUp?.appointmentId ?? 0;
+      if (!appointmentId) return;
+      navigation.navigate('MainTabs', {
+        screen: 'ActivityTab',
+        params: { screen: 'AppointmentDetails', params: { appointmentId }, initial: false },
+      });
+    },
+    [navigation],
+  );
+
+  const muted = theme.colors.onSurfaceVariant;
+  const error = viewModel.error;
+  const empty = EMPTY_KEY[viewModel.activeTab] ?? EMPTY_KEY.upcoming;
 
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      <ScreenHeader
-        title={t('followUps.title')}
-        leading="menu"
-        subtitle={t('followUps.subtitle')}
-      />
+      <ScreenHeader title={t('followUps.title')} subtitle={t('followUps.subtitle')} leading="menu" />
 
-      {/* Four buckets do not fit the width as flexed pills, so the row scrolls
-          the way the doctor's roster and the web's tab strip do. ScrollView's
-          base style is flexGrow:1, which would stretch it to fill the column. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.horizontalStrip}
-        contentContainerStyle={styles.tabRow}
+      <View
+        accessibilityRole="tablist"
+        style={[
+          styles.tabs,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+        ]}
       >
-        {FOLLOW_UP_BUCKETS.map(bucket => {
-          const selected = viewModel?.activeTab === bucket;
+        {viewModel.tabs.map(tab => {
+          const selected = viewModel.activeTab === tab;
+          const count = viewModel.counts?.[tab] ?? 0;
           return (
             <Pressable
-              key={bucket}
-              onPress={() => viewModel?.setActiveTab(bucket)}
-              accessibilityRole="button"
+              key={tab}
+              onPress={() => viewModel.setActiveTab(tab)}
+              accessibilityRole="tab"
               accessibilityState={{ selected }}
-              style={[
-                styles.tab,
-                {
-                  backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
-                  borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
-                },
-              ]}
+              style={[styles.tab, selected ? { backgroundColor: theme.colors.primary } : null]}
             >
               <Text
                 numberOfLines={1}
-                style={[
-                  styles.tabText,
-                  { color: selected ? theme.colors.onPrimary : theme.colors.onSurface },
-                ]}
+                style={[styles.tabText, { color: selected ? theme.colors.onPrimary : muted }]}
               >
-                {t(TAB_LABEL_KEY[bucket])}
+                {t(BUCKET_LABEL_KEY[tab])}
               </Text>
-              <View
-                style={[
-                  styles.tabCount,
-                  {
-                    backgroundColor: selected
-                      ? theme.colors.onPrimary
-                      : theme.colors.primaryContainer,
-                  },
-                ]}
-              >
-                <Text
+              {/* Counted only when there is something to count, as on the portal. */}
+              {count > 0 ? (
+                <View
                   style={[
-                    styles.tabCountText,
+                    styles.countBadge,
                     {
-                      color: selected
-                        ? theme.colors.primary
-                        : theme.colors.onPrimaryContainer,
+                      backgroundColor: selected
+                        ? 'rgba(255,255,255,0.25)'
+                        : theme.colors.surfaceVariant,
                     },
                   ]}
                 >
-                  {viewModel?.counts?.[bucket] ?? 0}
-                </Text>
-              </View>
+                  <Text
+                    style={[
+                      styles.countText,
+                      { color: selected ? theme.colors.onPrimary : theme.colors.onSurface },
+                    ]}
+                  >
+                    {count}
+                  </Text>
+                </View>
+              ) : null}
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
-      <FlatList
-        data={viewModel?.followUps}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
+      <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
         refreshControl={
           <RefreshControl
-            refreshing={viewModel?.isLoading ?? false}
-            onRefresh={viewModel?.refresh}
+            refreshing={viewModel.isRefreshing}
+            onRefresh={viewModel.refresh}
+            colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
           />
         }
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: insets.bottom + 24 },
-          (viewModel?.followUps?.length ?? 0) === 0 && styles.listContentEmpty,
-        ]}
-        ListEmptyComponent={
-          viewModel?.isLoading ? (
-            <View style={styles.listLoader}>
-              <ActivityIndicator size="small" color={theme.colors.primary} />
+      >
+        {viewModel.isLoading ? (
+          <View style={styles.state}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          </View>
+        ) : error ? (
+          // A failed read must not look like "no follow-ups" — the portal tells them apart too.
+          <View style={styles.state}>
+            <View style={[styles.stateIcon, { backgroundColor: theme.colors.errorContainer }]}>
+              <Icon name="alert-circle-outline" size={26} color={theme.colors.error} />
             </View>
-          ) : (
-            <View style={styles.empty}>
-              <View
-                style={[styles.emptyIconWrap, { backgroundColor: theme.colors.primaryContainer }]}
-              >
-                <Icon
-                  name="calendar-refresh-outline"
-                  size={24}
-                  color={theme.colors.primary}
-                />
-              </View>
-              <Text style={[styles.emptyTitle, { color: theme.colors.onSurface }]}>
-                {t('followUps.emptyTitle')}
-              </Text>
-              <Text style={[styles.emptyDesc, { color: theme.colors.onSurfaceVariant }]}>
-                {viewModel?.error ?? t('followUps.emptyDesc')}
-              </Text>
+            <Text style={[styles.stateTitle, { color: theme.colors.onSurface }]}>
+              {t('followUps.loadFailed')}
+            </Text>
+            <Text style={[styles.stateHint, { color: muted }]}>
+              {error.message ||
+                (error.status
+                  ? t('followUps.serverResponded', { status: error.status })
+                  : t('followUps.serverUnreachable'))}
+            </Text>
+            <CustomButton mode="outlined" onPress={viewModel.retry} style={styles.stateButton}>
+              {t('followUps.tryAgain')}
+            </CustomButton>
+          </View>
+        ) : viewModel.followUps?.length ? (
+          viewModel.followUps.map(({ item, bucket }) => (
+            <FollowUpCard
+              key={item?.id}
+              followUp={item}
+              bucket={bucket}
+              months={months}
+              onBook={openDoctor}
+              onViewConsultation={openConsultation}
+            />
+          ))
+        ) : (
+          <View style={styles.state}>
+            <View style={[styles.stateIcon, { backgroundColor: theme.colors.primaryContainer }]}>
+              <Icon name="calendar-refresh-outline" size={26} color={theme.colors.primary} />
             </View>
-          )
-        }
-      />
+            <Text style={[styles.stateTitle, { color: theme.colors.onSurface }]}>
+              {t(empty.title)}
+            </Text>
+            <Text style={[styles.stateHint, { color: muted }]}>{t(empty.hint)}</Text>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 });
@@ -168,71 +191,73 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  horizontalStrip: {
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  tabRow: {
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
+  tabs: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 4,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   tab: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: 999,
+    justifyContent: 'center',
+    gap: 4,
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 2,
+    borderRadius: 10,
   },
   tabText: {
+    flexShrink: 1,
     fontFamily: fontFamilies.semibold,
     fontSize: 11.5,
   },
-  tabCount: {
+  countBadge: {
     minWidth: 18,
-    borderRadius: 999,
+    borderRadius: 9,
     paddingHorizontal: 5,
     paddingVertical: 1,
     alignItems: 'center',
   },
-  tabCountText: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 9.5,
+  countText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 10,
   },
-  listContent: {
+  scrollContent: {
     paddingHorizontal: 16,
-  },
-  listContentEmpty: {
     flexGrow: 1,
   },
-  listLoader: {
-    paddingVertical: 40,
+  state: {
+    alignItems: 'center',
+    paddingTop: 64,
+    paddingHorizontal: 24,
   },
-  empty: {
-    flex: 1,
+  stateIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
-    gap: 10,
+    marginBottom: 14,
   },
-  emptyIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    fontFamily: fontFamilies.bold,
+  stateTitle: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 15,
-  },
-  emptyDesc: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 12,
     textAlign: 'center',
-    paddingHorizontal: 30,
+  },
+  stateHint: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  stateButton: {
+    marginTop: 18,
+    borderRadius: 12,
+    minWidth: 160,
   },
 });
 
