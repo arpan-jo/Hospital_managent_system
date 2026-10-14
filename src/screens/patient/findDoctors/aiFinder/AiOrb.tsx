@@ -6,8 +6,7 @@ import { aiPalette } from '../../../../components/ai/aiPalette';
 
 /**
  * The AI doctor finder's mark — the robot, on the AI cyan running into the
- * brand blue. The card's header wears it, and so does every answer, so what
- * the AI says is always signed.
+ * brand blue. Every answer wears it, so what the AI says is always signed.
  */
 export const AiOrb = memo<{ size?: number }>(function AiOrb({ size = 40 }) {
   const theme = useAppTheme();

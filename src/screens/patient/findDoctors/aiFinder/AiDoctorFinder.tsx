@@ -5,10 +5,9 @@ import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { PortalDoctor } from '@app/core';
 import { fontFamilies, useAppTheme } from '@app/ui';
-import { withAlpha } from '../../../../components/ai/aiPalette';
+import { aiPalette, withAlpha } from '../../../../components/ai/aiPalette';
 import { AiFinderAnswer } from './AiFinderAnswer';
 import { AiListeningRow, AiWorkingRow } from './AiFinderStatus';
-import { AiOrb } from './AiOrb';
 import {
   AiFinderNotice,
   MIN_SYMPTOM_RECORDING_MS,
@@ -21,7 +20,7 @@ import {
  *
  * Built in the screen's own look — its card, its search field, its chips,
  * its Book — so it reads as part of the app. What is the AI's own wears its
- * mark: the robot on the cyan-to-blue wash.
+ * mark: the header on the brand wash, the robot with the cyan spark.
  */
 
 /** The examples offered before anything is asked, in the order shown, each with its icon. */
@@ -92,6 +91,7 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
     toggleAudio,
   } = useAiDoctorFinderViewModel();
 
+  const palette = aiPalette(theme);
   const isBusy = phase !== 'idle';
   const canSend = Boolean(input.trim()) && !isBusy;
 
@@ -101,18 +101,32 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
         styles.card,
         {
           backgroundColor: theme.colors.surface,
-          experimental_backgroundImage: `linear-gradient(180deg, ${withAlpha(theme.colors.primary, 0.07)} 0%, ${theme.colors.surface} 45%)`,
           borderColor: withAlpha(theme.colors.primary, 0.14),
+          boxShadow: `0px 8px 24px ${withAlpha(theme.colors.primary, 0.12)}`,
         },
       ]}
     >
-      <View style={styles.header}>
-        <AiOrb />
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: palette.base, experimental_backgroundImage: palette.gradient },
+        ]}
+      >
+        {/* Echo of the rings on the sign-in hero and the drawer's card. */}
+        <View pointerEvents="none" style={[styles.ring, styles.ringLarge, { borderColor: palette.onGradient }]} />
+        <View pointerEvents="none" style={[styles.ring, styles.ringSmall, { borderColor: palette.glow }]} />
+
+        <View style={[styles.mark, { backgroundColor: withAlpha(palette.onGradient, 0.16) }]}>
+          <Icon name="robot-outline" size={24} color={palette.onGradient} />
+          <View style={[styles.spark, { backgroundColor: palette.glow, borderColor: palette.base }]}>
+            <Icon name="creation" size={10} color={theme.colors.secondary} />
+          </View>
+        </View>
         <View style={styles.headerText}>
-          <Text style={[styles.title, { color: theme.colors.onSurface }]}>{t('findDoctors.ai.title')}</Text>
+          <Text style={[styles.title, { color: palette.onGradient }]}>{t('findDoctors.ai.title')}</Text>
           {/* Once there is an answer the card explains itself, and New search needs the room. */}
           {match ? null : (
-            <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+            <Text style={[styles.subtitle, { color: withAlpha(palette.onGradient, 0.82) }]}>
               {t('findDoctors.ai.subtitle')}
             </Text>
           )}
@@ -122,121 +136,132 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
             onPress={reset}
             hitSlop={6}
             accessibilityRole="button"
-            style={[styles.newSearch, { backgroundColor: theme.colors.primaryContainer }]}
+            style={[styles.newSearch, { backgroundColor: withAlpha(palette.onGradient, 0.18) }]}
           >
-            <Icon name="plus" size={14} color={theme.colors.primary} />
-            <Text style={[styles.newSearchText, { color: theme.colors.primary }]}>
+            <Icon name="plus" size={14} color={palette.onGradient} />
+            <Text style={[styles.newSearchText, { color: palette.onGradient }]}>
               {t('findDoctors.ai.newSearch')}
             </Text>
           </Pressable>
         ) : null}
       </View>
 
-      {phase === 'recording' ? (
-        <AiListeningRow
-          elapsedMs={recordingMs}
-          levels={recordingLevels}
-          isSilent={isRecordingSilent}
-          canStop={recordingMs >= MIN_SYMPTOM_RECORDING_MS}
-          onCancel={cancelVoice}
-          onStop={stopVoice}
-        />
-      ) : isBusy ? (
-        <AiWorkingRow isTranscribing={phase === 'transcribing'} onCancel={cancelAsk} />
-      ) : (
-        <View
-          style={[
-            styles.inputField,
-            {
-              backgroundColor: theme.colors.surfaceVariant,
-              borderColor: isFocused ? theme.colors.primary : theme.colors.surfaceVariant,
-            },
-          ]}
-        >
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            onSubmitEditing={() => submit()}
-            placeholder={t('findDoctors.ai.placeholder')}
-            placeholderTextColor={theme.colors.onSurfaceVariant}
-            selectionColor={theme.colors.primary}
-            multiline
-            submitBehavior="blurAndSubmit"
-            returnKeyType="search"
-            maxLength={INPUT_MAX_LENGTH}
-            style={[styles.input, { color: theme.colors.onSurface }]}
+      <View style={styles.body}>
+        {phase === 'recording' ? (
+          <AiListeningRow
+            elapsedMs={recordingMs}
+            levels={recordingLevels}
+            isSilent={isRecordingSilent}
+            canStop={recordingMs >= MIN_SYMPTOM_RECORDING_MS}
+            onCancel={cancelVoice}
+            onStop={stopVoice}
           />
-          <Pressable
-            onPress={startVoice}
-            accessibilityRole="button"
-            accessibilityLabel={t('findDoctors.ai.speak')}
-            style={[styles.roundButton, { backgroundColor: theme.colors.surface }]}
-          >
-            <Icon name="microphone" size={20} color={theme.colors.primary} />
-          </Pressable>
-          <Pressable
-            onPress={() => submit()}
-            disabled={!canSend}
-            accessibilityRole="button"
-            accessibilityLabel={t('findDoctors.ai.send')}
-            accessibilityState={{ disabled: !canSend }}
+        ) : isBusy ? (
+          <AiWorkingRow isTranscribing={phase === 'transcribing'} onCancel={cancelAsk} />
+        ) : (
+          <View
             style={[
-              styles.roundButton,
-              { backgroundColor: canSend ? theme.colors.primary : withAlpha(theme.colors.onSurface, 0.1) },
+              styles.inputField,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: isFocused ? theme.colors.primary : theme.colors.outlineVariant,
+              },
             ]}
           >
-            <Icon name="arrow-up" size={20} color={canSend ? theme.colors.onPrimary : theme.colors.onSurfaceVariant} />
-          </Pressable>
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              onSubmitEditing={() => submit()}
+              placeholder={t('findDoctors.ai.placeholder')}
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              selectionColor={theme.colors.primary}
+              multiline
+              submitBehavior="blurAndSubmit"
+              returnKeyType="search"
+              maxLength={INPUT_MAX_LENGTH}
+              style={[styles.input, { color: theme.colors.onSurface }]}
+            />
+            <Pressable
+              onPress={startVoice}
+              accessibilityRole="button"
+              accessibilityLabel={t('findDoctors.ai.speak')}
+              style={[styles.roundButton, { backgroundColor: theme.colors.primaryContainer }]}
+            >
+              <Icon name="microphone" size={20} color={theme.colors.onPrimaryContainer} />
+            </Pressable>
+            <Pressable
+              onPress={() => submit()}
+              disabled={!canSend}
+              accessibilityRole="button"
+              accessibilityLabel={t('findDoctors.ai.send')}
+              accessibilityState={{ disabled: !canSend }}
+              style={[
+                styles.roundButton,
+                canSend
+                  ? {
+                      backgroundColor: palette.base,
+                      experimental_backgroundImage: palette.gradient,
+                      boxShadow: palette.glowShadow,
+                    }
+                  : { backgroundColor: withAlpha(theme.colors.onSurface, 0.08) },
+              ]}
+            >
+              <Icon name="arrow-up" size={20} color={canSend ? palette.onGradient : theme.colors.onSurfaceVariant} />
+            </Pressable>
+          </View>
+        )}
+
+        {notice && !isBusy ? <NoticeBanner notice={notice} message={noticeMessage} /> : null}
+
+        {!match && !isBusy ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.examples}
+          >
+            <Text style={[styles.tryLabel, { color: theme.colors.onSurfaceVariant }]}>{t('findDoctors.ai.tryLabel')}</Text>
+            {EXAMPLES.map(({ key, icon }) => {
+              const example = t(`findDoctors.ai.examples.${key}`);
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => submit(example)}
+                  accessibilityRole="button"
+                  style={[
+                    styles.example,
+                    {
+                      backgroundColor: withAlpha(theme.colors.primary, 0.06),
+                      borderColor: withAlpha(theme.colors.primary, 0.12),
+                    },
+                  ]}
+                >
+                  <Icon name={icon} size={15} color={palette.accent} />
+                  <Text style={[styles.exampleText, { color: theme.colors.onSurface }]}>{example}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : null}
+
+        {match ? (
+          <AiFinderAnswer
+            asked={asked}
+            match={match}
+            onOpenDoctor={onOpenDoctor}
+            isAudioPlaying={isAudioPlaying}
+            onToggleAudio={toggleAudio}
+          />
+        ) : null}
+
+        <View style={[styles.disclaimer, { borderTopColor: theme.colors.outlineVariant }]}>
+          <Icon name="shield-check-outline" size={13} color={theme.colors.onSurfaceVariant} />
+          <Text style={[styles.disclaimerText, { color: theme.colors.onSurfaceVariant }]}>
+            {t('findDoctors.ai.disclaimer')}
+          </Text>
         </View>
-      )}
-
-      {notice && !isBusy ? <NoticeBanner notice={notice} message={noticeMessage} /> : null}
-
-      {!match && !isBusy ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.examples}
-        >
-          <Text style={[styles.tryLabel, { color: theme.colors.onSurfaceVariant }]}>{t('findDoctors.ai.tryLabel')}</Text>
-          {EXAMPLES.map(({ key, icon }) => {
-            const example = t(`findDoctors.ai.examples.${key}`);
-            return (
-              <Pressable
-                key={key}
-                onPress={() => submit(example)}
-                accessibilityRole="button"
-                style={[
-                  styles.example,
-                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
-                ]}
-              >
-                <Icon name={icon} size={15} color={theme.colors.primary} />
-                <Text style={[styles.exampleText, { color: theme.colors.onSurface }]}>{example}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      ) : null}
-
-      {match ? (
-        <AiFinderAnswer
-          asked={asked}
-          match={match}
-          onOpenDoctor={onOpenDoctor}
-          isAudioPlaying={isAudioPlaying}
-          onToggleAudio={toggleAudio}
-        />
-      ) : null}
-
-      <View style={styles.disclaimer}>
-        <Icon name="shield-check-outline" size={13} color={theme.colors.onSurfaceVariant} />
-        <Text style={[styles.disclaimerText, { color: theme.colors.onSurfaceVariant }]}>
-          {t('findDoctors.ai.disclaimer')}
-        </Text>
       </View>
     </View>
   );
@@ -244,34 +269,72 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 22,
     borderWidth: 1,
-    padding: 14,
-    gap: 12,
     marginBottom: 20,
-    elevation: 1,
-    shadowColor: '#0B1030',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    overflow: 'hidden',
+  },
+  ring: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    opacity: 0.18,
+  },
+  ringLarge: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    top: -96,
+    right: -48,
+  },
+  ringSmall: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    bottom: -58,
+    right: 64,
+  },
+  mark: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spark: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerText: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   title: {
     fontFamily: fontFamilies.bold,
-    fontSize: 16,
+    fontSize: 17,
   },
   subtitle: {
     fontFamily: fontFamilies.regular,
-    fontSize: 11.5,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  body: {
+    padding: 14,
+    gap: 12,
   },
   newSearch: {
     flexDirection: 'row',
@@ -291,7 +354,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 8,
     minHeight: 56,
-    borderRadius: 14,
+    borderRadius: 20,
     borderWidth: 1,
     paddingLeft: 14,
     paddingRight: 8,
@@ -356,6 +419,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    borderTopWidth: 1,
+    paddingTop: 10,
   },
   disclaimerText: {
     flex: 1,

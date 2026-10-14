@@ -82,7 +82,7 @@
   },
   "findDoctors": {
     "title": "Find Doctors",
-    "searchPlaceholder": "Search by name, specialty or department…",
+    "searchPlaceholder": "Search doctor, specialty…",
     "available": "Available",
     "notAvailable": "Not Available",
     "scheduleNotPublished": "Schedule not published yet",
@@ -717,7 +717,10 @@
     "profile": "My Profile",
     "findDoctors": "Find Doctors",
     "followUps": "Follow-ups",
-    "reports": "Reports"
+    "reports": "Reports",
+    "sectionMenu": "Menu",
+    "sectionGeneral": "General",
+    "viewProfile": "View profile"
   },
   "settings": {
     "title": "Settings",

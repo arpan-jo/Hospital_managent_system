@@ -9,8 +9,8 @@ import TabNavigator, { TabParamList } from './TabNavigator';
 import SettingsScreen from '../screens/common/settings/SettingsScreen';
 import PatientFollowUpIndex from '../screens/patient/followUps/PatientFollowUpIndex';
 import ReportsStackNavigator, { ReportsStackParamList } from './ReportsStackNavigator';
-import { View, StyleSheet } from 'react-native';
-import { Text, useTheme, Divider } from 'react-native-paper';
+import { View, StyleSheet, Pressable } from 'react-native';
+import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { NavigatorScreenParams, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { useStores, getFileUrl } from '@app/core';
@@ -30,8 +30,8 @@ type MenuItem = {
   labelKey: string;
   icon: string;
   tab?: keyof TabParamList;
-  /** Draws a divider above it — sets the app's own entries apart from the portal's menu. */
-  separated?: boolean;
+  /** Starts a new group under this heading — sets the app's own entries apart from the portal's menu. */
+  sectionKey?: string;
 };
 
 /**
@@ -44,6 +44,7 @@ const MENU_ITEMS: MenuItem[] = [
     labelKey: 'drawer.findDoctors',
     icon: 'stethoscope',
     tab: 'HomeTab',
+    sectionKey: 'drawer.sectionMenu',
   },
   {
     name: 'MainTabs',
@@ -73,11 +74,22 @@ const MENU_ITEMS: MenuItem[] = [
     name: 'Settings',
     labelKey: 'settings.title',
     icon: 'cog-outline',
-    separated: true,
+    sectionKey: 'drawer.sectionGeneral',
   },
 ];
 
 const Drawer = createDrawerNavigator<DrawerParamList>();
+
+/**
+ * A see-through tint of the card's ink behind a chip or button on the profile
+ * card — from the theme's own colour, so it holds in light and dark alike.
+ */
+const Glass = ({ color }: { color: string }) => (
+  <View
+    pointerEvents="none"
+    style={[StyleSheet.absoluteFill, styles.glass, { backgroundColor: color }]}
+  />
+);
 
 const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
   const { authStore, profileStore } = useStores();
@@ -108,6 +120,8 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
     '';
 
   const photoUrl = getFileUrl(patientProfile?.photoUrl ?? '');
+  const patientCode = patientProfile?.patientCode?.trim() ?? '';
+  const bloodType = patientProfile?.bloodType?.trim() ?? '';
 
   // The profile card takes the brand blue in light; in dark `primary` turns
   // pale, so its container tone carries the card — the sign-in hero's rule.
@@ -123,31 +137,83 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
       {...props}
       contentContainerStyle={styles.scrollContainer}
     >
-      <View style={[styles.profileCard, { backgroundColor: cardColor }]}>
+      <Pressable
+        onPress={() =>
+          props.navigation.navigate('MainTabs', { screen: 'ProfileTab' })
+        }
+        accessibilityRole="button"
+        accessibilityLabel={t('drawer.viewProfile')}
+        style={({ pressed }) => [
+          styles.profileCard,
+          { backgroundColor: cardColor, opacity: pressed ? 0.92 : 1 },
+        ]}
+      >
+        {/* Echo of the rings on the sign-in hero. */}
         <View
           pointerEvents="none"
-          style={[styles.cardRing, { borderColor: cardInk }]}
+          style={[styles.ring, styles.ringLarge, { borderColor: cardInk }]}
         />
-        {/* The ring keeps the avatar off a card of its own colour. */}
-        <View style={[styles.avatarRing, { borderColor: cardInk }]}>
-          <CustomAvatar
-            type="image"
-            value={photoUrl}
-            fallback={displayName}
-            size={46}
-          />
+        <View
+          pointerEvents="none"
+          style={[styles.ring, styles.ringSmall, { borderColor: cardInk }]}
+        />
+
+        <View style={styles.cardTop}>
+          {/* The ring keeps the avatar off a card of its own colour. */}
+          <View style={[styles.avatarRing, { borderColor: cardInk }]}>
+            <CustomAvatar
+              type="image"
+              value={photoUrl}
+              fallback={displayName}
+              size={52}
+            />
+          </View>
+          <View style={styles.cardAction}>
+            <Glass color={cardInk} />
+            <Icon name="chevron-right" size={20} color={cardInk} />
+          </View>
         </View>
-        <View style={styles.identity}>
-          <Text numberOfLines={1} style={[styles.name, { color: cardInk }]}>
-            {displayName}
+
+        <Text numberOfLines={1} style={[styles.name, { color: cardInk }]}>
+          {displayName}
+        </Text>
+        {contactLine ? (
+          <Text numberOfLines={1} style={[styles.email, { color: cardInk }]}>
+            {contactLine}
           </Text>
-          {contactLine ? (
-            <Text numberOfLines={1} style={[styles.email, { color: cardInk }]}>
-              {contactLine}
-            </Text>
-          ) : null}
-        </View>
-      </View>
+        ) : null}
+
+        {/* A profile not saved yet has neither. */}
+        {patientCode || bloodType ? (
+          <View style={styles.chipRow}>
+            {patientCode ? (
+              <View style={styles.chip}>
+                <Glass color={cardInk} />
+                <Icon
+                  name="card-account-details-outline"
+                  size={12}
+                  color={cardInk}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[styles.chipText, { color: cardInk }]}
+                >
+                  {patientCode}
+                </Text>
+              </View>
+            ) : null}
+            {bloodType ? (
+              <View style={styles.chip}>
+                <Glass color={cardInk} />
+                <Icon name="water" size={12} color={cardInk} />
+                <Text style={[styles.chipText, { color: cardInk }]}>
+                  {bloodType}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </Pressable>
 
       <View style={styles.drawerList}>
         {MENU_ITEMS.map(item => {
@@ -155,7 +221,16 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
 
           return (
             <React.Fragment key={item.labelKey}>
-              {item.separated ? <Divider style={styles.divider} /> : null}
+              {item.sectionKey ? (
+                <Text
+                  style={[
+                    styles.sectionLabel,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  {t(item.sectionKey)}
+                </Text>
+              ) : null}
               <DrawerItem
                 focused={active}
                 activeBackgroundColor={theme.colors.primaryContainer}
@@ -167,7 +242,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
                       {
                         backgroundColor: active
                           ? theme.colors.primary
-                          : theme.colors.primaryContainer,
+                          : theme.colors.surfaceVariant,
                       },
                     ]}
                   >
@@ -179,7 +254,9 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
                         active ? item.icon.replace(/-outline$/, '') : item.icon
                       }
                       color={
-                        active ? theme.colors.onPrimary : theme.colors.primary
+                        active
+                          ? theme.colors.onPrimary
+                          : theme.colors.onSurfaceVariant
                       }
                       size={20}
                     />
@@ -187,6 +264,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
                 )}
                 label={() => (
                   <Text
+                    numberOfLines={1}
                     style={[
                       styles.itemLabel,
                       {
@@ -195,7 +273,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
                           : theme.colors.onSurface,
                         fontFamily: active
                           ? fontFamilies.semibold
-                          : fontFamilies.regular,
+                          : fontFamilies.medium,
                       },
                     ]}
                   >
@@ -215,39 +293,34 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
         })}
       </View>
 
-      {/* A row like the menu's own, in the error tone, rather than a button
-          of another shape at the foot of the list. */}
-      <View>
-        <Divider style={styles.divider} />
-        <DrawerItem
-          style={styles.item}
-          icon={() => (
-            <View
-              style={[
-                styles.iconTile,
-                { backgroundColor: theme.colors.errorContainer },
-              ]}
-            >
-              <Icon name="logout" color={theme.colors.error} size={20} />
-            </View>
-          )}
-          label={() => (
-            <Text
-              style={[
-                styles.itemLabel,
-                styles.logoutLabel,
-                { color: theme.colors.error },
-              ]}
-            >
-              {t('profile.logoutButton')}
-            </Text>
-          )}
-          onPress={() => {
-            authStore.logout();
-            profileStore.clear();
-          }}
-        />
-      </View>
+      {/* A tonal row in the error tone at the foot of the menu — the same
+          shape as the rows above, so it reads as part of the list. */}
+      <DrawerItem
+        style={[styles.item, styles.logoutItem]}
+        inactiveBackgroundColor={theme.colors.errorContainer}
+        icon={() => (
+          <View
+            style={[styles.iconTile, { backgroundColor: theme.colors.surface }]}
+          >
+            <Icon name="logout" color={theme.colors.error} size={20} />
+          </View>
+        )}
+        label={() => (
+          <Text
+            style={[
+              styles.itemLabel,
+              styles.logoutLabel,
+              { color: theme.colors.onErrorContainer },
+            ]}
+          >
+            {t('profile.logoutButton')}
+          </Text>
+        )}
+        onPress={() => {
+          authStore.logout();
+          profileStore.clear();
+        }}
+      />
     </DrawerContentScrollView>
   );
 });
@@ -266,7 +339,9 @@ export const DrawerNavigator = () => {
         headerShown: false,
         drawerStyle: {
           backgroundColor: theme.colors.surface,
-          width: 280,
+          width: 300,
+          borderTopRightRadius: 28,
+          borderBottomRightRadius: 28,
         },
       }}
     >
@@ -288,38 +363,55 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
+    borderRadius: 24,
+    padding: 16,
     marginTop: 4,
     overflow: 'hidden',
   },
-  // Echo of the rings on the sign-in hero.
-  cardRing: {
+  ring: {
     position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
     borderWidth: 1.5,
-    top: -70,
-    right: -50,
-    opacity: 0.18,
+    opacity: 0.16,
+  },
+  ringLarge: {
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    top: -90,
+    right: -70,
+  },
+  ringSmall: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    bottom: -62,
+    right: -28,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   avatarRing: {
     borderWidth: 2,
-    borderRadius: 28,
-    padding: 2,
+    borderRadius: 31,
+    padding: 3,
   },
-  // Lets a long name or address shorten instead of pushing the card wider.
-  identity: {
-    flex: 1,
+  cardAction: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  glass: {
+    opacity: 0.16,
   },
   name: {
     fontFamily: fontFamilies.bold,
-    fontSize: 16,
+    fontSize: 17,
   },
   email: {
     fontFamily: fontFamilies.regular,
@@ -327,28 +419,58 @@ const styles = StyleSheet.create({
     marginTop: 2,
     opacity: 0.85,
   },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 12,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    overflow: 'hidden',
+    maxWidth: '100%',
+  },
+  chipText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 11.5,
+    flexShrink: 1,
+  },
   // Takes the spare height without being squeezed below its own items.
   drawerList: {
     flexGrow: 1,
-    paddingTop: 14,
+    paddingBottom: 12,
+  },
+  sectionLabel: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 6,
   },
   item: {
-    borderRadius: 14,
+    borderRadius: 16,
+    marginVertical: 1,
   },
   // The tinted tile the app puts behind an icon, as on the profile rows.
   iconTile: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   itemLabel: {
     fontSize: 14.5,
   },
-  divider: {
-    marginHorizontal: 8,
-    marginVertical: 8,
+  logoutItem: {
+    marginBottom: 4,
   },
   logoutLabel: {
     fontFamily: fontFamilies.semibold,

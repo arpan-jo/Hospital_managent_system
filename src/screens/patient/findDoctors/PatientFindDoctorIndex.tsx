@@ -11,7 +11,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { PortalDoctor, useStores } from '@app/core';
+import { getFileUrl, PortalDoctor, useStores } from '@app/core';
 import {
   CustomAvatar,
   CustomButton,
@@ -37,7 +37,7 @@ export const PatientFindDoctorIndex = observer(() => {
   const { t } = useTranslation();
   const navigation =
     useNavigation<NativeStackNavigationProp<FindDoctorsStackParamList>>();
-  const { authStore } = useStores();
+  const { authStore, profileStore } = useStores();
   const viewModel = useFindDoctorsViewModel();
   const { ensureProfile } = useRequirePatientProfile();
 
@@ -45,6 +45,7 @@ export const PatientFindDoctorIndex = observer(() => {
 
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
   const userName = authStore.user?.fullName || t('common.na');
+  const photoUrl = getFileUrl(profileStore?.patientProfileData?.photoUrl ?? '');
 
   const handleProfile = useCallback(
     () =>
@@ -113,55 +114,76 @@ export const PatientFindDoctorIndex = observer(() => {
             accessibilityRole="button"
             accessibilityLabel={t('profile.title')}
           >
-            <CustomAvatar type="text" value={userName} size={36} />
+            <View style={[styles.headerAvatar, { borderColor: theme.colors.primaryContainer }]}>
+              <CustomAvatar type="image" value={photoUrl} fallback={userName} size={36} />
+            </View>
           </Pressable>
         }
       />
 
+      {/* One pill: the search, then the filter behind a hairline. */}
       <View style={styles.searchRow}>
-        <CustomSearchbar
-          value={viewModel.searchQuery}
-          onChangeText={viewModel.setSearchQuery}
-          placeholder={t('findDoctors.searchPlaceholder')}
-          style={styles.searchbar}
-        />
-        <Pressable
-          onPress={viewModel.openFilter}
+        <View
           style={[
-            styles.filterButton,
+            styles.searchShell,
             {
-              backgroundColor: hasSheetFilters
-                ? theme.colors.primary
-                : theme.colors.surface,
-              borderColor: theme.colors.primary,
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outlineVariant,
             },
           ]}
-          accessibilityRole="button"
-          accessibilityLabel={t('findDoctors.filterTitle')}
         >
-          <Icon
-            name="tune-variant"
-            size={18}
-            color={
-              hasSheetFilters ? theme.colors.onPrimary : theme.colors.primary
-            }
+          <CustomSearchbar
+            value={viewModel.searchQuery}
+            onChangeText={viewModel.setSearchQuery}
+            placeholder={t('findDoctors.searchPlaceholder')}
+            iconColor={theme.colors.primary}
+            style={styles.searchbar}
           />
-          {hasSheetFilters ? (
-            <View
-              style={[
-                styles.filterBadge,
-                {
-                  backgroundColor: theme.colors.error,
-                  borderColor: theme.colors.background,
-                },
-              ]}
-            >
-              <Text style={styles.filterBadgeText}>
-                {viewModel.sheetFilterCount}
-              </Text>
-            </View>
-          ) : null}
-        </Pressable>
+          <View
+            style={[
+              styles.searchDivider,
+              { backgroundColor: theme.colors.outlineVariant },
+            ]}
+          />
+          <Pressable
+            onPress={viewModel.openFilter}
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: hasSheetFilters
+                  ? theme.colors.primary
+                  : theme.colors.primaryContainer,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('findDoctors.filterTitle')}
+          >
+            <Icon
+              name="tune-variant"
+              size={20}
+              color={
+                hasSheetFilters
+                  ? theme.colors.onPrimary
+                  : theme.colors.onPrimaryContainer
+              }
+            />
+            {hasSheetFilters ? (
+              <View
+                style={[
+                  styles.filterBadge,
+                  {
+                    backgroundColor: theme.colors.error,
+                    borderColor: theme.colors.surface,
+                  },
+                ]}
+              >
+                <Text style={styles.filterBadgeText}>
+                  {viewModel.sheetFilterCount}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -199,14 +221,28 @@ export const PatientFindDoctorIndex = observer(() => {
         ) : null}
 
         <View style={styles.sectionHeaderRow}>
+          <Icon name="doctor" size={20} color={theme.colors.primary} />
           <Text
             style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
           >
             {t('findDoctors.allDoctors')}
-            <Text style={[styles.resultsCount, { color: theme.colors.onSurfaceVariant }]}>
-              {`  (${viewModel.totalCount ?? 0})`}
-            </Text>
           </Text>
+          <View
+            style={[
+              styles.countPill,
+              { backgroundColor: theme.colors.primaryContainer },
+            ]}
+          >
+            <Text
+              style={[
+                styles.resultsCount,
+                { color: theme.colors.onPrimaryContainer },
+              ]}
+            >
+              {viewModel.totalCount ?? 0}
+            </Text>
+          </View>
+          <View style={styles.flexSpacer} />
           {/* A new search on its way, with the last results still listed. */}
           {viewModel.isFetching && !viewModel.isLoading ? (
             <ActivityIndicator size={14} color={theme.colors.primary} />
@@ -290,20 +326,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchRow: {
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  searchShell: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
+    height: 54,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingRight: 7,
+    boxShadow: '0px 4px 14px rgba(21, 30, 79, 0.07)',
+  },
+  headerAvatar: {
+    borderWidth: 2,
+    borderRadius: 22,
+    padding: 2,
   },
   searchbar: {
     flex: 1,
     marginVertical: 0,
+    backgroundColor: 'transparent',
+    borderRadius: 18,
+  },
+  searchDivider: {
+    width: 1,
+    height: 26,
+    marginRight: 7,
   },
   filterButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    borderWidth: 1,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -357,16 +411,26 @@ const styles = StyleSheet.create({
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
     marginBottom: 12,
   },
   sectionTitle: {
     fontFamily: fontFamilies.bold,
     fontSize: 16,
   },
+  countPill: {
+    minWidth: 24,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
   resultsCount: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
+    fontFamily: fontFamilies.semibold,
+    fontSize: 12,
+  },
+  flexSpacer: {
+    flex: 1,
   },
   topRated: {
     marginBottom: 20,

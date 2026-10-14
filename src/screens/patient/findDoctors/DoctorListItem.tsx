@@ -10,6 +10,7 @@ import {
   stripHonorific,
 } from '@app/core';
 import { CustomAvatar, CustomButton, fontFamilies } from '@app/ui';
+import { withAlpha } from '../../../components/ai/aiPalette';
 import { DAY_ORDER, dayIndexOf, todayAbbr } from './weekdays';
 
 /** The green of "this doctor can be booked" — a status colour, the same in both themes. */
@@ -19,10 +20,25 @@ export const AVAILABLE_COLOR = '#1B9C5D';
 export const taka = (amount?: number | null): string =>
   `৳${groupThousands(amount ?? 0)}`;
 
+/** One line of the facts panel: a small icon tile, then the fact. */
+const FactRow = ({ icon, children }: { icon: string; children: React.ReactNode }) => {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.factRow}>
+      <View style={[styles.factIcon, { backgroundColor: theme.colors.surface }]}>
+        <Icon name={icon} size={13} color={theme.colors.primary} />
+      </View>
+      {children}
+    </View>
+  );
+};
+
 /**
- * The week on one line, Monday first: the days the doctor sits in brand colour,
- * today among them as a filled pill, the rest faded. A doctor who cannot be
- * booked shows no days at all, whatever their schedule says.
+ * The week on one line, Monday first, as a strip of day tiles: the days the
+ * doctor sits tinted in brand colour, today among them filled, the rest faded.
+ * A doctor who cannot be booked shows no days at all, whatever their schedule
+ * says.
  */
 const WeekdayRow = memo<{ days: string[] }>(function WeekdayRow({ days }) {
   const theme = useTheme();
@@ -33,12 +49,11 @@ const WeekdayRow = memo<{ days: string[] }>(function WeekdayRow({ days }) {
 
   if (openDays.size === 0) {
     return (
-      <View style={styles.metaRow}>
-        <Icon name="calendar-month-outline" size={13} color={theme.colors.onSurfaceVariant} />
-        <Text numberOfLines={1} style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+      <FactRow icon="calendar-month-outline">
+        <Text numberOfLines={1} style={[styles.factText, { color: theme.colors.onSurfaceVariant }]}>
           {t('findDoctors.scheduleNotPublished')}
         </Text>
-      </View>
+      </FactRow>
     );
   }
 
@@ -47,8 +62,7 @@ const WeekdayRow = memo<{ days: string[] }>(function WeekdayRow({ days }) {
     .join(', ');
 
   return (
-    <View style={styles.metaRow}>
-      <Icon name="calendar-month-outline" size={13} color={theme.colors.onSurfaceVariant} />
+    <FactRow icon="calendar-month-outline">
       <View
         accessible
         accessibilityLabel={t('findDoctors.availableOnDays', { days: openDayNames })}
@@ -61,9 +75,17 @@ const WeekdayRow = memo<{ days: string[] }>(function WeekdayRow({ days }) {
           return (
             <View
               key={day}
-              style={[styles.weekDayPill, isToday && { backgroundColor: theme.colors.primary }]}
+              style={[
+                styles.weekDayTile,
+                isOpen && {
+                  backgroundColor: isToday
+                    ? theme.colors.primary
+                    : withAlpha(theme.colors.primary, 0.1),
+                },
+              ]}
             >
               <Text
+                numberOfLines={1}
                 style={[
                   styles.weekDay,
                   isOpen ? styles.weekDayOpen : styles.weekDayClosed,
@@ -82,7 +104,7 @@ const WeekdayRow = memo<{ days: string[] }>(function WeekdayRow({ days }) {
           );
         })}
       </View>
-    </View>
+    </FactRow>
   );
 });
 
@@ -109,19 +131,25 @@ export const DoctorListItem = memo<DoctorListItemProps>(
     return (
       <Pressable
         onPress={handleOpen}
-        style={[
+        style={({ pressed }) => [
           styles.card,
-          { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.outlineVariant,
+            opacity: pressed ? 0.94 : 1,
+          },
         ]}
       >
         <View style={styles.topRow}>
           <View style={styles.avatarWrap}>
-            <CustomAvatar
-              type={photoUri ? 'image' : 'text'}
-              value={photoUri || initialsFrom}
-              fallback={initialsFrom}
-              size={52}
-            />
+            <View style={[styles.avatarRing, { borderColor: withAlpha(theme.colors.primary, 0.18) }]}>
+              <CustomAvatar
+                type={photoUri ? 'image' : 'text'}
+                value={photoUri || initialsFrom}
+                fallback={initialsFrom}
+                size={54}
+              />
+            </View>
             <View
               accessible
               accessibilityLabel={t(isAvailable ? 'findDoctors.available' : 'findDoctors.notAvailable')}
@@ -148,31 +176,45 @@ export const DoctorListItem = memo<DoctorListItemProps>(
             >
               {doctor?.specialty || t('findDoctors.specialtyNotListed')}
             </Text>
-
-            <View style={styles.metaRow}>
-              <Icon name="hospital-building" size={13} color={theme.colors.onSurfaceVariant} />
-              <Text numberOfLines={1} style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
-                {doctor?.departmentName || t('findDoctors.departmentNotListed')}
-              </Text>
-            </View>
-
-            <WeekdayRow days={isAvailable ? doctor?.availableDays ?? [] : []} />
-
-            <View style={styles.metaRow}>
-              <Icon name="map-marker-outline" size={13} color={theme.colors.onSurfaceVariant} />
-              <Text numberOfLines={1} style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
-                {doctor?.location || t('findDoctors.locationNotListed')}
-                {experienceYears > 0
-                  ? `  •  ${t('findDoctors.yearsExp', { count: experienceYears })}`
-                  : ''}
-              </Text>
-            </View>
+            {experienceYears > 0 ? (
+              <View style={[styles.expPill, { backgroundColor: withAlpha(theme.colors.primary, 0.08) }]}>
+                <Icon name="briefcase-outline" size={11} color={theme.colors.primary} />
+                <Text style={[styles.expText, { color: theme.colors.primary }]}>
+                  {t('findDoctors.yearsExp', { count: experienceYears })}
+                </Text>
+              </View>
+            ) : null}
           </View>
+
+          <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
         </View>
 
-        <View style={[styles.bottomRow, { borderTopColor: theme.colors.outlineVariant }]}>
+        {/* The same three facts on every card, with quiet fallbacks — as on the portal. */}
+        <View style={[styles.facts, { backgroundColor: theme.colors.background }]}>
+          <FactRow icon="hospital-building">
+            <Text numberOfLines={1} style={[styles.factText, { color: theme.colors.onSurface }]}>
+              {doctor?.departmentName || t('findDoctors.departmentNotListed')}
+            </Text>
+          </FactRow>
+
+          <WeekdayRow days={isAvailable ? doctor?.availableDays ?? [] : []} />
+
+          <FactRow icon="map-marker-outline">
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.factText,
+                { color: doctor?.location ? theme.colors.onSurface : theme.colors.onSurfaceVariant },
+              ]}
+            >
+              {doctor?.location || t('findDoctors.locationNotListed')}
+            </Text>
+          </FactRow>
+        </View>
+
+        <View style={styles.bottomRow}>
           {fee > 0 ? (
-            <Text style={[styles.fee, { color: theme.colors.onSurface }]}>
+            <Text style={[styles.fee, { color: theme.colors.primary }]}>
               {taka(fee)}
               <Text style={[styles.feeUnit, { color: theme.colors.onSurfaceVariant }]}>
                 {` ${t('findDoctors.perVisit')}`}
@@ -184,7 +226,11 @@ export const DoctorListItem = memo<DoctorListItemProps>(
             </Text>
           )}
           <CustomButton
-            mode={isAvailable ? 'contained' : 'outlined'}
+            icon={isAvailable ? 'calendar-plus' : 'account-outline'}
+            // Paper's tonal mode takes `secondaryContainer`, which the theme
+            // leaves at Paper's lilac — so the soft blue is set here.
+            buttonColor={isAvailable ? undefined : theme.colors.primaryContainer}
+            textColor={isAvailable ? undefined : theme.colors.onPrimaryContainer}
             onPress={handleOpen}
             style={styles.openButton}
             labelStyle={styles.openButtonLabel}
@@ -199,84 +245,117 @@ export const DoctorListItem = memo<DoctorListItemProps>(
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 14,
+    boxShadow: '0px 4px 14px rgba(21, 30, 79, 0.06)',
   },
   topRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   // Sized to the avatar, so the dot sits on its corner and not the row's.
   avatarWrap: {
     alignSelf: 'flex-start',
   },
+  avatarRing: {
+    borderWidth: 2,
+    borderRadius: 31,
+    padding: 2,
+  },
   statusDot: {
     position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
+    right: 2,
+    bottom: 2,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    borderWidth: 2.5,
   },
   info: {
     flex: 1,
   },
   name: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 15.5,
+    fontSize: 16,
   },
   specialty: {
     fontFamily: fontFamilies.medium,
     fontSize: 12.5,
     marginTop: 2,
   },
-  metaRow: {
+  expPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    alignSelf: 'flex-start',
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     marginTop: 6,
   },
-  metaText: {
+  expText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 10.5,
+  },
+  facts: {
+    borderRadius: 14,
+    padding: 10,
+    gap: 8,
+    marginTop: 12,
+  },
+  factRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  factIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  factText: {
     flex: 1,
     fontFamily: fontFamilies.regular,
-    fontSize: 12,
+    fontSize: 12.5,
   },
   weekRow: {
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
   },
-  weekDayPill: {
-    borderRadius: 8,
+  weekDayTile: {
+    minWidth: 32,
+    borderRadius: 7,
     paddingHorizontal: 4,
-    paddingVertical: 1,
+    paddingVertical: 3,
+    alignItems: 'center',
   },
   weekDay: {
-    fontSize: 11,
+    fontSize: 10.5,
   },
   weekDayOpen: {
     fontFamily: fontFamilies.semibold,
   },
   weekDayClosed: {
     fontFamily: fontFamilies.regular,
-    opacity: 0.55,
+    opacity: 0.5,
   },
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
     marginTop: 12,
-    paddingTop: 10,
   },
   fee: {
     fontFamily: fontFamilies.bold,
-    fontSize: 16,
+    fontSize: 18,
   },
   feeUnit: {
     fontFamily: fontFamilies.regular,
@@ -285,11 +364,11 @@ const styles = StyleSheet.create({
   openButton: {
     marginVertical: 0,
     paddingVertical: 0,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   openButtonLabel: {
     fontSize: 13,
-    marginVertical: 8,
+    marginVertical: 9,
   },
 });
 

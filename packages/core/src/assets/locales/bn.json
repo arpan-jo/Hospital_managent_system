@@ -82,7 +82,7 @@
   },
   "findDoctors": {
     "title": "ডাক্তার খুঁজুন",
-    "searchPlaceholder": "নাম, স্পেশালিটি বা বিভাগ দিয়ে খুঁজুন…",
+    "searchPlaceholder": "ডাক্তার বা স্পেশালিটি খুঁজুন…",
     "available": "উপলব্ধ",
     "notAvailable": "অনুপলব্ধ",
     "scheduleNotPublished": "সময়সূচি এখনো প্রকাশ করা হয়নি",
@@ -717,7 +717,10 @@
     "profile": "আমার প্রোফাইল",
     "findDoctors": "ডাক্তার খুঁজুন",
     "followUps": "ফলো-আপ",
-    "reports": "রিপোর্ট"
+    "reports": "রিপোর্ট",
+    "sectionMenu": "মেনু",
+    "sectionGeneral": "সাধারণ",
+    "viewProfile": "প্রোফাইল দেখুন"
   },
   "settings": {
     "title": "সেটিংস",

@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { StyleSheet, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import { Searchbar, useTheme } from 'react-native-paper';
 import { fontFamilies } from '../theme/typography';
 
@@ -7,7 +7,9 @@ interface CustomSearchbarProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
+  /** The magnifier's colour; the muted text tone when left out. */
+  iconColor?: string;
 }
 
 export const CustomSearchbar = memo<CustomSearchbarProps>(
@@ -16,6 +18,7 @@ export const CustomSearchbar = memo<CustomSearchbarProps>(
     onChangeText,
     placeholder = 'Search...',
     style,
+    iconColor,
   }) {
     const theme = useTheme();
 
@@ -40,6 +43,7 @@ export const CustomSearchbar = memo<CustomSearchbarProps>(
         style={[styles.search, style]}
         inputStyle={inputStyle}
         theme={searchbarTheme}
+        iconColor={iconColor}
       />
     );
   },

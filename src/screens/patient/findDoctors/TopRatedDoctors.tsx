@@ -2,8 +2,10 @@ import React, { memo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getFileUrl, PortalDoctor, stripHonorific } from '@app/core';
 import { CustomAvatar, fontFamilies } from '@app/ui';
+import { withAlpha } from '../../../components/ai/aiPalette';
 import { AVAILABLE_COLOR } from './DoctorListItem';
 import { todayAbbr } from './weekdays';
 
@@ -27,9 +29,12 @@ export const TopRatedDoctors = memo<TopRatedDoctorsProps>(function TopRatedDocto
 
   return (
     <View>
-      <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-        {t('findDoctors.topRated')}
-      </Text>
+      <View style={styles.titleRow}>
+        <Icon name="star-circle" size={20} color={theme.colors.primary} />
+        <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+          {t('findDoctors.topRated')}
+        </Text>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -40,6 +45,7 @@ export const TopRatedDoctors = memo<TopRatedDoctorsProps>(function TopRatedDocto
           const initialsFrom = stripHonorific(doctor?.fullName) || doctor?.fullName || '?';
           const sitsToday = doctor?.availableDays?.includes(today) ?? false;
           const experienceYears = doctor?.experienceYears ?? 0;
+          const statusColor = sitsToday ? AVAILABLE_COLOR : theme.colors.onSurfaceVariant;
 
           return (
             <Pressable
@@ -47,39 +53,59 @@ export const TopRatedDoctors = memo<TopRatedDoctorsProps>(function TopRatedDocto
               onPress={() => onOpen(doctor)}
               accessibilityRole="button"
               accessibilityLabel={doctor?.fullName}
-              style={[
+              style={({ pressed }) => [
                 styles.card,
-                { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.outlineVariant,
+                  opacity: pressed ? 0.94 : 1,
+                },
               ]}
             >
-              <CustomAvatar
-                type={photoUri ? 'image' : 'text'}
-                value={photoUri || initialsFrom}
-                fallback={initialsFrom}
-                size={48}
+              {/* A brand wash behind the top half, for the avatar to sit on. */}
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.wash,
+                  {
+                    backgroundColor: withAlpha(theme.colors.primary, 0.08),
+                    experimental_backgroundImage: `linear-gradient(180deg, ${withAlpha(theme.colors.primary, 0.16)} 0%, ${withAlpha(theme.colors.primary, 0.04)} 100%)`,
+                  },
+                ]}
               />
+              <View style={[styles.avatarRing, { backgroundColor: theme.colors.surface }]}>
+                <CustomAvatar
+                  type={photoUri ? 'image' : 'text'}
+                  value={photoUri || initialsFrom}
+                  fallback={initialsFrom}
+                  size={56}
+                />
+              </View>
               {/* Two lines, always taken up, so the cards in the row line up. */}
               <Text numberOfLines={2} style={[styles.name, { color: theme.colors.onSurface }]}>
                 {doctor?.fullName || t('common.na')}
               </Text>
-              {doctor?.specialty ? (
-                <Text numberOfLines={1} style={[styles.specialty, { color: theme.colors.primary }]}>
-                  {doctor.specialty}
-                </Text>
-              ) : null}
               <Text
                 numberOfLines={1}
                 style={[
-                  styles.status,
-                  { color: sitsToday ? AVAILABLE_COLOR : theme.colors.onSurfaceVariant },
+                  styles.specialty,
+                  { color: doctor?.specialty ? theme.colors.primary : theme.colors.onSurfaceVariant },
                 ]}
               >
-                {sitsToday
-                  ? t('findDoctors.availableToday')
-                  : experienceYears > 0
-                  ? t('findDoctors.yearsExperience', { count: experienceYears })
-                  : doctor?.departmentName || t('findDoctors.viewProfile')}
+                {doctor?.specialty || t('findDoctors.specialtyNotListed')}
               </Text>
+              <View style={[styles.statusPill, { backgroundColor: withAlpha(statusColor, 0.12) }]}>
+                {sitsToday ? (
+                  <View style={[styles.statusDot, { backgroundColor: AVAILABLE_COLOR }]} />
+                ) : null}
+                <Text numberOfLines={1} style={[styles.status, { color: statusColor }]}>
+                  {sitsToday
+                    ? t('findDoctors.availableToday')
+                    : experienceYears > 0
+                    ? t('findDoctors.yearsExperience', { count: experienceYears })
+                    : doctor?.departmentName || t('findDoctors.viewProfile')}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -89,28 +115,46 @@ export const TopRatedDoctors = memo<TopRatedDoctorsProps>(function TopRatedDocto
 });
 
 const styles = StyleSheet.create({
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
   title: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 15,
-    marginBottom: 10,
+    fontFamily: fontFamilies.bold,
+    fontSize: 16,
   },
   row: {
-    gap: 10,
-    paddingBottom: 4,
+    gap: 12,
+    paddingBottom: 6,
   },
   card: {
-    width: 138,
-    borderRadius: 16,
+    width: 150,
+    borderRadius: 20,
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  wash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 56,
+  },
+  avatarRing: {
+    borderRadius: 32,
+    padding: 3,
   },
   name: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    lineHeight: 17,
-    minHeight: 34,
+    fontSize: 13.5,
+    lineHeight: 18,
+    minHeight: 36,
     textAlign: 'center',
     marginTop: 8,
     maxWidth: '100%',
@@ -121,11 +165,25 @@ const styles = StyleSheet.create({
     marginTop: 2,
     maxWidth: '100%',
   },
-  status: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    marginTop: 6,
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    marginTop: 10,
     maxWidth: '100%',
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  status: {
+    flexShrink: 1,
+    fontFamily: fontFamilies.semibold,
+    fontSize: 10.5,
   },
 });
 
