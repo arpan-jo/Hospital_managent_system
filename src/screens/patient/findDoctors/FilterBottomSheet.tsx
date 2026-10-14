@@ -10,20 +10,20 @@ import {
   fontFamilies,
 } from '@app/ui';
 import {
-  ALL_SPECIALTIES,
-  AVAILABILITY_THIS_WEEK,
-  AVAILABILITY_TODAY,
   DEFAULT_FILTERS,
   DoctorFilters,
+  TODAY_OPTION,
 } from './useFindDoctorsViewModel';
 import FilterSelect from './FilterSelect';
+import { DAY_ORDER, dayIndexOf } from './weekdays';
 
 interface FilterBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   filters: DoctorFilters;
-  specialties: string[];
-  locations: string[];
+  /** The API's own department names — a chosen one is sent back exactly as listed. */
+  departments: string[];
+  genders: string[];
   onApply: (filters: DoctorFilters) => void;
   onReset: () => void;
 }
@@ -33,8 +33,8 @@ export const FilterBottomSheet = memo<FilterBottomSheetProps>(
     visible,
     onClose,
     filters,
-    specialties,
-    locations,
+    departments,
+    genders,
     onApply,
     onReset,
   }) {
@@ -50,43 +50,33 @@ export const FilterBottomSheet = memo<FilterBottomSheetProps>(
       if (visible) reset(filters ?? DEFAULT_FILTERS);
     }, [visible, filters, reset]);
 
-    const specialtyItems: DropdownItem[] = useMemo(
-      () =>
-        specialties?.map(specialty => ({
-          label: specialty?.trim() || specialty,
-          value: specialty === ALL_SPECIALTIES ? '' : specialty,
-        })) ?? [],
-      [specialties],
-    );
-
-    const locationItems: DropdownItem[] = useMemo(
+    const departmentItems: DropdownItem[] = useMemo(
       () => [
-        { label: t('findDoctors.allLocations'), value: '' },
-        ...(locations?.map(location => ({
-          label: location?.trim() || location,
-          value: location,
+        { label: t('findDoctors.allDepartments'), value: '' },
+        ...(departments?.map(department => ({
+          label: department?.trim() || department,
+          value: department,
         })) ?? []),
       ],
-      [t, locations],
-    );
-
-    const availabilityItems: DropdownItem[] = useMemo(
-      () => [
-        { label: t('findDoctors.anyTime'), value: '' },
-        { label: t('findDoctors.availableToday'), value: AVAILABILITY_TODAY },
-        {
-          label: t('findDoctors.availableThisWeek'),
-          value: AVAILABILITY_THIS_WEEK,
-        },
-      ],
-      [t],
+      [t, departments],
     );
 
     const genderItems: DropdownItem[] = useMemo(
       () => [
         { label: t('findDoctors.anyGender'), value: '' },
-        { label: t('findDoctors.male'), value: 'Male' },
-        { label: t('findDoctors.female'), value: 'Female' },
+        ...(genders?.map(gender => ({ label: gender, value: gender })) ?? []),
+      ],
+      [t, genders],
+    );
+
+    const dayItems: DropdownItem[] = useMemo(
+      () => [
+        { label: t('findDoctors.anyDay'), value: '' },
+        { label: t('findDoctors.today'), value: TODAY_OPTION },
+        ...DAY_ORDER.map(day => ({
+          label: t(`days.${dayIndexOf(day)}`),
+          value: day,
+        })),
       ],
       [t],
     );
@@ -113,7 +103,7 @@ export const FilterBottomSheet = memo<FilterBottomSheetProps>(
           </Text>
           <Pressable onPress={handleReset} hitSlop={8}>
             <Text style={[styles.reset, { color: theme.colors.primary }]}>
-              {t('findDoctors.reset')}
+              {t('findDoctors.clearFilters')}
             </Text>
           </Pressable>
         </View>
@@ -125,39 +115,13 @@ export const FilterBottomSheet = memo<FilterBottomSheetProps>(
         >
           <Controller
             control={control}
-            name="specialty"
+            name="department"
             render={({ field: { value, onChange } }) => (
               <FilterSelect
-                label={t('findDoctors.specialty')}
+                label={t('findDoctors.department')}
                 value={value ?? ''}
-                items={specialtyItems}
-                placeholder={t('findDoctors.allSpecialties')}
-                onChange={onChange}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="location"
-            render={({ field: { value, onChange } }) => (
-              <FilterSelect
-                label={t('findDoctors.location')}
-                value={value ?? ''}
-                items={locationItems}
-                placeholder={t('findDoctors.allLocations')}
-                onChange={onChange}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="availability"
-            render={({ field: { value, onChange } }) => (
-              <FilterSelect
-                label={t('findDoctors.availability')}
-                value={value ?? ''}
-                items={availabilityItems}
-                placeholder={t('findDoctors.anyTime')}
+                items={departmentItems}
+                placeholder={t('findDoctors.allDepartments')}
                 onChange={onChange}
               />
             )}
@@ -171,6 +135,19 @@ export const FilterBottomSheet = memo<FilterBottomSheetProps>(
                 value={value ?? ''}
                 items={genderItems}
                 placeholder={t('findDoctors.anyGender')}
+                onChange={onChange}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="day"
+            render={({ field: { value, onChange } }) => (
+              <FilterSelect
+                label={t('findDoctors.availableOn')}
+                value={value ?? ''}
+                items={dayItems}
+                placeholder={t('findDoctors.anyDay')}
                 onChange={onChange}
               />
             )}

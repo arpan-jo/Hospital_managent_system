@@ -5,220 +5,191 @@ import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   getFileUrl,
-  DoctorSummary,
-  experienceLabel,
   groupThousands,
+  PortalDoctor,
+  stripHonorific,
 } from '@app/core';
 import { CustomAvatar, CustomButton, fontFamilies } from '@app/ui';
+import { DAY_ORDER, dayIndexOf, todayAbbr } from './weekdays';
 
-/** "৳500", "৳500 - ৳1,000", or `none` when the doctor has set no fee. */
-export const formatFeeRange = (minFee: number, maxFee: number, none: string): string => {
-  if (!minFee && !maxFee) return none;
-  if (!maxFee || minFee === maxFee) return `৳${groupThousands(minFee ?? 0)}`;
-  return `৳${groupThousands(minFee ?? 0)} - ৳${groupThousands(maxFee ?? 0)}`;
-};
+/** The green of "this doctor can be booked" — a status colour, the same in both themes. */
+export const AVAILABLE_COLOR = '#1B9C5D';
 
-/** Monday first, as the portal's card reads the week — indexes into the `days` locale block. */
-const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+/** "৳1,200". */
+export const taka = (amount?: number | null): string =>
+  `৳${groupThousands(amount ?? 0)}`;
 
 /**
- * The week on one line, the days the doctor sits in brand colour and the rest
- * faded, as on the portal's card. A doctor who has published no days says so.
+ * The week on one line, Monday first: the days the doctor sits in brand colour,
+ * today among them as a filled pill, the rest faded. A doctor who cannot be
+ * booked shows no days at all, whatever their schedule says.
  */
-const WeekdayRow = memo<{ availableDays: number[] }>(function WeekdayRow({ availableDays }) {
+const WeekdayRow = memo<{ days: string[] }>(function WeekdayRow({ days }) {
   const theme = useTheme();
   const { t } = useTranslation();
 
-  const openDays = useMemo(() => new Set(availableDays ?? []), [availableDays]);
-  const openDayNames = WEEK_ORDER.filter(day => openDays.has(day))
-    .map(day => t(`days.${day}`))
+  const openDays = useMemo(() => new Set(days ?? []), [days]);
+  const today = todayAbbr();
+
+  if (openDays.size === 0) {
+    return (
+      <View style={styles.metaRow}>
+        <Icon name="calendar-month-outline" size={13} color={theme.colors.onSurfaceVariant} />
+        <Text numberOfLines={1} style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+          {t('findDoctors.scheduleNotPublished')}
+        </Text>
+      </View>
+    );
+  }
+
+  const openDayNames = DAY_ORDER.filter(day => openDays.has(day))
+    .map(day => t(`days.${dayIndexOf(day)}`))
     .join(', ');
 
   return (
     <View style={styles.metaRow}>
-      <Icon name="calendar-month-outline" size={12} color={theme.colors.onSurfaceVariant} />
-      {openDays.size > 0 ? (
-        <View
-          accessible
-          accessibilityLabel={t('findDoctors.availableOnDays', { days: openDayNames })}
-          style={styles.weekRow}
-        >
-          {WEEK_ORDER.map(day => {
-            const isOpen = openDays.has(day);
-            return (
+      <Icon name="calendar-month-outline" size={13} color={theme.colors.onSurfaceVariant} />
+      <View
+        accessible
+        accessibilityLabel={t('findDoctors.availableOnDays', { days: openDayNames })}
+        style={styles.weekRow}
+      >
+        {DAY_ORDER.map(day => {
+          const isOpen = openDays.has(day);
+          const isToday = isOpen && day === today;
+
+          return (
+            <View
+              key={day}
+              style={[styles.weekDayPill, isToday && { backgroundColor: theme.colors.primary }]}
+            >
               <Text
-                key={day}
                 style={[
                   styles.weekDay,
                   isOpen ? styles.weekDayOpen : styles.weekDayClosed,
-                  { color: isOpen ? theme.colors.primary : theme.colors.onSurfaceVariant },
+                  {
+                    color: isToday
+                      ? theme.colors.onPrimary
+                      : isOpen
+                      ? theme.colors.primary
+                      : theme.colors.onSurfaceVariant,
+                  },
                 ]}
               >
-                {t(`days.${day}`)}
+                {t(`days.${dayIndexOf(day)}`)}
               </Text>
-            );
-          })}
-        </View>
-      ) : (
-        <Text
-          numberOfLines={1}
-          style={[styles.metaText, styles.weekDayClosed, { color: theme.colors.onSurfaceVariant }]}
-        >
-          {t('findDoctors.scheduleNotPublished')}
-        </Text>
-      )}
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 });
 
 interface DoctorListItemProps {
-  doctor: DoctorSummary;
-  onPress: (doctor: DoctorSummary) => void;
-  onBook: (doctor: DoctorSummary) => void;
+  doctor: PortalDoctor;
+  /** Opens the doctor's page — where the profile is read and the visit is booked. */
+  onOpen: (doctor: PortalDoctor) => void;
 }
 
 export const DoctorListItem = memo<DoctorListItemProps>(
-  function DoctorListItem({ doctor, onPress, onBook }) {
+  function DoctorListItem({ doctor, onOpen }) {
     const theme = useTheme();
     const { t } = useTranslation();
 
-    const handlePress = useCallback(() => onPress(doctor), [onPress, doctor]);
-    const handleBook = useCallback(() => onBook(doctor), [onBook, doctor]);
+    const handleOpen = useCallback(() => onOpen(doctor), [onOpen, doctor]);
 
     const photoUri = getFileUrl(doctor?.photoUrl);
-
-    // Where they sit, as the portal's card reads it: the first chamber, and
-    // the hospital on the profile only when no chamber is published.
-    const place = doctor?.locations?.[0] || doctor?.hospital || t('common.na');
-    const metaLabel = `${
-      doctor?.experienceYears
-        ? `${experienceLabel(doctor?.experienceYears)} Exp.`
-        : t('common.na')
-    } • ${place}`;
-
-    const feeLabel = useMemo(
-      () => formatFeeRange(doctor?.minFee ?? 0, doctor?.maxFee ?? 0, t('common.na')),
-      [doctor?.minFee, doctor?.maxFee, t],
-    );
+    // "Dr. Ahsan Habib" would give every doctor the same initials.
+    const initialsFrom = stripHonorific(doctor?.fullName) || doctor?.fullName || '?';
+    const isAvailable = Boolean(doctor?.isAvailable);
+    const experienceYears = doctor?.experienceYears ?? 0;
+    const fee = doctor?.consultationFee ?? 0;
 
     return (
       <Pressable
-        onPress={handlePress}
-        style={[styles.card, { backgroundColor: theme.colors.surface }]}
+        onPress={handleOpen}
+        style={[
+          styles.card,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+        ]}
       >
         <View style={styles.topRow}>
-          <CustomAvatar
-            type={photoUri ? 'image' : 'text'}
-            value={photoUri || doctor?.name || '?'}
-            fallback={doctor?.name}
-            size={48}
-          />
+          <View style={styles.avatarWrap}>
+            <CustomAvatar
+              type={photoUri ? 'image' : 'text'}
+              value={photoUri || initialsFrom}
+              fallback={initialsFrom}
+              size={52}
+            />
+            <View
+              accessible
+              accessibilityLabel={t(isAvailable ? 'findDoctors.available' : 'findDoctors.notAvailable')}
+              style={[
+                styles.statusDot,
+                {
+                  backgroundColor: isAvailable ? AVAILABLE_COLOR : theme.colors.onSurfaceVariant,
+                  borderColor: theme.colors.surface,
+                },
+              ]}
+            />
+          </View>
+
           <View style={styles.info}>
-            <View style={styles.nameRow}>
-              <Text
-                numberOfLines={1}
-                style={[styles.name, { color: theme.colors.onSurface }]}
-              >
-                {doctor?.name || t('common.na')}
-              </Text>
-              <View
-                style={[
-                  styles.availabilityBadge,
-                  {
-                    backgroundColor: doctor?.isAvailable
-                      ? '#E6F7EE'
-                      : theme.colors.surfaceVariant,
-                  },
-                ]}
-              >
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.availabilityText,
-                    {
-                      color: doctor?.isAvailable
-                        ? '#1B9C5D'
-                        : theme.colors.onSurfaceVariant,
-                    },
-                  ]}
-                >
-                  {doctor?.isAvailable
-                    ? t('findDoctors.available')
-                    : t('findDoctors.notAvailable')}
-                </Text>
-              </View>
-            </View>
-            {/* The specialty and the degrees each keep a line, as on the
-                portal's card — a doctor with degrees no longer loses the
-                specialty a patient is choosing by. */}
+            <Text numberOfLines={1} style={[styles.name, { color: theme.colors.onSurface }]}>
+              {doctor?.fullName || t('common.na')}
+            </Text>
             <Text
               numberOfLines={1}
               style={[
                 styles.specialty,
-                {
-                  color: doctor?.specialty
-                    ? theme.colors.primary
-                    : theme.colors.onSurfaceVariant,
-                },
+                { color: doctor?.specialty ? theme.colors.primary : theme.colors.onSurfaceVariant },
               ]}
             >
-              {doctor?.specialty || t('common.na')}
+              {doctor?.specialty || t('findDoctors.specialtyNotListed')}
             </Text>
-            {doctor?.qualification ? (
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.qualification,
-                  { color: theme.colors.onSurfaceVariant },
-                ]}
-              >
-                {doctor.qualification}
-              </Text>
-            ) : null}
-            {/* Only when the source sends the days at all — see `availableDays`. */}
-            {doctor?.availableDays ? (
-              <WeekdayRow availableDays={doctor.availableDays} />
-            ) : null}
+
             <View style={styles.metaRow}>
-              <Icon
-                name="hospital-building"
-                size={12}
-                color={theme.colors.onSurfaceVariant}
-              />
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.metaText,
-                  { color: theme.colors.onSurfaceVariant },
-                ]}
-              >
-                {metaLabel}
+              <Icon name="hospital-building" size={13} color={theme.colors.onSurfaceVariant} />
+              <Text numberOfLines={1} style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+                {doctor?.departmentName || t('findDoctors.departmentNotListed')}
+              </Text>
+            </View>
+
+            <WeekdayRow days={isAvailable ? doctor?.availableDays ?? [] : []} />
+
+            <View style={styles.metaRow}>
+              <Icon name="map-marker-outline" size={13} color={theme.colors.onSurfaceVariant} />
+              <Text numberOfLines={1} style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+                {doctor?.location || t('findDoctors.locationNotListed')}
+                {experienceYears > 0
+                  ? `  •  ${t('findDoctors.yearsExp', { count: experienceYears })}`
+                  : ''}
               </Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.bottomRow}>
-          <View>
-            <Text
-              style={[
-                styles.feeLabel,
-                { color: theme.colors.onSurfaceVariant },
-              ]}
-            >
-              {t('details.consultationFee')}
+        <View style={[styles.bottomRow, { borderTopColor: theme.colors.outlineVariant }]}>
+          {fee > 0 ? (
+            <Text style={[styles.fee, { color: theme.colors.onSurface }]}>
+              {taka(fee)}
+              <Text style={[styles.feeUnit, { color: theme.colors.onSurfaceVariant }]}>
+                {` ${t('findDoctors.perVisit')}`}
+              </Text>
             </Text>
-            <Text style={[styles.fee, { color: theme.colors.primary }]}>
-              {feeLabel}
+          ) : (
+            <Text style={[styles.feeUnit, { color: theme.colors.onSurfaceVariant }]}>
+              {t('findDoctors.feeOnRequest')}
             </Text>
-          </View>
+          )}
           <CustomButton
-            mode="contained"
-            onPress={handleBook}
-            style={styles.bookButton}
-            labelStyle={styles.bookButtonLabel}
+            mode={isAvailable ? 'contained' : 'outlined'}
+            onPress={handleOpen}
+            style={styles.openButton}
+            labelStyle={styles.openButtonLabel}
           >
-            {t('findDoctors.bookAppointment')}
+            {t(isAvailable ? 'findDoctors.bookNow' : 'findDoctors.viewProfile')}
           </CustomButton>
         </View>
       </Pressable>
@@ -228,104 +199,97 @@ export const DoctorListItem = memo<DoctorListItemProps>(
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
     marginBottom: 12,
-    elevation: 1,
-    shadowColor: '#0B1030',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    gap: 12,
+  },
+  // Sized to the avatar, so the dot sits on its corner and not the row's.
+  avatarWrap: {
+    alignSelf: 'flex-start',
+  },
+  statusDot: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
   },
   info: {
     flex: 1,
-    marginLeft: 12,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
   },
   name: {
-    flex: 1,
-    fontFamily: fontFamilies.bold,
-    fontSize: 14,
-  },
-  availabilityBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  availabilityText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 9,
+    fontFamily: fontFamilies.semibold,
+    fontSize: 15.5,
   },
   specialty: {
     fontFamily: fontFamilies.medium,
-    fontSize: 11.5,
-    marginTop: 2,
-  },
-  qualification: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
+    fontSize: 12.5,
     marginTop: 2,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 5,
+    gap: 6,
+    marginTop: 6,
   },
   metaText: {
+    flex: 1,
     fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    flexShrink: 1,
+    fontSize: 12,
   },
   weekRow: {
+    flex: 1,
     flexDirection: 'row',
-    // Bangla day names run longer — wrap rather than clip on a narrow phone.
     flexWrap: 'wrap',
-    columnGap: 7,
-    flexShrink: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  weekDayPill: {
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
   },
   weekDay: {
-    fontFamily: fontFamilies.regular,
     fontSize: 11,
   },
   weekDayOpen: {
     fontFamily: fontFamilies.semibold,
   },
   weekDayClosed: {
-    opacity: 0.45,
+    fontFamily: fontFamilies.regular,
+    opacity: 0.55,
   },
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 14,
-  },
-  feeLabel: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 10,
+    borderTopWidth: 1,
+    marginTop: 12,
+    paddingTop: 10,
   },
   fee: {
     fontFamily: fontFamilies.bold,
     fontSize: 16,
-    marginTop: 1,
   },
-  bookButton: {
+  feeUnit: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+  },
+  openButton: {
     marginVertical: 0,
     paddingVertical: 0,
-    borderRadius: 999,
+    borderRadius: 10,
   },
-  bookButtonLabel: {
-    fontSize: 12,
+  openButtonLabel: {
+    fontSize: 13,
     marginVertical: 8,
-    marginHorizontal: 14,
   },
 });
 

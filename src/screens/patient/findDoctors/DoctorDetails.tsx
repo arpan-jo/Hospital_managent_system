@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, useState } from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
@@ -8,248 +8,111 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
-  DoctorConsultationOption,
-  experienceLabel,
+  formatLongDate,
   getFileUrl,
+  stripHonorific,
   to12Hour,
+  useStores,
 } from '@app/core';
 import {
   CustomAvatar,
+  CustomBottomSheet,
   CustomButton,
-  CustomChip,
+  CustomDialog,
   CustomNoData,
   fontFamilies,
 } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
-import { DoctorAboutSection } from '../../../components/doctor/DoctorAboutSections';
-import { DoctorFlowStackParamList } from '../../../navigation/appointmentRoutes';
-import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
+import { useErrorDialog } from '../../../hooks/useErrorDialog';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
-import { useRequirePatientProfile } from '../../../hooks/useRequirePatientProfile';
-import { useDoctorDetailsViewModel } from './useDoctorDetailsViewModel';
+import { useKeyboardHeight } from '../../../hooks/useKeyboardHeight';
+import { useMonthNames } from '../../../hooks/useMonthNames';
+import { FindDoctorsStackParamList } from '../../../navigation/FindDoctorsStackNavigator';
+import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
+import DoctorAboutPanel from './DoctorAboutPanel';
+import { taka } from './DoctorListItem';
+import DoctorSchedulePanel from './DoctorSchedulePanel';
+import { DoctorTab, useDoctorDetailsViewModel } from './useDoctorDetailsViewModel';
 
-type DetailsTab = 'details' | 'about';
-
-const TAB_LABEL_KEY: Record<DetailsTab, string> = {
-  details: 'details.title',
-  about: 'doctorProfile.tabAbout',
-};
-
-const TABS = Object.keys(TAB_LABEL_KEY) as DetailsTab[];
-
-/** Icon + label per consultation option type sent by the API. */
-const CONSULTATION_OPTION_META: Record<string, { icon: string; labelKey: string }> = {
-  audio: { icon: 'phone-outline', labelKey: 'doctorProfile.audioConsultation' },
-  video: { icon: 'video-outline', labelKey: 'doctorProfile.videoConsultation' },
-};
-
-/** One label/value pair in the bordered spec grid. */
-const Field = memo<{ label: string; value: string }>(function Field({ label, value }) {
-  const theme = useTheme();
-  const border = { borderColor: theme.colors.outlineVariant };
-
-  return (
-    <View style={styles.field}>
-      <View
-        style={[
-          styles.cell,
-          styles.labelCell,
-          border,
-          { backgroundColor: theme.colors.surfaceVariant },
-        ]}
-      >
-        <Text
-          numberOfLines={1}
-          style={[styles.labelText, { color: theme.colors.onSurfaceVariant }]}
-        >
-          {label}
-        </Text>
-      </View>
-      <View style={[styles.cell, styles.valueCell, border]}>
-        <Text numberOfLines={2} style={[styles.valueText, { color: theme.colors.onSurface }]}>
-          {value}
-        </Text>
-      </View>
-    </View>
-  );
-});
-
-/** Renders rows of one or two label/value pairs as a collapsed-border grid. */
-const FieldGrid = memo<{ rows: Array<Array<[string, string]>> }>(function FieldGrid({ rows }) {
-  return (
-    <View>
-      {rows?.map((row, rowIndex) => (
-        <View key={rowIndex} style={styles.gridRow}>
-          {row?.map(([label, value]) => (
-            <Field key={label} label={label} value={value} />
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-});
+const TABS: { key: DoctorTab; labelKey: string }[] = [
+  { key: 'schedule', labelKey: 'doctorProfile.tabSchedule' },
+  { key: 'about', labelKey: 'doctorProfile.tabAbout' },
+  { key: 'reviews', labelKey: 'doctorProfile.tabReviews' },
+];
 
 /**
- * Everything about one doctor — Details and About — with Make Appointment as
- * the way out. Profile data comes from `GET /api/doctors/{id}` through
- * `useDoctorDetailsViewModel`; sections the API has no field for (contact
- * number) are left out rather than faked.
+ * A doctor's page: the profile on top, then the booking under the Schedule
+ * tab, with About and Reviews beside it. The button at the foot opens a
+ * summary to confirm, and confirming places the booking.
  */
 export const DoctorDetails = observer(() => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<DoctorFlowStackParamList>>();
-  const route = useRoute<RouteProp<DoctorFlowStackParamList, 'DoctorDetails'>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<FindDoctorsStackParamList>>();
+  const route = useRoute<RouteProp<FindDoctorsStackParamList, 'DoctorDetails'>>();
   const insets = useSafeAreaInsets();
-  // Light background — needs dark icons so the status bar stays legible.
+  const keyboardHeight = useKeyboardHeight();
+  const monthNames = useMonthNames();
+  const errorDialog = useErrorDialog();
+  const { toastStore } = useStores();
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
-  // Params are read defensively: a deep link can land here without them.
-  const { doctorId = '' } = route.params ?? {};
+  // Read defensively: a deep link can land here without the id.
+  const employeeId = Number(route?.params?.employeeId ?? 0) || 0;
+  const viewModel = useDoctorDetailsViewModel(employeeId);
+  const { doctor, detail, displayName, officeName, activeTab } = viewModel;
 
-  const viewModel = useDoctorDetailsViewModel(doctorId);
-  const { ensureProfile, isChecking } = useRequirePatientProfile();
-  const doctor = viewModel?.doctor;
-  const location = viewModel?.selectedLocation;
-  const taka = viewModel?.taka;
+  const goBack = useCallback(() => {
+    if (navigation.canGoBack()) navigation.goBack();
+  }, [navigation]);
 
-  const [tab, setTab] = useState<DetailsTab>('details');
+  const handleConfirm = useCallback(async () => {
+    const outcome = await viewModel.book();
 
-  const photoUri = getFileUrl(doctor?.photoUrl);
-  const locations = doctor?.locations ?? [];
-
-  const infoRows = useMemo<Array<Array<[string, string]>>>(() => {
-    if (!doctor) return [];
-
-    const rows: Array<Array<[string, string]>> = [
-      [[t('details.name'), doctor?.name || t('common.na')]],
-      [
-        [t('details.designation'), doctor?.designation || t('common.na')],
-        [t('details.specialty'), doctor?.specialty || t('common.na')],
-      ],
-      [
-        [t('details.department'), doctor?.department || t('common.na')],
-        [
-          t('details.experience'),
-          doctor?.experienceYears
-            ? experienceLabel(doctor?.experienceYears)
-            : t('common.na'),
-        ],
-      ],
-    ];
-
-    const lastRow: Array<[string, string]> = [
-      [
-        t('details.availability'),
-        doctor?.isAvailable ? t('details.available') : t('details.unavailable'),
-      ],
-    ];
-    // Most doctors have no second specialization — only take the cell when set.
-    if (doctor?.secondarySpecialty) {
-      lastRow?.unshift([t('details.secondarySpecialty'), doctor?.secondarySpecialty]);
-    }
-    rows?.push(lastRow);
-
-    // Mobile is intentionally not shown: the details API carries no contact number.
-    // [[t('details.mobile'), doctor?.mobile]]
-
-    return rows;
-  }, [doctor, t]);
-
-  const feeRows = useMemo<Array<Array<[string, string]>>>(() => {
-    if (!location) return [];
-
-    const fields: Array<[string, string]> = [
-      [t('details.consultationFee'), taka?.(location?.consultationFee) ?? ''],
-    ];
-
-    // A visit the chamber has no fee for is not offered (see the booking
-    // options), so its fee — and, for follow-ups, the validity — is left out.
-    const hasFollowUp = (location?.followUpFee ?? null) !== null;
-    if (hasFollowUp) {
-      fields?.push([t('details.followUpFee'), taka?.(location?.followUpFee) ?? '']);
-    }
-    if ((location?.reportFee ?? null) !== null) {
-      fields?.push([t('details.reportVisitFee'), taka?.(location?.reportFee) ?? '']);
-    }
-    if (hasFollowUp) {
-      fields?.push([
-        t('details.followUpValidity'),
-        t('details.days', { value: location?.followUpValidDays ?? 0 }),
-      ]);
+    if (!outcome?.ok) {
+      if (outcome?.message) errorDialog.show(outcome.message);
+      return;
     }
 
-    // Two fields per row, the last one alone when the count is odd.
-    const rows: Array<Array<[string, string]>> = [];
-    for (let index = 0; index < fields.length; index += 2) {
-      rows?.push(fields.slice(index, index + 2));
-    }
-    return rows;
-  }, [location, t, taka]);
+    const { result, consultationLabelKey, amount } = outcome.booking;
+    viewModel.closeConfirmation();
 
-  const aboutInfo = useMemo(
-    () => ({
-      bio: viewModel?.aboutSummary,
-      specializations: doctor?.specializations,
-      // The API sends degrees as plain strings, not degree/institution pairs.
-      education: doctor?.degrees,
-      experienceHistory: doctor?.experienceHistory,
-      awards: doctor?.awards,
-    }),
-    [doctor, viewModel?.aboutSummary],
-  );
-
-  // Booking is always *for* a patient profile, and a freshly registered account
-  // has none — the gate sends them to create one rather than into a booking
-  // screen they could not finish.
-  const handleMakeAppointment = useCallback(async () => {
-    if (!doctor?.id) return;
-    if (!(await ensureProfile())) return;
-    navigation.navigate('CreateAppointment', { doctorId: doctor?.id });
-  }, [navigation, doctor?.id, ensureProfile]);
-
-  const renderConsultationOption = useCallback(
-    (option: DoctorConsultationOption) => {
-      const meta = CONSULTATION_OPTION_META[option?.type ?? ''];
-
-      return (
-        <View
-          key={option?.optionId || option?.type}
-          style={[styles.optionCard, { backgroundColor: theme.colors.surface }]}
-        >
-          <View style={styles.optionHeader}>
-            <Icon
-              name={meta?.icon ?? 'stethoscope'}
-              size={16}
-              color={theme.colors.primary}
-            />
-            <Text style={[styles.optionTitle, { color: theme.colors.onSurface }]}>
-              {meta?.labelKey ? t(meta?.labelKey) : t('doctorProfile.consultation')}
-            </Text>
-          </View>
-          <Text style={[styles.optionFee, { color: theme.colors.primary }]}>
-            {taka?.(option?.fee)}
-          </Text>
-          {option?.durationMinutes ? (
-            <Text style={[styles.optionMeta, { color: theme.colors.onSurfaceVariant }]}>
-              {t('doctorProfile.durationMinutes', { value: option?.durationMinutes })}
-            </Text>
-          ) : null}
-        </View>
+    // The patient left while the booking was on its way: there is no page to
+    // replace, so the token is told the way the portal tells it.
+    if (!navigation.isFocused()) {
+      toastStore.show(
+        t('doctorProfile.booked', { token: result?.serialNo ?? 0 }),
+        'success',
       );
-    },
-    [t, taka, theme.colors.onSurface, theme.colors.onSurfaceVariant, theme.colors.primary, theme.colors.surface],
-  );
+      return;
+    }
 
-  if (viewModel?.doctorDetailsRequest?.isLoading) {
+    // Replaces this page: behind the success screen there must be nothing to
+    // go back to and confirm a second time.
+    navigation.replace('BookingSuccess', {
+      doctorName: displayName,
+      doctorSpecialty: detail?.doctorSpecialty || doctor?.specialty || '',
+      patientName: viewModel.patient?.fullName ?? '',
+      date: result?.appointmentDate || viewModel.date,
+      time: result?.time || viewModel.bookingTime,
+      officeName,
+      token: result?.serialNo ?? 0,
+      consultationLabel: t(consultationLabelKey),
+      amount,
+      paymentStatus: result?.paymentStatus ?? '',
+    });
+  }, [viewModel, errorDialog, toastStore, navigation, displayName, detail, doctor, officeName, t]);
+
+  const muted = theme.colors.onSurfaceVariant;
+  const containerStyle = [styles.container, { backgroundColor: theme.colors.background }];
+
+  if (viewModel.isLoading) {
     return (
-      <SafeAreaView
-        edges={['top', 'left', 'right']}
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-      >
-        <ScreenHeader title={t('details.title')} leading="back" />
-        <View style={styles.stateWrap}>
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+      <SafeAreaView edges={['top', 'left', 'right']} style={containerStyle}>
+        <ScreenHeader title={t('doctorProfile.title')} leading="back" />
+        <View style={styles.centered}>
+          <ActivityIndicator color={theme.colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -257,277 +120,263 @@ export const DoctorDetails = observer(() => {
 
   if (!doctor) {
     return (
-      <SafeAreaView
-        edges={['top', 'left', 'right']}
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-      >
-        <ScreenHeader title={t('details.title')} leading="back" />
-        <View style={styles.stateWrap}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={containerStyle}>
+        <ScreenHeader title={t('doctorProfile.title')} leading="back" />
+        <View style={styles.centered}>
           <CustomNoData
-            message={viewModel?.doctorDetailsRequest?.error ?? t('common.noDataFound')}
+            iconName="account-off-outline"
+            message={
+              viewModel.isNotFound
+                ? t('doctorProfile.notFoundTitle')
+                : viewModel.loadError || t('common.somethingWentWrong')
+            }
           />
+          {viewModel.isNotFound ? (
+            <Text style={[styles.caption, styles.centeredText, { color: muted }]}>
+              {t('doctorProfile.notFoundBody')}
+            </Text>
+          ) : null}
           <CustomButton
-            mode="outlined"
-            onPress={viewModel?.fetchDoctorDetails}
-            style={styles.retry}
+            mode="contained"
+            onPress={viewModel.isNotFound ? goBack : viewModel.reload}
+            style={styles.stateButton}
           >
-            {t('common.retry')}
+            {t(viewModel.isNotFound ? 'doctorProfile.backToDoctors' : 'common.retry')}
           </CustomButton>
         </View>
       </SafeAreaView>
     );
   }
 
+  const photoUri = getFileUrl(doctor?.photoUrl);
+  const experienceYears = doctor?.experienceYears ?? 0;
+  const currentFee = viewModel.currentFee ?? 0;
+
+  const stats = [
+    {
+      label: t('doctorProfile.experience'),
+      value: experienceYears
+        ? t('doctorProfile.yearsShort', { count: experienceYears })
+        : detail?.experience || '—',
+    },
+    { label: t('doctorProfile.office'), value: officeName || '—' },
+    { label: t('doctorProfile.fee'), value: currentFee > 0 ? taka(currentFee) : '—' },
+  ];
+
+  const summary = [
+    { label: t('doctorProfile.patient'), value: viewModel.patient?.fullName || '—' },
+    {
+      label: t('doctorProfile.consultationOption'),
+      value: viewModel.selectedOption ? t(viewModel.selectedOption.labelKey) : '—',
+    },
+    { label: t('doctorProfile.date'), value: formatLongDate(viewModel.date, monthNames) || '—' },
+    {
+      label: t('doctorProfile.time'),
+      value: viewModel.selectedSlot ? to12Hour(viewModel.bookingTime) : '—',
+    },
+    { label: t('doctorProfile.office'), value: officeName },
+    { label: t('doctorProfile.chiefComplaint'), value: viewModel.reason?.trim() ?? '' },
+  ].filter(row => row.value);
+
   return (
-    <SafeAreaView
-      edges={['top', 'left', 'right']}
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <ScreenHeader title={t('details.title')} leading="back" />
+    <SafeAreaView edges={['top', 'left', 'right']} style={containerStyle}>
+      <ScreenHeader title={t('doctorProfile.title')} leading="back" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: keyboardHeight ? keyboardHeight + 24 : 24 },
+        ]}
       >
-        <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.doctorRow}>
+        {/* ── The doctor ── */}
+        <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
+          <View style={styles.profileRow}>
             <CustomAvatar
               type={photoUri ? 'image' : 'text'}
-              value={photoUri || doctor?.name || '?'}
-              fallback={doctor?.name}
-              size={52}
+              value={photoUri || stripHonorific(displayName) || '?'}
+              fallback={stripHonorific(displayName)}
+              size={64}
             />
-            <View style={styles.doctorInfo}>
-              <Text
-                numberOfLines={1}
-                style={[styles.doctorName, { color: theme.colors.onSurface }]}
-              >
-                {doctor?.name || t('common.na')}
+            <View style={styles.flex}>
+              <Text style={[styles.name, { color: theme.colors.onSurface }]}>
+                {displayName || t('common.na')}
               </Text>
-              <Text style={[styles.doctorSpecialty, { color: theme.colors.primary }]}>
-                {doctor?.specialty || doctor?.designation || t('common.na')}
-              </Text>
-              {doctor?.qualification ? (
-                <Text
-                  numberOfLines={3}
-                  style={[styles.doctorQualification, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  {doctor?.qualification}
+              {detail?.doctorSpecialty || doctor?.specialty ? (
+                <Text style={[styles.specialty, { color: theme.colors.primary }]}>
+                  {detail?.doctorSpecialty || doctor?.specialty}
                 </Text>
+              ) : null}
+              {detail?.experience ? (
+                <View style={styles.inline}>
+                  <Icon name="star" size={13} color="#F5A524" />
+                  <Text style={[styles.caption, { color: muted }]}>
+                    {t('doctorProfile.experienceLine', { experience: detail.experience })}
+                  </Text>
+                </View>
               ) : null}
             </View>
           </View>
 
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Icon name="briefcase-outline" size={13} color={theme.colors.onSurfaceVariant} />
-              <Text style={[styles.statText, { color: theme.colors.onSurfaceVariant }]}>
-                {t('doctorProfile.years', { value: doctor?.experienceYears ?? 0 })}
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Icon name="map-marker-outline" size={13} color="#1B9C5D" />
-              <Text style={[styles.statText, { color: theme.colors.onSurfaceVariant }]}>
-                {t('doctorProfile.sites', { value: viewModel?.siteCount ?? 0 })}
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Icon name="credit-card-outline" size={13} color={theme.colors.primary} />
-              <Text style={[styles.statText, { color: theme.colors.onSurfaceVariant }]}>
-                {viewModel?.feeRangeLabel}
-              </Text>
-            </View>
+          <View style={styles.stats}>
+            {stats.map(stat => (
+              <View key={stat.label} style={[styles.stat, { backgroundColor: theme.colors.background }]}>
+                <Text numberOfLines={1} style={[styles.statValue, { color: theme.colors.onSurface }]}>
+                  {stat.value}
+                </Text>
+                <Text numberOfLines={1} style={[styles.statLabel, { color: muted }]}>
+                  {stat.label}
+                </Text>
+              </View>
+            ))}
           </View>
 
-          {doctor?.hospital ? (
-            <View
-              style={[styles.practiceRow, { borderTopColor: theme.colors.outlineVariant }]}
-            >
-              <Icon name="hospital-building" size={18} color={theme.colors.primary} />
-              <View style={styles.practiceInfo}>
-                <Text style={[styles.practiceLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('details.currentlyPracticingAt')}
+          {officeName ? (
+            <View style={[styles.practice, { borderTopColor: theme.colors.outlineVariant }]}>
+              <View style={[styles.practiceIcon, { backgroundColor: theme.colors.primaryContainer }]}>
+                <Icon name="hospital-building" size={18} color={theme.colors.primary} />
+              </View>
+              <View style={styles.flex}>
+                <Text style={[styles.statLabel, { color: muted }]}>
+                  {t('doctorProfile.practicingAt')}
                 </Text>
-                <Text style={[styles.practiceValue, { color: theme.colors.onSurface }]}>
-                  {doctor?.hospital}
+                <Text style={[styles.practiceName, { color: theme.colors.onSurface }]}>
+                  {officeName}
                 </Text>
-                {doctor?.department ? (
-                  <Text style={[styles.practiceMeta, { color: theme.colors.onSurfaceVariant }]}>
-                    {doctor?.department}
-                  </Text>
+                {detail?.departmentName ? (
+                  <Text style={[styles.caption, { color: muted }]}>{detail.departmentName}</Text>
                 ) : null}
               </View>
             </View>
           ) : null}
         </View>
 
-        <View style={[styles.tabsRow, { backgroundColor: theme.colors.surfaceVariant }]}>
-          {TABS?.map(tabKey => {
-            const selected = tab === tabKey;
+        {/* ── Tabs: the choices made under Schedule survive a look at the others ── */}
+        <View style={[styles.tabs, { backgroundColor: theme.colors.surfaceVariant }]}>
+          {TABS.map(tab => {
+            const active = tab.key === activeTab;
             return (
               <Pressable
-                key={tabKey}
-                onPress={() => setTab(tabKey)}
+                key={tab.key}
+                onPress={() => viewModel.setActiveTab(tab.key)}
                 accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                style={[styles.tabItem, selected && { backgroundColor: theme.colors.primary }]}
+                accessibilityState={{ selected: active }}
+                style={[styles.tab, active && { backgroundColor: theme.colors.surface }]}
               >
                 <Text
-                  numberOfLines={1}
                   style={[
-                    styles.tabItemText,
-                    { color: selected ? theme.colors.onPrimary : theme.colors.onSurfaceVariant },
+                    styles.tabText,
+                    {
+                      color: active ? theme.colors.primary : muted,
+                      fontFamily: active ? fontFamilies.semibold : fontFamilies.regular,
+                    },
                   ]}
                 >
-                  {t(TAB_LABEL_KEY[tabKey])}
+                  {t(tab.labelKey)}
                 </Text>
               </Pressable>
             );
           })}
         </View>
 
-        {tab === 'details' ? (
-          <>
-            <Text style={[styles.section, styles.firstSection, { color: theme.colors.onSurface }]}>
-              {t('details.doctorInformation')}
-            </Text>
-            <FieldGrid rows={infoRows} />
+        {activeTab === 'schedule' ? <DoctorSchedulePanel viewModel={viewModel} /> : null}
 
-            <Text style={[styles.section, { color: theme.colors.onSurface }]}>
-              {t('details.chambers')}
-            </Text>
-            {locations?.length ? (
-              <>
-                {/* Fees and schedule below always belong to the selected chamber. */}
-                {locations?.length > 1 ? (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.chipRow}
-                  >
-                    {locations?.map(item => {
-                      const selected = item?.locationId === viewModel?.selectedLocationId;
-                      return (
-                        <CustomChip
-                          key={item?.locationId}
-                          selected={selected}
-                          compact
-                          showSelectedCheck={false}
-                          onPress={() => viewModel?.selectLocation?.(item?.locationId ?? '')}
-                          textColor={selected ? theme.colors.onPrimary : theme.colors.onSurface}
-                          style={[
-                            styles.chip,
-                            {
-                              backgroundColor: selected
-                                ? theme.colors.primary
-                                : theme.colors.surface,
-                              borderColor: selected
-                                ? theme.colors.primary
-                                : theme.colors.outlineVariant,
-                            },
-                          ]}
-                          textStyle={styles.chipText}
-                        >
-                          {item?.name || t('common.na')}
-                        </CustomChip>
-                      );
-                    })}
-                  </ScrollView>
-                ) : null}
-
-                <View style={[styles.addressRow, { backgroundColor: theme.colors.surface }]}>
-                  <Icon name="map-marker-outline" size={16} color={theme.colors.primary} />
-                  <View style={styles.addressInfo}>
-                    <Text style={[styles.addressName, { color: theme.colors.onSurface }]}>
-                      {location?.name || t('common.na')}
-                    </Text>
-                    {location?.address ? (
-                      <Text
-                        style={[styles.addressText, { color: theme.colors.onSurfaceVariant }]}
-                      >
-                        {location?.address}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-
-                <Text style={[styles.section, { color: theme.colors.onSurface }]}>
-                  {t('details.consultationFees')}
-                </Text>
-                <FieldGrid rows={feeRows} />
-
-                <Text style={[styles.section, { color: theme.colors.onSurface }]}>
-                  {t('details.availableSchedule')}
-                </Text>
-                {viewModel?.scheduleRows?.length ? (
-                  viewModel?.scheduleRows?.map(row => (
-                    <View
-                      key={row?.key}
-                      style={[styles.slot, { backgroundColor: theme.colors.primaryContainer }]}
-                    >
-                      <View style={[styles.dayPill, { backgroundColor: theme.colors.primary }]}>
-                        <Text style={[styles.dayText, { color: theme.colors.onPrimary }]}>
-                          {(row?.dayIndex ?? -1) >= 0 ? t(`days.${row?.dayIndex}`) : row?.dayOfWeek}
-                        </Text>
-                      </View>
-                      <View style={styles.slotInfo}>
-                        <Text style={[styles.slotTime, { color: theme.colors.primary }]}>
-                          {`${to12Hour(row?.startTime ?? '')} – ${to12Hour(row?.endTime ?? '')}`}
-                        </Text>
-                        <Text style={[styles.slotMeta, { color: theme.colors.onSurfaceVariant }]}>
-                          {t('doctorProfile.slotsLeft', {
-                            count: row?.availableCount ?? 0,
-                            total: row?.maxCapacity ?? 0,
-                          })}
-                        </Text>
-                      </View>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={[styles.emptySchedule, { color: theme.colors.onSurfaceVariant }]}>
-                    {t('details.noSchedule')}
-                  </Text>
-                )}
-              </>
-            ) : (
-              <CustomNoData message={t('details.noChamber')} />
-            )}
-
-            {viewModel?.enabledConsultationOptions?.length ? (
-              <>
-                <Text style={[styles.section, { color: theme.colors.onSurface }]}>
-                  {t('doctorProfile.consultationOptions')}
-                </Text>
-                <View style={styles.optionRow}>
-                  {viewModel?.enabledConsultationOptions?.map(renderConsultationOption)}
-                </View>
-              </>
-            ) : null}
-          </>
+        {activeTab === 'about' ? (
+          <DoctorAboutPanel
+            detail={detail}
+            officeName={officeName}
+            experienceYears={experienceYears}
+          />
         ) : null}
 
-        {tab === 'about' ? <DoctorAboutSection doctor={aboutInfo} /> : null}
+        {activeTab === 'reviews' ? (
+          <View style={styles.reviews}>
+            <Icon name="star-outline" size={36} color={muted} />
+            <Text style={[styles.reviewsTitle, { color: theme.colors.onSurface }]}>
+              {t('doctorProfile.reviewsSoonTitle')}
+            </Text>
+            <Text style={[styles.caption, styles.centeredText, { color: muted }]}>
+              {t('doctorProfile.reviewsSoonBody')}
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
 
+      {/* ── The way on: open while a date and a window are chosen ── */}
       <View
         style={[
           styles.footer,
-          // The pinned CTA has to clear the floating tab bar, same as scroll content.
-          { backgroundColor: theme.colors.background, paddingBottom: insets.bottom + TAB_BAR_CLEARANCE },
+          {
+            backgroundColor: theme.colors.surface,
+            borderTopColor: theme.colors.outlineVariant,
+            paddingBottom: insets.bottom + TAB_BAR_CLEARANCE - 24,
+          },
         ]}
       >
+        {viewModel.canBook ? null : (
+          <Text style={[styles.caption, styles.footerHint, { color: muted }]}>
+            {t('doctorProfile.selectFirst')}
+          </Text>
+        )}
         <CustomButton
           mode="contained"
-          onPress={handleMakeAppointment}
-          // Only spins on the slow path: a profile already in the store answers
-          // the gate without a request.
-          loading={isChecking}
-          disabled={isChecking}
-          style={styles.cta}
+          onPress={viewModel.openConfirmation}
+          disabled={!viewModel.canBook}
+          style={styles.footerButton}
         >
-          {t('doctorProfile.makeAppointment')}
+          {currentFee > 0
+            ? `${t('doctorProfile.appointment')}  •  ${taka(currentFee)}`
+            : t('doctorProfile.appointment')}
         </CustomButton>
       </View>
+
+      {/* ── Confirmation: nothing is sent until this is confirmed ── */}
+      <CustomBottomSheet visible={viewModel.isConfirming} onClose={viewModel.closeConfirmation}>
+        <Text style={[styles.sheetTitle, { color: theme.colors.onSurface }]}>
+          {t('doctorProfile.confirmationTitle')}
+        </Text>
+        <View style={[styles.summary, { borderColor: theme.colors.outlineVariant }]}>
+          {summary.map((row, index) => (
+            <View
+              key={row.label}
+              style={[
+                styles.summaryRow,
+                index > 0 && { borderTopWidth: 1, borderTopColor: theme.colors.outlineVariant },
+              ]}
+            >
+              <Text style={[styles.caption, { color: muted }]}>{row.label}</Text>
+              <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>{row.value}</Text>
+            </View>
+          ))}
+          <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: theme.colors.outlineVariant }]}>
+            <Text style={[styles.priceLabel, { color: theme.colors.onSurface }]}>
+              {t('doctorProfile.price')}
+            </Text>
+            <Text style={[styles.priceValue, { color: theme.colors.primary }]}>
+              {currentFee > 0 ? taka(currentFee) : '—'}
+            </Text>
+          </View>
+        </View>
+        <CustomButton
+          mode="contained"
+          onPress={handleConfirm}
+          loading={viewModel.isBooking}
+          style={styles.footerButton}
+        >
+          {t(viewModel.isBooking ? 'doctorProfile.booking' : 'doctorProfile.confirmBooking')}
+        </CustomButton>
+      </CustomBottomSheet>
+
+      <CustomDialog
+        visible={errorDialog.visible}
+        title={t('doctorProfile.errorTitle')}
+        message={errorDialog.message}
+        confirmText={t('common.ok')}
+        onConfirm={errorDialog.dismiss}
+        onDismiss={errorDialog.dismiss}
+        showCancel={false}
+      />
     </SafeAreaView>
   );
 });
@@ -536,254 +385,164 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  stateWrap: {
+  flex: {
+    flex: 1,
+  },
+  centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    paddingHorizontal: 24,
   },
-  retry: {
-    marginTop: 4,
+  centeredText: {
+    textAlign: 'center',
+  },
+  stateButton: {
+    marginTop: 16,
     borderRadius: 12,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
+    paddingTop: 4,
   },
   card: {
-    borderRadius: 16,
+    borderWidth: 1,
+    borderRadius: 18,
     padding: 14,
-    marginBottom: 14,
-    elevation: 1,
-    shadowColor: '#0B1030',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
   },
-  doctorRow: {
+  profileRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: 14,
   },
-  doctorInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  doctorName: {
+  name: {
     fontFamily: fontFamilies.bold,
-    fontSize: 16,
+    fontSize: 17,
   },
-  doctorSpecialty: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
+  specialty: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 13,
     marginTop: 2,
   },
-  doctorQualification: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    marginTop: 1,
-    lineHeight: 15,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 14,
-  },
-  statItem: {
+  inline: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginTop: 4,
   },
-  statText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 11,
+  caption: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
   },
-  practiceRow: {
+  stats: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+    gap: 8,
+    marginTop: 14,
+  },
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+  },
+  statValue: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
+  },
+  statLabel: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  practice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderTopWidth: 1,
     marginTop: 14,
     paddingTop: 12,
   },
-  practiceInfo: {
-    flex: 1,
-  },
-  practiceLabel: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-  },
-  practiceValue: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  practiceMeta: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    marginTop: 1,
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    borderRadius: 12,
-    padding: 4,
-  },
-  tabItem: {
-    flex: 1,
-    borderRadius: 9,
-    paddingVertical: 8,
+  practiceIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
-  },
-  tabItemText: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-  },
-  section: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 14,
-    marginTop: 18,
-    marginBottom: 10,
-  },
-  firstSection: {
-    marginTop: 16,
-  },
-  chipRow: {
-    paddingBottom: 6,
-  },
-  chip: {
-    marginRight: 8,
-    marginVertical: 0,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 12,
-  },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 6,
-  },
-  addressInfo: {
-    flex: 1,
-  },
-  addressName: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-  },
-  addressText: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  gridRow: {
-    flexDirection: 'row',
-  },
-  field: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  cell: {
-    borderWidth: 1,
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    // Collapse adjacent hairlines so the grid reads as one table, not stacked boxes.
-    marginRight: -1,
-    marginBottom: -1,
   },
-  labelCell: {
-    width: 92,
-  },
-  valueCell: {
-    flex: 1,
-  },
-  labelText: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-  },
-  valueText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 12,
-  },
-  slot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    marginBottom: 10,
-  },
-  dayPill: {
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    marginRight: 12,
-    minWidth: 52,
-    alignItems: 'center',
-  },
-  dayText: {
+  practiceName: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 12,
+    fontSize: 13.5,
   },
-  slotInfo: {
+  tabs: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    padding: 4,
+    marginTop: 14,
+    marginBottom: 16,
+  },
+  tab: {
     flex: 1,
-  },
-  slotTime: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-  },
-  slotMeta: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  emptySchedule: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  optionCard: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    borderRadius: 12,
-    padding: 12,
-  },
-  optionHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 10,
+    paddingVertical: 9,
+  },
+  tabText: {
+    fontSize: 13,
+  },
+  reviews: {
+    alignItems: 'center',
+    paddingVertical: 36,
     gap: 6,
   },
-  optionTitle: {
-    flex: 1,
+  reviewsTitle: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-  },
-  optionFee: {
-    fontFamily: fontFamilies.bold,
     fontSize: 15,
-    marginTop: 8,
-  },
-  optionMeta: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    marginTop: 2,
   },
   footer: {
+    borderTopWidth: 1,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 10,
   },
-  cta: {
+  footerHint: {
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  footerButton: {
     marginVertical: 0,
     borderRadius: 12,
+  },
+  sheetTitle: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 17,
+    marginBottom: 12,
+  },
+  summary: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 11,
+  },
+  summaryValue: {
+    flexShrink: 1,
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
+    textAlign: 'right',
+  },
+  priceLabel: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 14,
+  },
+  priceValue: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 16,
   },
 });
 

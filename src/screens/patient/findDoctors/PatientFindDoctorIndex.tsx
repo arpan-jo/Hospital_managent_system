@@ -1,14 +1,9 @@
-import React, { useCallback, useMemo } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import React, { useCallback } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import {
@@ -16,9 +11,10 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { DoctorSummary, useStores } from '@app/core';
+import { PortalDoctor, useStores } from '@app/core';
 import {
   CustomAvatar,
+  CustomButton,
   CustomChip,
   CustomNoData,
   CustomSearchbar,
@@ -27,11 +23,10 @@ import {
 import ScreenHeader from '../../../components/ScreenHeader';
 import { DrawerParamList } from '../../../navigation/DrawerNavigator';
 import { FindDoctorsStackParamList } from '../../../navigation/FindDoctorsStackNavigator';
-import {
-  ALL_SPECIALTIES,
-  useFindDoctorsViewModel,
-} from './useFindDoctorsViewModel';
+import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
+import { useFindDoctorsViewModel } from './useFindDoctorsViewModel';
 import DoctorListItem from './DoctorListItem';
+import TopRatedDoctors from './TopRatedDoctors';
 import FilterBottomSheet from './FilterBottomSheet';
 import { AiDoctorFinder } from './aiFinder/AiDoctorFinder';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
@@ -42,16 +37,14 @@ export const PatientFindDoctorIndex = observer(() => {
   const { t } = useTranslation();
   const navigation =
     useNavigation<NativeStackNavigationProp<FindDoctorsStackParamList>>();
-  const route =
-    useRoute<RouteProp<FindDoctorsStackParamList, 'PatientFindDoctorIndex'>>();
   const { authStore } = useStores();
-  const viewModel = useFindDoctorsViewModel(route.params?.specialty);
+  const viewModel = useFindDoctorsViewModel();
   const { ensureProfile } = useRequirePatientProfile();
 
   const insets = useSafeAreaInsets();
 
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
-  const userName = authStore.user?.fullName || 'N/A';
+  const userName = authStore.user?.fullName || t('common.na');
 
   const handleProfile = useCallback(
     () =>
@@ -61,31 +54,50 @@ export const PatientFindDoctorIndex = observer(() => {
     [navigation],
   );
 
-  const openDetails = useCallback(
-    (doctor: DoctorSummary) =>
-      navigation.navigate('DoctorDetails', { doctorId: doctor?.id ?? '' }),
-    [navigation],
-  );
-
-  // Booking is always *for* a patient profile, and a freshly registered account
-  // has none, so the gate sends them to create one before the booking screen.
-  const openBooking = useCallback(
-    async (doctor: DoctorSummary) => {
+  // A doctor's page is where the visit is booked, and a booking is always for a
+  // complete patient profile — so, as on the portal, the page opens only once
+  // the profile is complete; otherwise the patient is sent to finish it.
+  const openDoctor = useCallback(
+    async (doctor: PortalDoctor) => {
+      if (!doctor?.employeeId) return;
       if (!(await ensureProfile())) return;
-      navigation.navigate('CreateAppointment', { doctorId: doctor?.id ?? '' });
+      navigation.navigate('DoctorDetails', { employeeId: doctor.employeeId });
     },
     [navigation, ensureProfile],
   );
 
-  const hasActiveFilters = (viewModel.activeFilterCount ?? 0) > 0;
+  const hasSheetFilters = (viewModel.sheetFilterCount ?? 0) > 0;
+  const selectedDepartment = viewModel.filters?.department ?? '';
+  const doctorCount = viewModel.doctors?.length ?? 0;
 
-  const resultsLabel = useMemo(
-    () =>
-      t('findDoctors.resultsCount', {
-        count: viewModel.doctorListRequest?.data?.length ?? 0,
-      }),
-    [t, viewModel.doctorListRequest?.data?.length],
-  );
+  const renderDepartmentChip = (label: string, value: string) => {
+    const selected = selectedDepartment === value;
+
+    return (
+      <CustomChip
+        key={value || 'all'}
+        selected={selected}
+        onPress={() => viewModel?.setDepartment?.(value)}
+        compact
+        showSelectedCheck={false}
+        textColor={selected ? theme.colors.onPrimary : theme.colors.onSurface}
+        style={[
+          styles.chip,
+          {
+            backgroundColor: selected
+              ? theme.colors.primary
+              : theme.colors.surface,
+            borderColor: selected
+              ? theme.colors.primary
+              : theme.colors.outlineVariant,
+          },
+        ]}
+        textStyle={styles.chipText}
+      >
+        {label}
+      </CustomChip>
+    );
+  };
 
   return (
     <SafeAreaView
@@ -118,7 +130,7 @@ export const PatientFindDoctorIndex = observer(() => {
           style={[
             styles.filterButton,
             {
-              backgroundColor: hasActiveFilters
+              backgroundColor: hasSheetFilters
                 ? theme.colors.primary
                 : theme.colors.surface,
               borderColor: theme.colors.primary,
@@ -131,10 +143,10 @@ export const PatientFindDoctorIndex = observer(() => {
             name="tune-variant"
             size={18}
             color={
-              hasActiveFilters ? theme.colors.onPrimary : theme.colors.primary
+              hasSheetFilters ? theme.colors.onPrimary : theme.colors.primary
             }
           />
-          {viewModel.activeFilterCount > 0 ? (
+          {hasSheetFilters ? (
             <View
               style={[
                 styles.filterBadge,
@@ -145,7 +157,7 @@ export const PatientFindDoctorIndex = observer(() => {
               ]}
             >
               <Text style={styles.filterBadgeText}>
-                {viewModel.activeFilterCount}
+                {viewModel.sheetFilterCount}
               </Text>
             </View>
           ) : null}
@@ -157,12 +169,12 @@ export const PatientFindDoctorIndex = observer(() => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 100 },
+          { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE },
         ]}
       >
-        <AiDoctorFinder onOpenDoctor={openDetails} onBookDoctor={openBooking} />
+        <AiDoctorFinder onOpenDoctor={openDoctor} />
 
-        {viewModel.filterOptionsRequest?.isLoading ? (
+        {viewModel.isFilterOptionsLoading ? (
           <View style={styles.chipLoader}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
           </View>
@@ -173,93 +185,99 @@ export const PatientFindDoctorIndex = observer(() => {
             style={styles.chipScroll}
             contentContainerStyle={styles.chipRow}
           >
-            {(viewModel.filterOptionsRequest?.data?.specialties?.length ??
-              0) === 0 ? (
-              <CustomNoData showIcon={false} style={styles.noChips} />
-            ) : (
-              viewModel.filterOptionsRequest?.data?.specialties?.map(
-                specialty => {
-                  const selected =
-                    (viewModel.appliedFilters?.specialty || ALL_SPECIALTIES) ===
-                    specialty;
-                  return (
-                    <CustomChip
-                      key={specialty}
-                      selected={selected}
-                      onPress={() =>
-                        viewModel?.setSpecialtyFilter?.(
-                          specialty === ALL_SPECIALTIES ? '' : specialty,
-                        )
-                      }
-                      compact
-                      showSelectedCheck={false}
-                      textColor={
-                        selected
-                          ? theme.colors.onPrimary
-                          : theme.colors.onSurface
-                      }
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: selected
-                            ? theme.colors.primary
-                            : theme.colors.surface,
-                          borderColor: selected
-                            ? theme.colors.primary
-                            : theme.colors.outlineVariant,
-                        },
-                      ]}
-                      textStyle={styles.chipText}
-                    >
-                      {specialty?.trim() || specialty}
-                    </CustomChip>
-                  );
-                },
-              )
+            {renderDepartmentChip(t('findDoctors.all'), '')}
+            {viewModel.departments?.map(department =>
+              renderDepartmentChip(department?.trim() || department, department),
             )}
           </ScrollView>
         )}
+
+        {viewModel.showTopRated ? (
+          <View style={styles.topRated}>
+            <TopRatedDoctors doctors={viewModel.topRated} onOpen={openDoctor} />
+          </View>
+        ) : null}
 
         <View style={styles.sectionHeaderRow}>
           <Text
             style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
           >
-            {t('findDoctors.title')}
+            {t('findDoctors.allDoctors')}
+            <Text style={[styles.resultsCount, { color: theme.colors.onSurfaceVariant }]}>
+              {`  (${viewModel.totalCount ?? 0})`}
+            </Text>
           </Text>
-          <Text style={[styles.resultsCount, { color: theme.colors.primary }]}>
-            {resultsLabel}
-          </Text>
+          {/* A new search on its way, with the last results still listed. */}
+          {viewModel.isFetching && !viewModel.isLoading ? (
+            <ActivityIndicator size={14} color={theme.colors.primary} />
+          ) : null}
         </View>
 
-        {viewModel.doctorListRequest?.isLoading ? (
+        {viewModel.isLoading ? (
           <View style={styles.listLoader}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
           </View>
-        ) : (viewModel.doctorListRequest?.data?.length ?? 0) > 0 ? (
-          viewModel.doctorListRequest?.data?.map(doctor => (
-            <DoctorListItem
-              key={doctor?.id}
-              doctor={doctor}
-              onPress={openDetails}
-              onBook={openBooking}
-            />
-          ))
+        ) : doctorCount > 0 ? (
+          <>
+            {viewModel.doctors?.map(doctor => (
+              <DoctorListItem
+                key={doctor?.employeeId}
+                doctor={doctor}
+                onOpen={openDoctor}
+              />
+            ))}
+            {viewModel.hasMore ? (
+              <CustomButton
+                mode="outlined"
+                onPress={viewModel.loadMore}
+                loading={viewModel.isLoadingMore}
+                style={[styles.loadMore, { borderColor: theme.colors.primary }]}
+              >
+                {t('findDoctors.loadMore')}
+              </CustomButton>
+            ) : null}
+          </>
         ) : (
-          <CustomNoData
-            message={
-              viewModel.doctorListRequest?.error ?? t('findDoctors.noResults')
-            }
-            style={styles.noResults}
-          />
+          <View style={styles.noResults}>
+            <CustomNoData
+              message={
+                viewModel.error === null
+                  ? t('findDoctors.noResults')
+                  : viewModel.error || t('common.somethingWentWrong')
+              }
+            />
+            {viewModel.error !== null ? (
+              <CustomButton
+                mode="outlined"
+                onPress={viewModel.retry}
+                style={[styles.emptyAction, { borderColor: theme.colors.primary }]}
+              >
+                {t('common.retry')}
+              </CustomButton>
+            ) : (
+              <>
+                <Text style={[styles.emptyHint, { color: theme.colors.onSurfaceVariant }]}>
+                  {t('findDoctors.noResultsHint')}
+                </Text>
+                {viewModel.hasActiveFilters ? (
+                  <Pressable onPress={viewModel.resetFilters} hitSlop={8}>
+                    <Text style={[styles.clearLink, { color: theme.colors.primary }]}>
+                      {t('findDoctors.clearFilters')}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </>
+            )}
+          </View>
         )}
       </ScrollView>
 
       <FilterBottomSheet
         visible={viewModel.isFilterSheetVisible}
         onClose={viewModel.closeFilter}
-        filters={viewModel.appliedFilters}
-        specialties={viewModel.filterOptionsRequest?.data?.specialties ?? []}
-        locations={viewModel.filterOptionsRequest?.data?.locations ?? []}
+        filters={viewModel.filters}
+        departments={viewModel.departments}
+        genders={viewModel.genderOptions}
         onApply={viewModel.applyFilters}
         onReset={viewModel.resetFilters}
       />
@@ -347,20 +365,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resultsCount: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+  },
+  topRated: {
+    marginBottom: 20,
+  },
+  loadMore: {
+    marginTop: 4,
+    borderRadius: 12,
   },
   listLoader: {
     paddingVertical: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  noChips: {
-    paddingVertical: 8,
-    paddingHorizontal: 0,
-  },
   noResults: {
     marginTop: 24,
+    alignItems: 'center',
+  },
+  emptyHint: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  clearLink: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
+    marginTop: 12,
+  },
+  emptyAction: {
+    marginTop: 12,
+    borderRadius: 12,
   },
 });
 

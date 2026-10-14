@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AuthRepository } from '@app/core';
+import { AuthRepository, serverMessageOf } from '@app/core';
 import { useSignIn } from '../../../hooks/useSignIn';
 import { SIGNUP_ROLE } from '../signup/useSignupViewModel';
 
@@ -65,7 +65,7 @@ export const useSetPasswordViewModel = (params: SetPasswordParams) => {
           result = { status: 'createdNeedsLogin' };
         }
       } catch (e: any) {
-        result = { status: 'failed', message: e?.message };
+        result = { status: 'failed', message: serverMessageOf(e) };
       } finally {
         setIsLoading(false);
       }

@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
@@ -10,91 +10,83 @@ import {
   useRoute,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { formatLongDate, to12Hour } from '@app/core';
 import { CustomButton, fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
-import { AppointmentsStackParamList } from '../../../navigation/AppointmentsStackNavigator';
-import { DrawerParamList } from '../../../navigation/DrawerNavigator';
+import { FindDoctorsStackParamList } from '../../../navigation/FindDoctorsStackNavigator';
+import { TabParamList } from '../../../navigation/TabNavigator';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
+import { useMonthNames } from '../../../hooks/useMonthNames';
 import { useBookingSuccessViewModel } from './useBookingSuccessViewModel';
 
 export const BookingSuccessScreen = observer(() => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<AppointmentsStackParamList>>();
-  const route = useRoute<RouteProp<AppointmentsStackParamList, 'BookingSuccess'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<FindDoctorsStackParamList>>();
+  const route = useRoute<RouteProp<FindDoctorsStackParamList, 'BookingSuccess'>>();
   const insets = useSafeAreaInsets();
+  const monthNames = useMonthNames();
   // Light background — needs dark icons so the status bar stays legible.
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
   // Params are read defensively: a deep link can land here without them.
-  const params: Partial<AppointmentsStackParamList['BookingSuccess']> = route.params ?? {};
+  const params: Partial<FindDoctorsStackParamList['BookingSuccess']> = route.params ?? {};
   const {
-    doctorId = '',
-    date = '',
-    slotLabel = '',
-    location = '',
-    locationAddress = '',
-    token = 0,
-    amount = 0,
-    paymentMethod = '',
-    paymentStatus = '',
-    dueAmount = 0,
     doctorName = '',
     doctorSpecialty = '',
     patientName = '',
+    date = '',
+    time = '',
+    officeName = '',
+    token = 0,
+    consultationLabel = '',
+    amount = 0,
+    paymentStatus = '',
   } = params;
 
-  const viewModel = useBookingSuccessViewModel({
-    doctorId,
-    doctorName,
-    paymentMethod,
-    paymentStatus,
-    amount,
-    dueAmount,
-  });
+  const viewModel = useBookingSuccessViewModel({ paymentStatus, amount });
 
-  const doctor = viewModel?.doctor;
-
-  const handleBackToHome = useCallback(() => {
-    // This screen sits on top of the booking stack, so the stack has to unwind
-    // first — focusing the tab alone would leave the success screen mounted and
-    // "Back to Home" would look like it did nothing. `popToTop` lands on Find
-    // Doctors in the Home stack, and on the appointments list in the Activity
-    // stack, which the tab switch below then leaves for Home.
+  /** Back to the directory: the doctor's page under this screen is already gone. */
+  const handleBackToDoctors = useCallback(() => {
     navigation.popToTop();
-    navigation
-      .getParent<DrawerNavigationProp<DrawerParamList>>()
-      ?.navigate('MainTabs', { screen: 'HomeTab' });
   }, [navigation]);
 
-  // Android's hardware back must not walk back into the confirmation screen:
-  // the appointment is already booked, and confirming again would double-book.
+  /** Where the portal sends a patient after booking: their appointments. */
+  const handleViewAppointments = useCallback(() => {
+    // Switched on the tab navigator itself: sent through the drawer as
+    // `MainTabs` params, the switch was lost to the pop below.
+    navigation
+      .getParent<BottomTabNavigationProp<TabParamList>>()
+      ?.navigate('ActivityTab');
+    // So coming back to this tab shows the directory.
+    navigation.popToTop();
+  }, [navigation]);
+
+  // Android's hardware back leaves the same way the header's arrow does.
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener(
         'hardwareBackPress',
         () => {
-          handleBackToHome();
+          handleBackToDoctors();
           return true;
         },
       );
 
       return () => subscription?.remove?.();
-    }, [handleBackToHome]),
+    }, [handleBackToDoctors]),
   );
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Leading action goes home rather than back: the booking is already
-          placed, so the confirmation screen behind this one is a dead end. */}
       <ScreenHeader
         title={t('bookingSuccess.title')}
         leading="back"
-        onLeadingPress={handleBackToHome}
+        onLeadingPress={handleBackToDoctors}
       />
 
       <ScrollView
@@ -114,48 +106,33 @@ export const BookingSuccessScreen = observer(() => {
           {t('bookingSuccess.subtitle')}
         </Text>
 
+        <View style={[styles.tokenBox, { backgroundColor: theme.colors.primaryContainer }]}>
+          <Text style={[styles.tokenLabel, { color: theme.colors.onPrimaryContainer }]}>
+            {t('bookingSuccess.token')}
+          </Text>
+          <Text style={[styles.tokenValue, { color: theme.colors.primary }]}>{`#${token}`}</Text>
+        </View>
+
         <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <SummaryRow
-            label={t('bookingSuccess.doctor')}
-            value={doctorName || doctor?.name || t('common.na')}
-          />
-          <SummaryRow
-            label={t('details.specialty')}
-            value={doctorSpecialty || doctor?.specialty || t('common.na')}
-          />
+          <SummaryRow label={t('bookingSuccess.doctor')} value={doctorName || t('common.na')} />
+          {doctorSpecialty ? (
+            <SummaryRow label={t('doctorProfile.specialty')} value={doctorSpecialty} />
+          ) : null}
           {patientName ? (
-            <SummaryRow
-              label={t('bookAppointment.appointmentFor')}
-              value={patientName}
-            />
+            <SummaryRow label={t('doctorProfile.patient')} value={patientName} />
           ) : null}
-          <SummaryRow label={t('bookingSuccess.date')} value={date || t('common.na')} />
-          <SummaryRow label={t('bookingSuccess.time')} value={slotLabel || t('common.na')} />
-          <SummaryRow
-            label={t('bookingSuccess.location')}
-            value={location || t('common.na')}
-          />
-          {locationAddress ? (
-            <SummaryRow
-              label={t('createAppointment.chamberAddress')}
-              value={locationAddress}
-            />
+          {consultationLabel ? (
+            <SummaryRow label={t('doctorProfile.consultationOption')} value={consultationLabel} />
           ) : null}
           <SummaryRow
-            label={t('bookingSuccess.token')}
-            value={`#${token}`}
-            valueColor={theme.colors.primary}
+            label={t('bookingSuccess.date')}
+            value={formatLongDate(date, monthNames) || t('common.na')}
           />
-          <SummaryRow
-            label={t('details.consultationFee')}
-            value={viewModel?.amountLabel ?? ''}
-          />
-          {viewModel?.hasDue ? (
-            <SummaryRow
-              label={t('booking.dueAmount')}
-              value={viewModel?.dueAmountLabel ?? ''}
-            />
+          <SummaryRow label={t('bookingSuccess.time')} value={to12Hour(time) || t('common.na')} />
+          {officeName ? (
+            <SummaryRow label={t('doctorProfile.office')} value={officeName} />
           ) : null}
+          <SummaryRow label={t('doctorProfile.price')} value={viewModel?.amountLabel ?? ''} />
           <SummaryRow
             label={t('bookingSuccess.payment')}
             value={viewModel?.paymentLabel ?? ''}
@@ -163,20 +140,18 @@ export const BookingSuccessScreen = observer(() => {
           />
         </View>
 
-        <View style={[styles.reminder, { backgroundColor: theme.colors.primaryContainer }]}>
-          <Icon name="calendar-check-outline" size={16} color={theme.colors.primary} />
-          <Text style={[styles.reminderText, { color: theme.colors.primary }]}>
-            {t('bookingSuccess.reminder')}
-          </Text>
-        </View>
-
         <CustomButton
           mode="contained"
-          onPress={handleBackToHome}
+          onPress={handleViewAppointments}
           style={styles.primaryButton}
         >
-          {t('bookingSuccess.backToHome')}
+          {t('bookingSuccess.viewAppointments')}
         </CustomButton>
+        <Pressable onPress={handleBackToDoctors} hitSlop={8} accessibilityRole="button">
+          <Text style={[styles.secondaryLink, { color: theme.colors.primary }]}>
+            {t('doctorProfile.backToDoctors')}
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -185,12 +160,10 @@ export const BookingSuccessScreen = observer(() => {
 const SummaryRow = ({
   label,
   value,
-  valueColor,
   last,
 }: {
   label: string;
   value: string;
-  valueColor?: string;
   last?: boolean;
 }) => {
   const theme = useTheme();
@@ -204,7 +177,7 @@ const SummaryRow = ({
       <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
       <Text
         numberOfLines={1}
-        style={[styles.summaryValue, { color: valueColor ?? theme.colors.onSurface }]}
+        style={[styles.summaryValue, { color: theme.colors.onSurface }]}
       >
         {value}
       </Text>
@@ -268,20 +241,27 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: 'right',
   },
-  reminder: {
-    flexDirection: 'row',
+  tokenBox: {
     alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 20,
+    minWidth: 120,
+    borderRadius: 16,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    marginBottom: 14,
   },
-  reminderText: {
-    flex: 1,
-    fontFamily: fontFamilies.medium,
-    fontSize: 11,
-    lineHeight: 15,
+  tokenLabel: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+  },
+  tokenValue: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 28,
+  },
+  secondaryLink: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 14,
   },
   primaryButton: {
     width: '100%',

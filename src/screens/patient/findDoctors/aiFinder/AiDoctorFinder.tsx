@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { DoctorSummary } from '@app/core';
+import { PortalDoctor } from '@app/core';
 import { fontFamilies, useAppTheme } from '@app/ui';
 import { withAlpha } from '../../../../components/ai/aiPalette';
 import { AiFinderAnswer } from './AiFinderAnswer';
@@ -39,11 +39,10 @@ const INPUT_MAX_HEIGHT = 84;
 const INPUT_MAX_LENGTH = 500;
 
 interface AiDoctorFinderProps {
-  onOpenDoctor: (doctor: DoctorSummary) => void;
-  onBookDoctor: (doctor: DoctorSummary) => void;
+  onOpenDoctor: (doctor: PortalDoctor) => void;
 }
 
-/** Why the last ask came back with nothing, and what the service said, if anything. */
+/** Why the last ask came back with nothing — in the service's words when it gave any. */
 const NoticeBanner = memo<{ notice: AiFinderNotice; message: string }>(function NoticeBanner({
   notice,
   message,
@@ -57,22 +56,16 @@ const NoticeBanner = memo<{ notice: AiFinderNotice; message: string }>(function 
       style={[styles.notice, { backgroundColor: theme.colors.errorContainer }]}
       accessibilityLiveRegion="polite"
     >
-      <Icon name={notice === 'network' ? 'wifi-off' : 'alert-circle-outline'} size={18} color={color} />
-      <View style={styles.noticeBody}>
-        <Text style={[styles.noticeText, { color }]}>{t(`findDoctors.ai.notices.${notice}`)}</Text>
-        {message ? (
-          <Text selectable style={[styles.noticeMessage, { color }]}>
-            {message}
-          </Text>
-        ) : null}
-      </View>
+      <Icon name="alert-circle-outline" size={18} color={color} />
+      <Text selectable style={[styles.noticeText, { color }]}>
+        {message || t(`findDoctors.ai.notices.${notice}`)}
+      </Text>
     </View>
   );
 });
 
 export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder({
   onOpenDoctor,
-  onBookDoctor,
 }) {
   const theme = useAppTheme();
   const { t } = useTranslation();
@@ -95,6 +88,8 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
     recordingMs,
     recordingLevels,
     isRecordingSilent,
+    isAudioPlaying,
+    toggleAudio,
   } = useAiDoctorFinderViewModel();
 
   const isBusy = phase !== 'idle';
@@ -164,7 +159,7 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             onSubmitEditing={() => submit()}
-            placeholder={t(match ? 'findDoctors.ai.followUpPlaceholder' : 'findDoctors.ai.placeholder')}
+            placeholder={t('findDoctors.ai.placeholder')}
             placeholderTextColor={theme.colors.onSurfaceVariant}
             selectionColor={theme.colors.primary}
             multiline
@@ -228,7 +223,13 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
       ) : null}
 
       {match ? (
-        <AiFinderAnswer asked={asked} match={match} onOpenDoctor={onOpenDoctor} onBookDoctor={onBookDoctor} />
+        <AiFinderAnswer
+          asked={asked}
+          match={match}
+          onOpenDoctor={onOpenDoctor}
+          isAudioPlaying={isAudioPlaying}
+          onToggleAudio={toggleAudio}
+        />
       ) : null}
 
       <View style={styles.disclaimer}>
@@ -322,20 +323,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  noticeBody: {
-    flex: 1,
-    gap: 2,
-  },
   noticeText: {
+    flex: 1,
     fontFamily: fontFamilies.medium,
     fontSize: 12.5,
     lineHeight: 17,
-  },
-  noticeMessage: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    lineHeight: 15,
-    opacity: 0.85,
   },
   examples: {
     alignItems: 'center',

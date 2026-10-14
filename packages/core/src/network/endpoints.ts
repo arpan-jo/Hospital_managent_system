@@ -11,8 +11,17 @@ export const ENDPOINTS = {
   fileUpload: '/hms/FileUpload/upload',
   /** Serves a stored blob. Anonymous, so the url needs no token. */
   fileDownload: '/hms/FileUpload/download',
-  filters: '/hms/doctors/filters',
-  doctors: '/hms/doctors',
+  // ── Find Doctors: the patient portal's doctor directory ────────────────────
+  portalDoctorsSearch: '/hms/portal/doctors/SearchDoctors',
+  portalDoctorById: '/hms/portal/doctors/GetDoctorById',
+  portalDoctorFilterOptions: '/hms/portal/doctors/GetFilterOptions',
+  // ── Find Doctors: booking with a doctor ────────────────────────────────────
+  consultationDetail:
+    '/hms/AppointmentConsultation/GetAppointmentConsultationDetail',
+  consultationSlots:
+    '/hms/AppointmentConsultation/GetAvailableAppointmentSlots',
+  consultationCreateAppointment:
+    '/hms/AppointmentConsultation/CreateAppointment',
   appointments: '/hms/appointments',
   /** What the doctor recorded during a visit, keyed by its appointment. */
   consultations: '/hms/consultations',
@@ -23,7 +32,7 @@ export const ENDPOINTS = {
 
   // ── Find Doctors: AI doctor finder — pepobot, on AI_ASSIST_URL ────────────
   /** A patient's symptoms into a recommended specialist and doctors from this hospital. */
-  aiDoctorFind: '/doctors_find',
+  aiDoctorFind: '/hms_doctors_find',
 
   // ── AI voice — Whisper speech-to-text, on AI_STT_URL ──────────────────────
   /** A recording of a patient's symptoms into text. */

@@ -1,174 +1,497 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  DoctorDetailsInfo,
-  DoctorDetailsRepository,
-  DoctorLocation,
-  groupThousands,
+  AppointmentBookingRepository,
+  AvailableSlot,
+  ConsultBookedResult,
+  ConsultationType,
+  DoctorConsultationDetail,
+  FindDoctorsRepository,
+  formatLongDate,
+  PatientProfile,
+  PatientRepository,
+  PortalDoctor,
+  serverMessageOf,
+  to12Hour,
+  toBookingFailure,
+  useStores,
 } from '@app/core';
-import { RequestState } from './useFindDoctorsViewModel';
+import { useMonthNames } from '../../../hooks/useMonthNames';
+import { dayAbbrOfDate, dayIndexOf, nextDateForDay } from './weekdays';
 
-/** One day + one time window, flattened so the screen renders a single list. */
-export interface DoctorScheduleRow {
-  key: string;
-  dayOfWeek: string;
-  /** 0 = Sunday, matching the `days` locale block. -1 when the API day is unknown. */
-  dayIndex: number;
-  startTime: string;
-  endTime: string;
-  availableCount: number;
-  maxCapacity: number;
+export type DoctorTab = 'schedule' | 'about' | 'reviews';
+
+/** One visit type the doctor offers, with the fee it is booked at. */
+export interface ConsultationOption {
+  type: ConsultationType;
+  /** Translation key of its name. */
+  labelKey: string;
+  fee: number;
 }
 
-const EMPTY_DETAILS_REQUEST: RequestState<DoctorDetailsInfo | null> = {
-  isLoading: false,
-  data: null,
-  error: null,
-};
+/** A placed booking, with what the success screen shows about it. */
+export interface PlacedBooking {
+  result: ConsultBookedResult;
+  consultationLabelKey: string;
+  amount: number;
+}
+
+export type BookingOutcome =
+  | { ok: true; booking: PlacedBooking }
+  | { ok: false; message: string };
+
+/** The visit types the portal books, in its order, each tied to the fee that prices it. */
+const CONSULTATION_TYPES: {
+  type: ConsultationType;
+  labelKey: string;
+  feeOf: (detail: DoctorConsultationDetail) => number;
+}[] = [
+  { type: 'new_patient', labelKey: 'doctorProfile.newPatient', feeOf: detail => detail?.fee ?? 0 },
+  { type: 'follow_up', labelKey: 'doctorProfile.followUpVisit', feeOf: detail => detail?.followUpFee ?? 0 },
+  { type: 'report', labelKey: 'doctorProfile.reportVisit', feeOf: detail => detail?.reportVisitFee ?? 0 },
+];
+
+const NOT_FOUND = 404;
 
 /**
- * Audio and video calls are switched off — on the portal (its own
- * `CALLS_ENABLED`) and in the app, which has no calling at all — so their
- * options are not offered. Flip back to true once calling ships.
+ * A doctor's page, as the portal has it: who the doctor is, and the booking —
+ * a date, one of that date's windows, optionally a time inside it, a visit
+ * type and a complaint — confirmed in one request.
+ *
+ * The doctor is read by `employeeId`; the row that comes back carries the
+ * account, branch and office every later call needs. The visit is always for
+ * the signed-in patient's own profile.
  */
-const CALLS_ENABLED = false;
-const CALL_OPTION_TYPES = ['audio', 'video'];
-
-/**
- * Everything the Doctor Details screen shows comes from `GET /api/doctors/{id}`.
- * The screen stays a pure view: fetching, chamber selection and the derived
- * labels all live here.
- */
-export const useDoctorDetailsViewModel = (doctorId: string) => {
+export const useDoctorDetailsViewModel = (employeeId: number) => {
   const { t } = useTranslation();
+  const { authStore, profileStore } = useStores();
+  const monthNames = useMonthNames();
 
-  const [doctorDetailsRequest, setDoctorDetailsRequest] = useState<
-    RequestState<DoctorDetailsInfo | null>
-  >({ ...EMPTY_DETAILS_REQUEST, isLoading: true });
+  const [doctor, setDoctor] = useState<PortalDoctor | null>(null);
+  const [detail, setDetail] = useState<DoctorConsultationDetail | null>(null);
+  const [patient, setPatient] = useState<PatientProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  /** The server's words when the doctor could not be read; '' when it said none. */
+  const [loadError, setLoadError] = useState('');
+  /** The server's words when the doctor's terms could not be read. */
+  const [detailError, setDetailError] = useState('');
+  const [isNotFound, setIsNotFound] = useState(false);
 
-  const [selectedLocationId, setSelectedLocationId] = useState('');
+  const [activeTab, setActiveTab] = useState<DoctorTab>('schedule');
 
-  const fetchDoctorDetails = useCallback(async () => {
-    // A deep link can land on this screen without an id — nothing to fetch.
-    if (!doctorId) {
-      setDoctorDetailsRequest(EMPTY_DETAILS_REQUEST);
+  const [date, setDate] = useState('');
+  const [isCustomDate, setIsCustomDate] = useState(false);
+  const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [isSlotsLoading, setIsSlotsLoading] = useState(false);
+  /**
+   * The window as it was when picked. Kept whole, as on the web, so the choice
+   * stays on screen even if a later read of the day's windows fails or no
+   * longer lists it.
+   */
+  const [pickedSlot, setPickedSlot] = useState<AvailableSlot | null>(null);
+  const selectedSlotId = pickedSlot?.slotId ?? 0;
+  /** A time picked inside the window; '' leaves the choice to the server ("Auto"). */
+  const [subSlotTime, setSubSlotTime] = useState('');
+  const [isSubSlotsOpen, setIsSubSlotsOpen] = useState(false);
+  const [consultationType, setConsultationType] = useState<ConsultationType | ''>('');
+  const [reason, setReason] = useState('');
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
+
+  /** Bumped by every slot request, so an answer for an earlier date is dropped. */
+  const slotsRequestRef = useRef(0);
+  /** Bumped by every load, so one doctor's answer never lands on another's page. */
+  const loadRequestRef = useRef(0);
+
+  // ── The doctor, their terms, and the patient the visit is for ───────────────
+
+  const load = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
+    const isCurrent = () => requestId === loadRequestRef.current;
+
+    setIsLoading(true);
+    setLoadError('');
+    setDetailError('');
+    setIsNotFound(false);
+    // Whatever was chosen belonged to the page as it was.
+    setDate('');
+    setPickedSlot(null);
+    setSubSlotTime('');
+    setIsSubSlotsOpen(false);
+    setConsultationType('');
+    setIsConfirming(false);
+
+    try {
+      const row = await FindDoctorsRepository.getDoctorById(employeeId);
+      if (!isCurrent()) return;
+      if (!row) {
+        setDoctor(null);
+        setIsNotFound(true);
+        return;
+      }
+      setDoctor(row);
+
+      // The two reads are independent; neither blocks the page if it fails —
+      // the booking's own checks say what is missing.
+      let termsError = '';
+      const [terms, profile] = await Promise.all([
+        AppointmentBookingRepository.getConsultationDetail(row).catch(error => {
+          console.log('getConsultationDetail error ==>', error?.message);
+          termsError = serverMessageOf(error);
+          return null;
+        }),
+        PatientRepository.getProfile().catch(error => {
+          console.log('[DoctorDetails] getProfile error ==>', error?.message);
+          return null;
+        }),
+      ]);
+
+      if (!isCurrent()) return;
+
+      // A profile kept from before the registration id was stored has none;
+      // booking for registration 0 would be booking for nobody.
+      const kept = profileStore.patientProfileData;
+      setDetail(terms);
+      setDetailError(termsError);
+      setPatient(profile ?? ((kept?.registrationId ?? 0) > 0 ? kept : null));
+      if (profile) profileStore.setPatientProfile(profile);
+    } catch (error: any) {
+      if (!isCurrent()) return;
+
+      console.log('getDoctorById error ==>', error?.message);
+      setDoctor(null);
+      if (error?.status === NOT_FOUND) {
+        setIsNotFound(true);
+      } else {
+        setLoadError(serverMessageOf(error));
+      }
+    } finally {
+      if (isCurrent()) setIsLoading(false);
+    }
+  }, [employeeId, profileStore]);
+
+  /** Reads the doctor's terms again — the page is usable without them, but nothing can be booked. */
+  const reloadDetail = useCallback(async () => {
+    if (!doctor) return;
+
+    try {
+      setDetail(await AppointmentBookingRepository.getConsultationDetail(doctor));
+      setDetailError('');
+    } catch (error: any) {
+      console.log('getConsultationDetail error ==>', error?.message);
+      setDetailError(serverMessageOf(error));
+    }
+  }, [doctor]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const patientRegistrationId = patient?.registrationId ?? 0;
+
+  // ── Slots of the chosen date ────────────────────────────────────────────────
+
+  const fetchSlots = useCallback(async () => {
+    if (!doctor || !date) {
+      setSlots([]);
       return;
     }
 
-    setDoctorDetailsRequest(prev => ({ ...prev, isLoading: true, error: null }));
+    const requestId = ++slotsRequestRef.current;
+    setIsSlotsLoading(true);
 
     try {
-      const response = await DoctorDetailsRepository.getDoctorDetails(doctorId);
-      setDoctorDetailsRequest({
-        isLoading: false,
-        data: response ?? null,
-        error: null,
+      const response = await AppointmentBookingRepository.getAvailableSlots({
+        employeeId: doctor?.employeeId,
+        accountId: doctor?.accountId,
+        branchId: doctor?.branchId,
+        appointmentDate: date,
+        patientRegistrationId,
       });
-      setSelectedLocationId(response?.locations?.[0]?.locationId ?? '');
+      if (requestId !== slotsRequestRef.current) return;
+      setSlots(response ?? []);
     } catch (error: any) {
-      console.log('fetchDoctorDetails error ==>', error?.message);
-      setDoctorDetailsRequest({
-        isLoading: false,
-        data: null,
-        error: error?.message ?? null,
-      });
+      if (requestId !== slotsRequestRef.current) return;
+      console.log('getAvailableSlots error ==>', error?.message);
+      setSlots([]);
+    } finally {
+      if (requestId === slotsRequestRef.current) setIsSlotsLoading(false);
     }
-  }, [doctorId]);
+  }, [doctor, date, patientRegistrationId]);
 
   useEffect(() => {
-    fetchDoctorDetails();
-  }, [fetchDoctorDetails]);
+    fetchSlots();
+  }, [fetchSlots]);
 
-  const doctor = doctorDetailsRequest?.data ?? null;
+  // ── What the choices are ────────────────────────────────────────────────────
 
-  /** Falls back to the first chamber, so fees/schedule always have a source. */
-  const selectedLocation = useMemo<DoctorLocation | null>(
+  /** Only a visit type with a fee set is offered. */
+  const consultationOptions = useMemo<ConsultationOption[]>(
     () =>
-      doctor?.locations?.find(
-        location => location?.locationId === selectedLocationId,
-      ) ??
-      doctor?.locations?.[0] ??
-      null,
-    [doctor, selectedLocationId],
+      detail
+        ? CONSULTATION_TYPES.map(option => ({
+            type: option.type,
+            labelKey: option.labelKey,
+            fee: option.feeOf(detail),
+          })).filter(option => option.fee > 0)
+        : [],
+    [detail],
   );
 
-  const scheduleRows = useMemo<DoctorScheduleRow[]>(() => {
-    const rows: DoctorScheduleRow[] = [];
+  // The first one offered is chosen until the patient picks another.
+  useEffect(() => {
+    if (!consultationType && consultationOptions.length > 0) {
+      setConsultationType(consultationOptions[0]?.type ?? '');
+    }
+  }, [consultationOptions, consultationType]);
 
-    selectedLocation?.schedule?.forEach(day =>
-      day?.timeSlots?.forEach(slot =>
-        rows?.push({
-          key: `${day?.dayOfWeek}-${slot?.startTime}-${slot?.endTime}`,
-          dayOfWeek: day?.dayOfWeek ?? '',
-          dayIndex: day?.dayIndex ?? -1,
-          startTime: slot?.startTime ?? '',
-          endTime: slot?.endTime ?? '',
-          availableCount: slot?.availableCount ?? 0,
-          maxCapacity: slot?.maxCapacity ?? 0,
-        }),
-      ),
+  const selectedOption = useMemo(
+    () => consultationOptions.find(option => option.type === consultationType) ?? null,
+    [consultationOptions, consultationType],
+  );
+  const currentFee = selectedOption?.fee ?? 0;
+
+  /** The weekdays the doctor sits — the only ones a weekday pill can pick. */
+  const scheduledDays = useMemo(
+    () => new Set(detail?.scheduledDays ?? []),
+    [detail?.scheduledDays],
+  );
+
+  /** The chosen window, re-read from the latest list so its counts stay current. */
+  const selectedSlot = useMemo(
+    () => slots.find(slot => slot?.slotId === selectedSlotId) ?? pickedSlot,
+    [slots, selectedSlotId, pickedSlot],
+  );
+
+  /** What "Auto" would give right now — a preview; the server makes the real choice. */
+  const autoTime = useMemo(() => {
+    const subSlots = selectedSlot?.subSlots ?? [];
+    return (
+      subSlots.find(sub => !sub?.isBooked && !sub?.isPast)?.startTime ||
+      subSlots.find(sub => !sub?.isBooked)?.startTime ||
+      ''
     );
+  }, [selectedSlot]);
 
-    return rows;
-  }, [selectedLocation]);
+  /** The time shown for the booking — never sent as such. */
+  const bookingTime = subSlotTime || autoTime || selectedSlot?.startTime || '';
 
-  const taka = useCallback(
-    (amount?: number | null) => `৳${groupThousands(amount ?? 0)}`,
-    [],
+  const officeName = detail?.officeName || doctor?.location || '';
+  const displayName = useMemo(() => {
+    const name = doctor?.fullName ?? '';
+    return !name || name.startsWith('Dr.') ? name : `Dr. ${name}`;
+  }, [doctor?.fullName]);
+
+  /** "Wednesday" for the chosen date, from the `dayNames` locale block. */
+  const dayName = useMemo(() => {
+    const index = dayIndexOf(dayAbbrOfDate(date));
+    return index >= 0 ? t(`dayNames.${index}`) : '';
+  }, [date, t]);
+
+  const canBook = Boolean(date) && selectedSlotId > 0;
+
+  // ── Choosing ────────────────────────────────────────────────────────────────
+
+  const pickDate = useCallback((next: string) => {
+    setDate(next);
+    setPickedSlot(null);
+    setSubSlotTime('');
+    setIsSubSlotsOpen(false);
+  }, []);
+
+  const pickWeekday = useCallback(
+    (abbr: string) => pickDate(nextDateForDay(abbr)),
+    [pickDate],
   );
 
-  /** "৳1,200 - ৳1,600", or a single amount when the chambers charge the same. */
-  const feeRangeLabel = useMemo(() => {
-    const min = doctor?.minFee ?? 0;
-    const max = doctor?.maxFee ?? 0;
-
-    if (!min && !max) return t('common.na');
-    if (!max || min === max) return taka(min || max);
-    return `${taka(min)} - ${taka(max)}`;
-  }, [doctor?.minFee, doctor?.maxFee, t, taka]);
-
-  /** The API has no bio field — the About blurb is built from the profile facts. */
-  const aboutSummary = useMemo(() => {
-    if (!doctor) return '';
-
-    const role =
-      [doctor?.specialty, doctor?.designation]?.filter(Boolean)?.join(', ') ??
-      '';
-
-    return t('doctorProfile.aboutSummary', {
-      name: doctor?.name || t('common.na'),
-      role: role || t('common.na'),
-      hospital: doctor?.hospital || t('common.na'),
-      years: doctor?.experienceYears ?? 0,
-    });
-  }, [doctor, t]);
-
-  const enabledConsultationOptions = useMemo(
-    () =>
-      doctor?.consultationOptions?.filter(
-        option =>
-          option?.enabled &&
-          (CALLS_ENABLED || !CALL_OPTION_TYPES.includes(String(option?.type ?? '').toLowerCase())),
-      ) ?? [],
-    [doctor?.consultationOptions],
+  /** A weekday pill is lit when the chosen date is the one it stands for. */
+  const isWeekdayActive = useCallback(
+    (abbr: string) => Boolean(date) && date === nextDateForDay(abbr),
+    [date],
   );
 
-  const siteCount = doctor?.locations?.length ?? 0;
+  const toggleCustomDate = useCallback(() => setIsCustomDate(prev => !prev), []);
+
+  const pickSlot = useCallback((slot: AvailableSlot) => {
+    setPickedSlot(slot ?? null);
+    setSubSlotTime('');
+    setIsSubSlotsOpen(false);
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setPickedSlot(null);
+    setSubSlotTime('');
+    setIsConfirming(false);
+  }, []);
+
+  const toggleSubSlots = useCallback(() => setIsSubSlotsOpen(prev => !prev), []);
+
+  const openConfirmation = useCallback(() => {
+    if (canBook) setIsConfirming(true);
+  }, [canBook]);
+  const closeConfirmation = useCallback(() => setIsConfirming(false), []);
+
+  // ── Booking ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Places the booking. On a refusal the reason comes back as a message and the
+   * screen is left ready for another try: the confirmation closes, and when the
+   * time itself was lost the window's times are read again.
+   */
+  const book = useCallback(async (): Promise<BookingOutcome> => {
+    if (isBooking) return { ok: false, message: '' };
+
+    // A refusal closes the confirmation, so the reason is not hidden under it.
+    const refuse = (message: string): BookingOutcome => {
+      setIsConfirming(false);
+      return { ok: false, message };
+    };
+
+    // The same checks, in the same order, as the portal makes.
+    if (!date) return refuse(t('doctorProfile.selectDate'));
+    if (!selectedSlotId) return refuse(t('doctorProfile.selectSlot'));
+    if (!consultationType || !selectedOption) {
+      return refuse(t('doctorProfile.selectConsultationType'));
+    }
+    if (!doctor || !patient) return refuse(t('doctorProfile.selectPatient'));
+
+    setIsBooking(true);
+    try {
+      const result = await AppointmentBookingRepository.createAppointment({
+        doctorId: doctor?.employeeId,
+        patientRegistrationId,
+        accountId: doctor?.accountId,
+        branchId: doctor?.branchId,
+        officeId: doctor?.officeId,
+        userId: authStore.user?.userId ?? 0,
+        appointmentDate: date,
+        slotId: selectedSlotId,
+        time: subSlotTime,
+        type: consultationType,
+        reason,
+        paymentAmount: currentFee,
+      });
+
+      return {
+        ok: true,
+        booking: {
+          result,
+          consultationLabelKey: selectedOption.labelKey,
+          amount: currentFee,
+        },
+      };
+    } catch (error: any) {
+      const failure = toBookingFailure(error);
+      const suggested = failure?.suggestedSlot;
+      setIsConfirming(false);
+
+      if (failure?.code === 'SLOT_FULL' && suggested) {
+        return {
+          ok: false,
+          message:
+            failure?.message ||
+            t('doctorProfile.slotFull', {
+              date: formatLongDate(suggested?.date ?? '', monthNames),
+              time: to12Hour(suggested?.time || suggested?.startTime || ''),
+            }),
+        };
+      }
+
+      if (failure?.code === 'SUB_SLOT_TAKEN') {
+        // Back to "Auto", with the times open and read afresh.
+        setSubSlotTime('');
+        setIsSubSlotsOpen(true);
+        fetchSlots();
+        return {
+          ok: false,
+          message:
+            failure?.message ||
+            (suggested?.time
+              ? t('doctorProfile.timeTakenNext', { time: to12Hour(suggested.time) })
+              : t('doctorProfile.timeTaken')),
+        };
+      }
+
+      return {
+        ok: false,
+        message: failure?.message || t('doctorProfile.bookingFailed'),
+      };
+    } finally {
+      setIsBooking(false);
+    }
+  }, [
+    isBooking,
+    date,
+    selectedSlotId,
+    consultationType,
+    selectedOption,
+    doctor,
+    patient,
+    patientRegistrationId,
+    authStore.user?.userId,
+    subSlotTime,
+    reason,
+    currentFee,
+    fetchSlots,
+    monthNames,
+    t,
+  ]);
 
   return {
-    doctorDetailsRequest,
     doctor,
-    fetchDoctorDetails,
-    selectedLocation,
-    selectedLocationId: selectedLocation?.locationId ?? '',
-    selectLocation: setSelectedLocationId,
-    scheduleRows,
-    enabledConsultationOptions,
-    feeRangeLabel,
-    aboutSummary,
-    siteCount,
-    taka,
+    detail,
+    patient,
+    isLoading,
+    loadError,
+    detailError,
+    isNotFound,
+    reload: load,
+    reloadDetail,
+    displayName,
+    officeName,
+    activeTab,
+    setActiveTab,
+    // date
+    date,
+    dayName,
+    isCustomDate,
+    toggleCustomDate,
+    scheduledDays,
+    pickDate,
+    pickWeekday,
+    isWeekdayActive,
+    // slots
+    slots,
+    isSlotsLoading,
+    selectedSlot,
+    selectedSlotId,
+    pickSlot,
+    clearSelection,
+    // times inside a window
+    subSlotTime,
+    setSubSlotTime,
+    isSubSlotsOpen,
+    toggleSubSlots,
+    autoTime,
+    bookingTime,
+    // visit type and complaint
+    consultationOptions,
+    consultationType,
+    setConsultationType,
+    selectedOption,
+    currentFee,
+    reason,
+    setReason,
+    // confirmation
+    canBook,
+    isConfirming,
+    openConfirmation,
+    closeConfirmation,
+    isBooking,
+    book,
   };
 };
+
+export type DoctorDetailsViewModel = ReturnType<typeof useDoctorDetailsViewModel>;
 
 export default useDoctorDetailsViewModel;

@@ -23,65 +23,9 @@ export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
   'no_show',
 ];
 
-/**
- * `strType` on tblAppointments — free-text nvarchar(20), no check constraint,
- * defaulting to `in_person`. The values actually stored are `in_person`,
- * `follow_up`, `report` and `video` (`audio` matches the doctor's audio
- * consultation option); `visit` also appears but only on doctor-created rows,
- * so the patient app never sends it.
- */
-export type AppointmentType =
-  | 'in_person'
-  | 'follow_up'
-  | 'report'
-  | 'audio'
-  | 'video';
-
-/** `strPaymentMethod` — cash, mobile_banking and cheque are in use today. */
-export type PaymentMethod = 'cash' | 'card' | 'mobile_banking' | 'cheque';
-
-export interface CreateAppointmentPayload {
-  doctorUserId: string | number;
-  locationId: string | number;
-  /** 'YYYY-MM-DD'. */
-  appointmentDate: string;
-  /** 'HH:mm' — the slot's raw start time, not a formatted label. */
-  time: string;
-  type: AppointmentType;
-  /** Identifies who the appointment is for, e.g. 'PAT-20260804-0002'. */
-  patientCode: string;
-  paymentMethod: PaymentMethod;
-  /** Chief complaint. Omitted from the request when blank. */
-  reason?: string;
-}
-
-export interface CreatedAppointment {
-  appointmentId: number;
-  doctorUserId: string;
-  locationId: string;
-  /** 'YYYY-MM-DD'. */
-  date: string;
-  time: string;
-  status: string;
-  type: string;
-  reason: string;
-  tokenNumber: number;
-  patientName: string;
-  patientCode: string;
-  doctorName: string;
-  doctorSpecialty: string;
-  locationName: string;
-  locationAddress: string;
-  paymentAmount: number;
-  paidAmount: number;
-  dueAmount: number;
-  paymentStatus: string;
-  paymentMethod: string;
-}
-
 export interface Appointment {
   id: string;
-  /** `doctorUserId` — the id the doctor details screen reads by. */
+  /** `doctorUserId`. */
   doctorId: string;
   /**
    * `patientUserId`. One account holds several patient profiles, so the doctor's
@@ -95,8 +39,8 @@ export interface Appointment {
   time: string;
   status: AppointmentStatus;
   /**
-   * `strType`. Free text, so it is not narrowed to {@link AppointmentType}:
-   * doctor-created rows carry values the patient app never books, e.g. `visit`.
+   * `strType`. Free text, so it is not narrowed: the portal books `new_patient`,
+   * `follow_up` and `report`, and doctor-created rows carry others, e.g. `visit`.
    */
   type: string;
   /** Chief complaint. */
@@ -204,30 +148,6 @@ export const toAppointment = (raw: any): Appointment => ({
   currentMedication: toText(raw?.currentMedication),
 });
 
-/** The subset of the 201 body the booking flow actually renders. */
-const toCreatedAppointment = (raw: any): CreatedAppointment => ({
-  appointmentId: toNumber(raw?.appointmentId),
-  doctorUserId: toText(raw?.doctorUserId),
-  locationId: toText(raw?.locationId),
-  date: toText(raw?.appointmentDate)?.slice(0, 10) ?? '',
-  time: toText(raw?.time),
-  status: toText(raw?.status),
-  type: toText(raw?.type),
-  reason: toText(raw?.reason),
-  tokenNumber: toNumber(raw?.tokenNumber),
-  patientName: toText(raw?.patientName),
-  patientCode: toText(raw?.patientCode),
-  doctorName: toText(raw?.doctorName),
-  doctorSpecialty: toText(raw?.doctorSpecialty),
-  locationName: toText(raw?.locationName),
-  locationAddress: toText(raw?.locationAddress),
-  paymentAmount: toNumber(raw?.paymentAmount),
-  paidAmount: toNumber(raw?.paidAmount),
-  dueAmount: toNumber(raw?.dueAmount),
-  paymentStatus: toText(raw?.paymentStatus),
-  paymentMethod: toText(raw?.paymentMethod),
-});
-
 export const AppointmentRepository = {
   /**
    * `GET /api/appointments`. The token identifies the patient, so the list
@@ -277,42 +197,6 @@ export const AppointmentRepository = {
     const response = await apiRequest<any>(api_params);
 
     return response ? toAppointment(response) : null;
-  },
-
-  /**
-   * `POST /api/appointments`. The server owns the token number, the fee and the
-   * payment status — the request never sends an amount, so the success screen
-   * must render what comes back rather than what the form had.
-   */
-  createAppointment: async (
-    payload: CreateAppointmentPayload,
-  ): Promise<CreatedAppointment> => {
-    const response = await apiRequest<any>({
-      url: ENDPOINTS.appointments,
-      method: 'POST',
-      baseUrl: API_URL,
-      data: {
-        doctorUserId: toNumber(payload?.doctorUserId),
-        locationId: toNumber(payload?.locationId),
-        appointmentDate: payload?.appointmentDate ?? '',
-        time: payload?.time ?? '',
-        type: payload?.type ?? 'in_person',
-        patientCode: payload?.patientCode ?? '',
-        paymentMethod: payload?.paymentMethod ?? 'cash',
-        // Optional fields the booking form does not collect yet — sent as null
-        // so the shape always matches what the API documents.
-        reason: payload?.reason?.trim() || null,
-        symptoms: null,
-        allergies: null,
-        problemDescription: null,
-        currentMedication: null,
-        paymentReference: null,
-        couponCode: null,
-        receivableAmount: null,
-      },
-    });
-
-    return toCreatedAppointment(response);
   },
 };
 

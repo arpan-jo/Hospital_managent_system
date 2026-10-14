@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AuthRepository } from '@app/core';
+import { useTranslation } from 'react-i18next';
+import { AuthRepository, serverMessageOf } from '@app/core';
 
 export interface ForgotPasswordForm {
   email: string;
@@ -30,6 +31,7 @@ export interface ForgotPasswordSubmitResult {
  * "this account exists".
  */
 export const useForgotPasswordViewModel = () => {
+  const { t } = useTranslation();
   const { control, handleSubmit } = useForm<ForgotPasswordForm>({
     defaultValues: { email: '' },
     mode: 'onBlur',
@@ -48,7 +50,7 @@ export const useForgotPasswordViewModel = () => {
         result = { ...data, message: res?.message };
       })();
     } catch (e: any) {
-      error = e?.message || 'Failed to send the reset link';
+      error = serverMessageOf(e) || t('forgotPassword.sendFailed');
     } finally {
       setIsLoading(false);
     }

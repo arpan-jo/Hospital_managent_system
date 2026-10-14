@@ -4,6 +4,8 @@ import type { PatientProfile } from '../repositories/PatientRepository';
 export const PatientProfileModel = types.model('PatientProfileModel', {
   patientProfileId: types.number,
   userId: types.number,
+  // Optional: a profile saved by a build before this field has none.
+  registrationId: types.optional(types.number, 0),
   patientCode: types.string,
   relationship: types.string,
   fullName: types.string,

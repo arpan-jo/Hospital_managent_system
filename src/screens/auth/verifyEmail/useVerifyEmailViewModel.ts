@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AuthRepository } from '@app/core';
+import { AuthRepository, serverMessageOf } from '@app/core';
 import { SIGNUP_ROLE } from '../signup/useSignupViewModel';
 
 export const CODE_LENGTH = 6;
 const DEFAULT_EXPIRY_SECONDS = 284; // 04:44, used when the send-OTP response didn't carry one
 
-export type VerifyEmailStatus = 'verified' | 'invalid';
+/** `incomplete`: fewer than six digits, nothing sent. `rejected`: the server said no. */
+export type VerifyEmailStatus = 'verified' | 'incomplete' | 'rejected';
 
 export interface VerifyEmailResult {
   status: VerifyEmailStatus;
-  /** Backend-provided message, shown as the toast on both outcomes. */
+  /** The server's own words, on either outcome; '' or absent when it sent none. */
   message?: string;
   /** The verified code, which the register call on the next screen needs. */
   code?: string;
@@ -58,7 +59,7 @@ export const useVerifyEmailViewModel = (
       setSecondsLeft(res?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS);
       return { ok: true, message: res?.message };
     } catch (e: any) {
-      return { ok: false, message: e?.message };
+      return { ok: false, message: serverMessageOf(e) };
     } finally {
       setIsResending(false);
     }
@@ -67,19 +68,19 @@ export const useVerifyEmailViewModel = (
   const submit = async (): Promise<VerifyEmailResult> => {
     const code = digits.join('');
     if (code.length !== CODE_LENGTH) {
-      return { status: 'invalid' };
+      return { status: 'incomplete' };
     }
 
     setIsLoading(true);
     try {
       const res = await AuthRepository.verifyOtp(email, code);
       return {
-        status: res?.isValid ? 'verified' : 'invalid',
+        status: res?.isValid ? 'verified' : 'rejected',
         message: res?.message,
         code,
       };
     } catch (e: any) {
-      return { status: 'invalid', message: e?.message };
+      return { status: 'rejected', message: serverMessageOf(e) };
     } finally {
       setIsLoading(false);
     }

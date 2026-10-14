@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useStores } from '@app/core';
+import { serverMessageOf, useStores } from '@app/core';
 import { useSignIn } from '../../../hooks/useSignIn';
 
 export interface LoginForm {
@@ -68,7 +68,12 @@ export const useLoginViewModel = () => {
         await signIn(data?.email, data?.password);
         toastStore.show(t('login.welcome'), 'success');
       } catch (e: any) {
-        error = e?.message || t('login.failed');
+        // The server's words first; a refusal made here in the app (an
+        // account this app does not serve) carries its own reason.
+        error =
+          serverMessageOf(e) ||
+          (e?.originalError ? '' : e?.message) ||
+          t('login.failed');
       } finally {
         setIsLoading(false);
       }

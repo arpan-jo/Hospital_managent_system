@@ -1,58 +1,65 @@
+/**
+ * The patient portal's doctor directory: a paged, server-filtered search, the
+ * options its filters offer, and one doctor by id. These are the calls the
+ * web's Find Doctors page makes, with the same parameters.
+ */
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
 
-export type DoctorGender = 'Male' | 'Female';
-
-export type DoctorFilterResponse = {
-  specialties: string[];
-  locations: string[];
-};
-
-export interface DoctorSummary {
-  id: string;
-  name: string;
+/** One doctor as the portal lists them — `PortalDoctorDto` on the API. */
+export interface PortalDoctor {
+  /** What identifies a doctor everywhere in the portal: the list, the profile, a booking. */
+  employeeId: number;
+  fullName: string;
+  /** The doctor's designation, e.g. "Senior Consultant". */
   specialty: string;
-  secondarySpecialty: string;
-  designation: string;
-  qualification: string;
-  experienceYears: number;
-  minFee: number;
-  maxFee: number;
+  departmentName: string;
+  gender: string;
+  /** A stored file's id or a full url; '' when the doctor has no photo. */
   photoUrl: string;
-  hospital: string;
-  department: string;
-  gender: DoctorGender | '';
-  locations: string[];
+  experienceYears: number;
+  consultationFee: number;
+  followUpFee: number;
+  location: string;
+  /** Bookable weekdays as the API names them — "Mon", "Tue", … */
+  availableDays: string[];
   isAvailable: boolean;
-  /**
-   * Weekdays any of the doctor's chambers is open, as indexes into the `days`
-   * locale block (0 = Sunday). `[]` when they have published none; `null` when
-   * the source sends no such list — the AI finder's suggestions, or a backend
-   * deployed before the field existed — and the card then shows no week row.
-   */
-  availableDays: number[] | null;
+  accountId: number;
+  branchId: number;
+  officeId: number;
 }
 
-export interface DoctorListQuery {
-  specialty?: string;
-  location?: string;
-  gender?: string;
-  availability?: string;
+export interface PortalDoctorPage {
+  data: PortalDoctor[];
+  /** How many doctors match in all, not how many this page holds. */
+  totalCount: number;
+}
+
+export interface PortalDoctorFilterOptions {
+  departments: string[];
+  specialties: string[];
+  genders: string[];
+}
+
+export interface PortalDoctorSearchParams {
+  /** Matched server-side against name, specialty and department. */
   search?: string;
+  department?: string;
+  gender?: string;
+  /**
+   * A weekday abbreviation ("Mon" … "Sun"). "Today" is resolved to one before
+   * it is sent, so the day is the patient's own rather than the server's.
+   */
+  availableDay?: string;
+  availableOnly?: boolean;
+  sortBy?: 'name' | 'experience';
+  /** Zero-based. */
+  pageNo?: number;
+  pageSize?: number;
 }
 
-const toDoctorListParams = (query?: DoctorListQuery) => {
-  const params: Record<string, string> = {};
-
-  if (query?.specialty) params.specialty = query?.specialty;
-  if (query?.location) params.location = query?.location;
-  if (query?.gender) params.gender = query?.gender;
-  if (query?.availability) params.availability = query?.availability;
-  if (query?.search?.trim()) params.search = query?.search?.trim();
-
-  return params;
-};
+export const PORTAL_DOCTOR_PAGE_SIZE = 12;
 
 const toText = (value: any): string => String(value ?? '').trim();
 
@@ -61,102 +68,111 @@ const toNumber = (value: any): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const toTextList = (raw: any): string[] =>
-  Array.isArray(raw) ? raw?.map(toText)?.filter(Boolean) ?? [] : [];
-
-const toFilterValueList = (raw: any): string[] =>
+/** Words kept exactly as sent — a filter value goes back to the API verbatim. */
+const toOptionList = (raw: any): string[] =>
   Array.isArray(raw)
     ? raw
         ?.map((item: any) => String(item ?? ''))
         ?.filter(item => item?.trim()) ?? []
     : [];
 
-const toQualification = (raw: any): string =>
-  [raw?.degree1, raw?.degree2, raw?.fellowship]
-    ?.map(toText)
-    ?.filter(Boolean)
-    ?.join(', ') ?? '';
-
-const toGender = (raw: any): DoctorGender | '' => {
-  const gender = toText(raw);
-  return gender === 'Male' || gender === 'Female' ? gender : '';
-};
-
-/** The API's day words, as indexes into the `days` locale block (0 = Sunday). */
-const DAY_INDEX: Record<string, number> = {
-  sun: 0,
-  mon: 1,
-  tue: 2,
-  wed: 3,
-  thu: 4,
-  fri: 5,
-  sat: 6,
-};
-
-/**
- * `availableDays` ("Mon", "Tue", …) as day indexes, unknown words dropped.
- * `null` when the payload has no such list at all, which is not the same as a
- * doctor who has published no days.
- */
-const toAvailableDays = (raw: any): number[] | null => {
-  if (!Array.isArray(raw)) return null;
-
-  const indexes = raw
-    ?.map(day => DAY_INDEX[toText(day).slice(0, 3).toLowerCase()])
-    ?.filter((index): index is number => index !== undefined);
-  return [...new Set(indexes ?? [])];
-};
-
-/**
- * One doctor as the list shows them. Exported for the AI doctor finder, whose
- * suggestions carry the same fields as `GET /api/doctors`.
- */
-export const toDoctorSummary = (raw: any): DoctorSummary => ({
-  id: toText(raw?.userId),
-  name: toText(raw?.fullName),
-  specialty: toText(raw?.primarySpecialization),
-  secondarySpecialty: toText(raw?.secondarySpecialization),
-  designation: toText(raw?.designation),
-  qualification: toQualification(raw),
-  // `||`, as the portal reads it: the API sends 0 for a figure nobody filled
-  // in, which must not hide the other one.
-  experienceYears: toNumber(raw?.totalExperience) || toNumber(raw?.yearsOfPractice),
-  minFee: toNumber(raw?.minConsultationFee),
-  maxFee: toNumber(raw?.maxConsultationFee),
+/** Defensive mapping — every field on the payload can come back null. */
+export const toPortalDoctor = (raw: any): PortalDoctor => ({
+  employeeId: toNumber(raw?.employeeId),
+  fullName: toText(raw?.fullName),
+  specialty: toText(raw?.specialty),
+  departmentName: toText(raw?.departmentName),
+  gender: toText(raw?.gender),
   photoUrl: toText(raw?.photoUrl),
-  hospital: toText(raw?.hospitalClinic),
-  department: toText(raw?.department),
-  gender: toGender(raw?.gender),
-  locations: toTextList(raw?.locationNames),
+  experienceYears: toNumber(raw?.experienceYears),
+  consultationFee: toNumber(raw?.consultationFee),
+  followUpFee: toNumber(raw?.followUpFee),
+  location: toText(raw?.location),
+  availableDays: Array.isArray(raw?.availableDays)
+    ? raw?.availableDays?.map(toText)?.filter(Boolean) ?? []
+    : [],
   isAvailable: Boolean(raw?.isAvailable),
-  availableDays: toAvailableDays(raw?.availableDays),
+  accountId: toNumber(raw?.accountId),
+  branchId: toNumber(raw?.branchId),
+  officeId: toNumber(raw?.officeId),
 });
 
+/**
+ * The query as the web builds it: an empty filter is left out rather than sent
+ * blank, the search is trimmed, and the page always goes.
+ */
+const toSearchQuery = (params?: PortalDoctorSearchParams) => {
+  const query: Record<string, string | number | boolean> = {};
+
+  const search = params?.search?.trim();
+  if (search) query.search = search;
+  if (params?.department) query.department = params.department;
+  if (params?.gender) query.gender = params.gender;
+  if (params?.availableDay) query.availableDay = params.availableDay;
+  if (params?.availableOnly) query.availableOnly = true;
+  if (params?.sortBy) query.sortBy = params.sortBy;
+  query.pageNo = params?.pageNo ?? 0;
+  query.pageSize = params?.pageSize ?? PORTAL_DOCTOR_PAGE_SIZE;
+
+  return query;
+};
+
 export const FindDoctorsRepository = {
-  getFilters: async (): Promise<DoctorFilterResponse> => {
+  /** `GET /hms/portal/doctors/SearchDoctors` — one page of the matching doctors. */
+  searchDoctors: async (
+    params?: PortalDoctorSearchParams,
+  ): Promise<PortalDoctorPage> => {
     const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.filters,
+      url: ENDPOINTS.portalDoctorsSearch,
+      method: 'GET',
+      baseUrl: API_URL,
+      params: toSearchQuery(params),
+      isConsole: true,
+      isConsoleParams: true,
+    };
+    const response = await apiRequest<any>(api_params);
+
+    const data = Array.isArray(response?.data)
+      ? response?.data?.map(toPortalDoctor) ?? []
+      : [];
+
+    return {
+      data,
+      // Never below what this page holds, even if the payload left the count out.
+      totalCount: Math.max(toNumber(response?.totalCount), data.length),
+    };
+  },
+
+  /** `GET /hms/portal/doctors/GetFilterOptions` — what the filters can offer. */
+  getFilterOptions: async (): Promise<PortalDoctorFilterOptions> => {
+    const api_params: ApiRequestOptions = {
+      url: ENDPOINTS.portalDoctorFilterOptions,
       method: 'GET',
       baseUrl: API_URL,
     };
     const response = await apiRequest<any>(api_params);
 
     return {
-      specialties: toFilterValueList(response?.specialties),
-      locations: toFilterValueList(response?.locations),
+      departments: toOptionList(response?.departments),
+      specialties: toOptionList(response?.specialties),
+      genders: toOptionList(response?.genders),
     };
   },
 
-  getDoctors: async (query?: DoctorListQuery): Promise<DoctorSummary[]> => {
+  /** `GET /hms/portal/doctors/GetDoctorById?employeeId=` — null when there is no such doctor. */
+  getDoctorById: async (employeeId: number): Promise<PortalDoctor | null> => {
+    const id = toNumber(employeeId);
+    if (!id) return null;
+
     const api_params: ApiRequestOptions = {
-      url: ENDPOINTS.doctors,
+      url: ENDPOINTS.portalDoctorById,
       method: 'GET',
       baseUrl: API_URL,
-      params: toDoctorListParams(query),
+      params: { employeeId: id },
     };
     const response = await apiRequest<any>(api_params);
 
-    return Array.isArray(response) ? response?.map(toDoctorSummary) ?? [] : [];
+    return toNumber(response?.employeeId) ? toPortalDoctor(response) : null;
   },
 };
 

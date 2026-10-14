@@ -146,10 +146,3 @@ export const fileExtensionLabel = (filename: string | undefined | null): string 
   const parts = (filename ?? '').split('.');
   return parts.length > 1 ? (parts.pop() ?? '').toUpperCase() : '';
 };
-
-/** Years of experience as shown on the doctor card: "< 1 yr" / "1 yr" / "7 yrs". */
-export const experienceLabel = (years?: number | null): string => {
-  const value = years ?? 0;
-  if (value < 1) return '< 1 yr';
-  return `${groupThousands(Math.floor(value))} ${value < 2 ? 'yr' : 'yrs'}`;
-};

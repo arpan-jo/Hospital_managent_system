@@ -1,6 +1,5 @@
 import {
   groupThousands,
-  experienceLabel,
   formatMoney,
   formatShortDate,
   formatDayMonthYear,
@@ -75,16 +74,5 @@ describe('stripHonorific', () => {
     expect(stripHonorific('Professor')).toBe('Professor');
     expect(stripHonorific('')).toBe('');
     expect(stripHonorific(null)).toBe('');
-  });
-});
-
-describe('experienceLabel', () => {
-  it('pluralises and handles sub-year values', () => {
-    expect(experienceLabel(0)).toBe('< 1 yr');
-    expect(experienceLabel(0.5)).toBe('< 1 yr');
-    expect(experienceLabel(1)).toBe('1 yr');
-    expect(experienceLabel(7)).toBe('7 yrs');
-    expect(experienceLabel(undefined)).toBe('< 1 yr');
-    expect(experienceLabel(null)).toBe('< 1 yr');
   });
 });

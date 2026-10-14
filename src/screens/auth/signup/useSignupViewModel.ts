@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { AuthRepository } from '@app/core';
+import { AuthRepository, serverMessageOf } from '@app/core';
 
 /** This app signs up patients only — the role every sign-up call sends. */
 export const SIGNUP_ROLE = 'Patient';
@@ -72,7 +72,7 @@ export const useSignupViewModel = () => {
         };
       })();
     } catch (e: any) {
-      error = e?.message || 'Failed to send verification code';
+      error = serverMessageOf(e) || t('signup.sendFailed');
     } finally {
       setIsLoading(false);
     }

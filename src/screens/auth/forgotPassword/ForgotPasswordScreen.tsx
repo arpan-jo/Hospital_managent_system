@@ -25,6 +25,8 @@ export const ForgotPasswordScreen = observer(() => {
   // Address the link went to, and the flag for the confirmation panel. The
   // reset itself happens on the web, so this screen has nowhere to navigate.
   const [sentTo, setSentTo] = useState<string | null>(null);
+  /** The server's own confirmation; '' when it sent none. */
+  const [sentMessage, setSentMessage] = useState('');
 
   const goBack = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -40,6 +42,7 @@ export const ForgotPasswordScreen = observer(() => {
       }
       return;
     }
+    setSentMessage(data?.message?.trim() ?? '');
     setSentTo(data?.email?.trim() ?? '');
   }, [viewModel, errorDialog]);
 
@@ -87,7 +90,7 @@ export const ForgotPasswordScreen = observer(() => {
               </View>
 
               <Text style={descriptionStyle}>
-                {t('forgotPassword.sentDescription')}
+                {sentMessage || t('forgotPassword.sentDescription')}
               </Text>
               <Text style={emailStyle}>{sentTo}</Text>
               <Text style={descriptionStyle}>

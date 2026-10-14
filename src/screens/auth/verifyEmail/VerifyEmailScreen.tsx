@@ -33,8 +33,12 @@ export const VerifyEmailScreen = observer(() => {
 
   const handleVerify = useCallback(async () => {
     const { status, message, code } = await viewModel.submit();
-    if (status === 'invalid' || !code) {
-      errorDialog.show(message || t('verifyEmail.invalidCode'));
+    if (status === 'incomplete') {
+      errorDialog.show(t('verifyEmail.invalidCode'));
+      return;
+    }
+    if (status === 'rejected' || !code) {
+      errorDialog.show(message || t('verifyEmail.verifyFailed'));
       return;
     }
     toastStore.show(message || t('verifyEmail.verified'), 'success');

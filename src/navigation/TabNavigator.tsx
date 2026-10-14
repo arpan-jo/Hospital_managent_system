@@ -9,7 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
 import { fontFamilies } from '@app/ui';
-import ProfileStackNavigator from './ProfileStackNavigator';
+import { NavigatorScreenParams } from '@react-navigation/native';
+import ProfileStackNavigator, {
+  ProfileStackParamList,
+} from './ProfileStackNavigator';
 import FindDoctorsStackNavigator from './FindDoctorsStackNavigator';
 import AppointmentsStackNavigator from './AppointmentsStackNavigator';
 import MyPrescriptionsStackNavigator from './MyPrescriptionsStackNavigator';
@@ -18,7 +21,7 @@ export type TabParamList = {
   HomeTab: undefined;
   ActivityTab: undefined;
   PrescriptionsTab: undefined;
-  ProfileTab: undefined;
+  ProfileTab: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
 type TabConfig = {

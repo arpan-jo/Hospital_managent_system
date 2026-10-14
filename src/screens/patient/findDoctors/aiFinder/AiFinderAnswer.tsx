@@ -1,9 +1,9 @@
 import React, { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { AiDoctorMatch, DoctorSummary } from '@app/core';
+import { AiDoctorMatch, PortalDoctor } from '@app/core';
 import { fontFamilies, useAppTheme } from '@app/ui';
 import { withAlpha } from '../../../../components/ai/aiPalette';
 import DoctorListItem from '../DoctorListItem';
@@ -20,15 +20,18 @@ interface AiFinderAnswerProps {
   /** What was asked last; '' when it is not known. */
   asked: string;
   match: AiDoctorMatch;
-  onOpenDoctor: (doctor: DoctorSummary) => void;
-  onBookDoctor: (doctor: DoctorSummary) => void;
+  onOpenDoctor: (doctor: PortalDoctor) => void;
+  /** Whether the answer's summary is being read aloud right now. */
+  isAudioPlaying: boolean;
+  onToggleAudio: () => void;
 }
 
 export const AiFinderAnswer = memo<AiFinderAnswerProps>(function AiFinderAnswer({
   asked,
   match,
   onOpenDoctor,
-  onBookDoctor,
+  isAudioPlaying,
+  onToggleAudio,
 }) {
   const theme = useAppTheme();
   const { t } = useTranslation();
@@ -52,6 +55,25 @@ export const AiFinderAnswer = memo<AiFinderAnswerProps>(function AiFinderAnswer(
               <Text selectable style={[styles.bubbleText, { color: theme.colors.onSurface }]}>
                 {match.message}
               </Text>
+            ) : null}
+
+            {match?.audio ? (
+              <Pressable
+                onPress={onToggleAudio}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={t(isAudioPlaying ? 'findDoctors.ai.stopListening' : 'findDoctors.ai.listen')}
+                style={[styles.listen, { backgroundColor: theme.colors.surface }]}
+              >
+                <Icon
+                  name={isAudioPlaying ? 'stop-circle-outline' : 'volume-high'}
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text style={[styles.listenText, { color: theme.colors.primary }]}>
+                  {t(isAudioPlaying ? 'findDoctors.ai.stopListening' : 'findDoctors.ai.listen')}
+                </Text>
+              </Pressable>
             ) : null}
 
             {match?.specialist ? (
@@ -80,7 +102,7 @@ export const AiFinderAnswer = memo<AiFinderAnswerProps>(function AiFinderAnswer(
       ) : null}
 
       {match?.topMatch ? (
-        <AiTopMatchCard doctor={match.topMatch} onPress={onOpenDoctor} onBook={onBookDoctor} />
+        <AiTopMatchCard doctor={match.topMatch} onOpen={onOpenDoctor} />
       ) : null}
 
       {others.length ? (
@@ -91,7 +113,7 @@ export const AiFinderAnswer = memo<AiFinderAnswerProps>(function AiFinderAnswer(
               : t('findDoctors.ai.othersOnly', { count: others.length })}
           </Text>
           {others.map(doctor => (
-            <DoctorListItem key={doctor?.id} doctor={doctor} onPress={onOpenDoctor} onBook={onBookDoctor} />
+            <DoctorListItem key={doctor?.employeeId} doctor={doctor} onOpen={onOpenDoctor} />
           ))}
         </View>
       ) : null}
@@ -110,6 +132,20 @@ export const AiFinderAnswer = memo<AiFinderAnswerProps>(function AiFinderAnswer(
 });
 
 const styles = StyleSheet.create({
+  listen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 10,
+  },
+  listenText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 12,
+  },
   answer: {
     gap: 12,
   },

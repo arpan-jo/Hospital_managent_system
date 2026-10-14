@@ -3,52 +3,50 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { DoctorSummary, experienceLabel, getFileUrl } from '@app/core';
+import { getFileUrl, PortalDoctor, stripHonorific } from '@app/core';
 import { CustomAvatar, CustomButton, fontFamilies, useAppTheme } from '@app/ui';
 import { withAlpha } from '../../../../components/ai/aiPalette';
-import { formatFeeRange } from '../DoctorListItem';
+import { AVAILABLE_COLOR, taka } from '../DoctorListItem';
 
 /**
  * The doctor AI picked first. Built like the list's own doctor card — same
- * fee, same Book — but outlined in the brand blue under an "AI top match"
+ * fee, same button — but outlined in the brand blue under an "AI top match"
  * badge, so the pick reads as the answer, not one row among many.
  */
 
 interface AiTopMatchCardProps {
-  doctor: DoctorSummary;
-  onPress: (doctor: DoctorSummary) => void;
-  onBook: (doctor: DoctorSummary) => void;
+  doctor: PortalDoctor;
+  /** Opens the doctor's page, as every doctor card does. */
+  onOpen: (doctor: PortalDoctor) => void;
 }
 
 const AVATAR_SIZE = 52;
 
-/** The list card's own "available" green. */
-const AVAILABLE_GREEN = '#1B9C5D';
-
 export const AiTopMatchCard = memo<AiTopMatchCardProps>(function AiTopMatchCard({
   doctor,
-  onPress,
-  onBook,
+  onOpen,
 }) {
   const theme = useAppTheme();
   const { t } = useTranslation();
 
-  const handlePress = useCallback(() => onPress(doctor), [onPress, doctor]);
-  const handleBook = useCallback(() => onBook(doctor), [onBook, doctor]);
+  const handleOpen = useCallback(() => onOpen(doctor), [onOpen, doctor]);
 
   const photoUri = getFileUrl(doctor?.photoUrl);
+  const initialsFrom = stripHonorific(doctor?.fullName) || doctor?.fullName || '?';
+  const experienceYears = doctor?.experienceYears ?? 0;
+  const fee = doctor?.consultationFee ?? 0;
   const meta = [
-    doctor?.experienceYears ? `${experienceLabel(doctor.experienceYears)} Exp.` : '',
-    doctor?.locations?.[0] || doctor?.hospital,
+    doctor?.location || t('findDoctors.locationNotListed'),
+    experienceYears > 0 ? t('findDoctors.yearsExp', { count: experienceYears }) : '',
   ]
     .filter(Boolean)
-    .join(' • ');
+    .join('  •  ');
 
   return (
     <Pressable
-      onPress={handlePress}
+      onPress={handleOpen}
       accessibilityRole="button"
-      accessibilityLabel={doctor?.name}
+      accessibilityLabel={doctor?.fullName}
       style={[
         styles.card,
         {
@@ -68,8 +66,8 @@ export const AiTopMatchCard = memo<AiTopMatchCardProps>(function AiTopMatchCard(
         <View>
           <CustomAvatar
             type={photoUri ? 'image' : 'text'}
-            value={photoUri || doctor?.name || '?'}
-            fallback={doctor?.name}
+            value={photoUri || initialsFrom}
+            fallback={initialsFrom}
             size={AVATAR_SIZE}
           />
           {doctor?.isAvailable ? (
@@ -79,19 +77,17 @@ export const AiTopMatchCard = memo<AiTopMatchCardProps>(function AiTopMatchCard(
 
         <View style={styles.info}>
           <Text numberOfLines={1} style={[styles.name, { color: theme.colors.onSurface }]}>
-            {doctor?.name || t('common.na')}
+            {doctor?.fullName || t('common.na')}
           </Text>
           <Text numberOfLines={1} style={[styles.specialty, { color: theme.colors.primary }]}>
-            {doctor?.specialty || doctor?.designation || t('common.na')}
+            {doctor?.specialty || t('findDoctors.specialtyNotListed')}
           </Text>
-          {doctor?.qualification ? (
-            <Text numberOfLines={1} style={[styles.meta, { color: theme.colors.onSurfaceVariant }]}>
-              {doctor.qualification}
-            </Text>
-          ) : null}
+          <Text numberOfLines={1} style={[styles.meta, { color: theme.colors.onSurfaceVariant }]}>
+            {doctor?.departmentName || t('findDoctors.departmentNotListed')}
+          </Text>
           {meta ? (
             <View style={styles.metaRow}>
-              <Icon name="hospital-building" size={12} color={theme.colors.onSurfaceVariant} />
+              <Icon name="map-marker-outline" size={12} color={theme.colors.onSurfaceVariant} />
               <Text
                 numberOfLines={1}
                 style={[styles.meta, styles.metaText, { color: theme.colors.onSurfaceVariant }]}
@@ -104,21 +100,25 @@ export const AiTopMatchCard = memo<AiTopMatchCardProps>(function AiTopMatchCard(
       </View>
 
       <View style={[styles.footer, { borderTopColor: theme.colors.outlineVariant }]}>
-        <View>
-          <Text style={[styles.feeLabel, { color: theme.colors.onSurfaceVariant }]}>
-            {t('details.consultationFee')}
-          </Text>
+        {fee > 0 ? (
           <Text style={[styles.fee, { color: theme.colors.primary }]}>
-            {formatFeeRange(doctor?.minFee ?? 0, doctor?.maxFee ?? 0, t('common.na'))}
+            {taka(fee)}
+            <Text style={[styles.feeLabel, { color: theme.colors.onSurfaceVariant }]}>
+              {` ${t('findDoctors.perVisit')}`}
+            </Text>
           </Text>
-        </View>
+        ) : (
+          <Text style={[styles.feeLabel, { color: theme.colors.onSurfaceVariant }]}>
+            {t('findDoctors.feeOnRequest')}
+          </Text>
+        )}
         <CustomButton
           mode="contained"
-          onPress={handleBook}
+          onPress={handleOpen}
           style={styles.book}
           labelStyle={styles.bookLabel}
         >
-          {t('findDoctors.bookAppointment')}
+          {t(doctor?.isAvailable ? 'findDoctors.bookNow' : 'findDoctors.viewProfile')}
         </CustomButton>
       </View>
     </Pressable>
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     height: 13,
     borderRadius: 7,
     borderWidth: 2,
-    backgroundColor: AVAILABLE_GREEN,
+    backgroundColor: AVAILABLE_COLOR,
   },
   info: {
     flex: 1,

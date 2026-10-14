@@ -6,6 +6,8 @@ import FileRepository, { UploadFile } from './FileRepository';
 export interface PatientProfile {
   patientProfileId: number;
   userId: number;
+  /** The registration a booking is made for; 0 when the profile has none yet. */
+  registrationId: number;
   patientCode: string;
   relationship: string;
   fullName: string;
@@ -107,6 +109,7 @@ const toTitleCase = (value: string): string =>
 const toPatientProfile = (raw: any): PatientProfile => ({
   patientProfileId: Number(raw?.patientProfileId ?? 0),
   userId: Number(raw?.userId ?? 0),
+  registrationId: Number(raw?.registrationId ?? 0) || 0,
   patientCode: toText(raw?.patientCode),
   // "self" marks the account holder's own profile; anything else is a relative.
   relationship: toText(raw?.relationship)?.toLowerCase() ?? '',
@@ -195,6 +198,21 @@ const toProfilePayload = (input?: Partial<NewFamilyMember>) => ({
   emergencyContact: input?.emergencyContact?.trim() || null,
   emergencyPhone: input?.emergencyPhone?.trim() || null,
 });
+
+/**
+ * Whether a profile carries what a booking needs — the portal's own rule:
+ * name, date of birth, phone, blood type and gender all filled in.
+ */
+export const isPatientProfileComplete = (
+  profile?: PatientProfile | null,
+): boolean =>
+  Boolean(
+    profile?.fullName?.trim() &&
+      profile?.dateOfBirth &&
+      profile?.phone?.trim() &&
+      profile?.bloodType &&
+      profile?.gender,
+  );
 
 export const PatientRepository = {
   getProfile: async (): Promise<PatientProfile> => {

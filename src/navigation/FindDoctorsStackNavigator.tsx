@@ -2,31 +2,44 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import PatientFindDoctorIndex from '../screens/patient/findDoctors/PatientFindDoctorIndex';
 import DoctorDetails from '../screens/patient/findDoctors/DoctorDetails';
-import CreateAppointment from '../screens/patient/findDoctors/CreateAppointment';
-import ConfirmAppointment from '../screens/patient/findDoctors/ConfirmAppointment';
 import BookingSuccessScreen from '../screens/patient/bookAppointment/BookingSuccessScreen';
-import { DoctorFlowStackParamList } from './appointmentRoutes';
-
-export type FindDoctorsStackParamList = DoctorFlowStackParamList & {
-  PatientFindDoctorIndex: { specialty?: string } | undefined;
+export type FindDoctorsStackParamList = {
+  PatientFindDoctorIndex: undefined;
+  /** The doctor's `employeeId` — everything else about them is read by it. */
+  DoctorDetails: { employeeId: number };
+  /** Filled from the booking the API just confirmed. */
+  BookingSuccess: {
+    doctorName: string;
+    doctorSpecialty: string;
+    patientName: string;
+    /** "2026-08-18". */
+    date: string;
+    /** The time actually booked, "14:09" — the server's when it chose one. */
+    time: string;
+    /** Where the visit takes place. */
+    officeName: string;
+    /** The patient's token for the day. */
+    token: number;
+    /** The label of the visit type booked, already translated. */
+    consultationLabel: string;
+    amount: number;
+    /** "unpaid" | "partial" | "paid", as the API spells it. */
+    paymentStatus: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<FindDoctorsStackParamList>();
 
 /**
- * The Home tab. Find Doctors used to sit in the tab bare, which left the doctor
- * details and booking no screen to push onto — both had to happen in bottom
- * sheets. With a stack they are ordinary screens: list → details → appointment
- * → confirmation → success.
+ * The Find Doctors tab: the directory, a doctor's page — where the visit is
+ * booked — and the screen a placed booking lands on.
  */
 export const FindDoctorsStackNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="PatientFindDoctorIndex" component={PatientFindDoctorIndex} />
     <Stack.Screen name="DoctorDetails" component={DoctorDetails} />
-    <Stack.Screen name="CreateAppointment" component={CreateAppointment} />
-    <Stack.Screen name="ConfirmAppointment" component={ConfirmAppointment} />
-    {/* No swipe back: behind it is the confirm screen, and confirming again
-        would book a second appointment. Android's Back is handled on the screen. */}
+    {/* No swipe back: the booking is placed, and there is nothing behind it to
+        return to. Android's Back is handled on the screen. */}
     <Stack.Screen
       name="BookingSuccess"
       component={BookingSuccessScreen}
