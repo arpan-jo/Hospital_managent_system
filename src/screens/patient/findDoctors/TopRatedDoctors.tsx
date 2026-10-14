@@ -58,7 +58,8 @@ export const TopRatedDoctors = memo<TopRatedDoctorsProps>(function TopRatedDocto
                 fallback={initialsFrom}
                 size={48}
               />
-              <Text numberOfLines={1} style={[styles.name, { color: theme.colors.onSurface }]}>
+              {/* Two lines, always taken up, so the cards in the row line up. */}
+              <Text numberOfLines={2} style={[styles.name, { color: theme.colors.onSurface }]}>
                 {doctor?.fullName || t('common.na')}
               </Text>
               {doctor?.specialty ? (
@@ -108,6 +109,9 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: fontFamilies.semibold,
     fontSize: 13,
+    lineHeight: 17,
+    minHeight: 34,
+    textAlign: 'center',
     marginTop: 8,
     maxWidth: '100%',
   },
