@@ -1,4 +1,4 @@
-import React, { memo, useEffect } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { IconButton, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +36,7 @@ interface AddConditionSheetProps {
     diagnosedDate: string;
     status: ConditionStatus;
     notes: string;
-  }) => void;
+  }) => Promise<boolean>;
 }
 
 export const AddConditionSheet = memo<AddConditionSheetProps>(function AddConditionSheet({
@@ -54,19 +54,24 @@ export const AddConditionSheet = memo<AddConditionSheetProps>(function AddCondit
   });
 
   // Clear the form each time the sheet opens so a previous draft never leaks in.
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
     if (visible) reset(EMPTY_FORM);
   }, [visible, reset]);
 
-  const handleAdd = handleSubmit(values => {
-    onAdd({
+  // The sheet stays open when the save fails, so nothing typed is lost.
+  const handleAdd = handleSubmit(async values => {
+    setIsSaving(true);
+    const added = await onAdd({
       name: values?.name?.trim() ?? '',
       // Raw ISO date — the API stores it and the list formats it for display.
       diagnosedDate: values?.diagnosedDate ? toISODate(values.diagnosedDate) : '',
       status: values?.status ?? 'Active',
       notes: values?.notes?.trim() ?? '',
     });
-    onClose();
+    setIsSaving(false);
+    if (added) onClose();
   });
 
   return (
@@ -127,7 +132,13 @@ export const AddConditionSheet = memo<AddConditionSheetProps>(function AddCondit
         >
           {t('common.cancel')}
         </CustomButton>
-        <CustomButton mode="contained" onPress={handleAdd} style={styles.actionButton}>
+        <CustomButton
+          mode="contained"
+          onPress={handleAdd}
+          loading={isSaving}
+          disabled={isSaving}
+          style={styles.actionButton}
+        >
           {t('patientProfile.addConditionAction')}
         </CustomButton>
       </View>

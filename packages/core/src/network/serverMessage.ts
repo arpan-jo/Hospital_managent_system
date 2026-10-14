@@ -8,7 +8,9 @@
  */
 export const serverMessageOf = (error: any): string => {
   const data = error?.data;
-  const message = typeof data === 'string' ? data : data?.message;
+  // The file upload answers one row per file: `[{ fileName, message }]`.
+  const body = Array.isArray(data) ? data?.[0] : data;
+  const message = typeof body === 'string' ? body : body?.message;
   const text = typeof message === 'string' ? message.trim() : '';
 
   // A proxy's error page is not a message.

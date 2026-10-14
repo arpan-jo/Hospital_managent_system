@@ -20,6 +20,22 @@ export const PatientProfileModel = types.model('PatientProfileModel', {
   photoUrl: types.string,
   createdAt: types.string,
   updatedAt: types.string,
+  // Optional: a profile saved by a build before these fields has none.
+  identificationType: types.optional(types.string, ''),
+  identificationNumber: types.optional(types.string, ''),
+  registrationType: types.optional(types.string, ''),
+  division: types.optional(types.string, ''),
+  district: types.optional(types.string, ''),
+  upazila: types.optional(types.string, ''),
+  coName: types.optional(types.string, ''),
+  coRelationship: types.optional(types.string, ''),
+  coMobileNumber: types.optional(types.string, ''),
+  emergencyRelationship: types.optional(types.string, ''),
+  emergencyAddress: types.optional(types.string, ''),
+  occupation: types.optional(types.string, ''),
+  religion: types.optional(types.string, ''),
+  nationality: types.optional(types.string, ''),
+  identityMark: types.optional(types.string, ''),
 });
 
 export const ProfileStore = types

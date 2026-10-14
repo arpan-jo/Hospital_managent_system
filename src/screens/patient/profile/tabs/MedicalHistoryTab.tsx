@@ -8,6 +8,9 @@ import { STATUS_COLOR } from '../profileConstants';
 interface MedicalHistoryTabProps {
   conditions: MedicalCondition[];
   isLoading: boolean;
+  /** Null while the list loaded; otherwise the server's words, '' when it sent none. */
+  error: string | null;
+  onRetry: () => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
 }
@@ -15,6 +18,8 @@ interface MedicalHistoryTabProps {
 export const MedicalHistoryTab = memo<MedicalHistoryTabProps>(function MedicalHistoryTab({
   conditions,
   isLoading,
+  error,
+  onRetry,
   onAdd,
   onRemove,
 }) {
@@ -31,6 +36,13 @@ export const MedicalHistoryTab = memo<MedicalHistoryTabProps>(function MedicalHi
 
       {isLoading ? (
         <SectionLoader />
+      ) : error !== null ? (
+        <EmptyState
+          icon="alert-circle-outline"
+          title={error || t('common.somethingWentWrong')}
+          actionLabel={t('common.retry')}
+          onAction={onRetry}
+        />
       ) : conditions?.length ? (
         conditions.map(condition => (
           <RecordCard

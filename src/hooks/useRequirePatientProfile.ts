@@ -10,7 +10,7 @@ import {
 } from '@app/core';
 import { DrawerParamList } from '../navigation/DrawerNavigator';
 
-/** The API's "no profile row yet" — the Profile tab's empty state creates it. */
+/** The API's "no profile yet" — the profile form then creates it. */
 const NOT_FOUND = 404;
 
 /**
@@ -20,9 +20,8 @@ const NOT_FOUND = 404;
  * profile at all, and one made elsewhere can be missing a field.
  *
  * `ensureProfile` resolves true when it is safe to carry on. Otherwise it says
- * why and opens the place to fix it: the profile form when a field is missing,
- * the Profile tab — whose empty state offers the create form — when there is
- * no profile yet.
+ * why and opens the profile form — to finish the profile, or to create it when
+ * there is none yet — which goes back to the doctor `returnToDoctorId` once saved.
  */
 export const useRequirePatientProfile = () => {
   const { profileStore, toastStore } = useStores();
@@ -32,12 +31,18 @@ export const useRequirePatientProfile = () => {
   /** Stops a second tap while the first is still asking — two doctor cards in a row would each open. */
   const isCheckingRef = useRef(false);
 
-  const ensureProfile = useCallback(async (): Promise<boolean> => {
+  const ensureProfile = useCallback(async (returnToDoctorId?: number): Promise<boolean> => {
     // A complete profile already in hand costs no request at all.
     if (isPatientProfileComplete(profileStore.patientProfileData)) return true;
     if (isCheckingRef.current) return false;
 
     const drawer = navigation.getParent<DrawerNavigationProp<DrawerParamList>>();
+    // Straight to the form, with the profile screen under it to go back to.
+    const openProfileForm = () =>
+      drawer?.navigate('MainTabs', {
+        screen: 'ProfileTab',
+        params: { screen: 'ProfileEdit', params: { returnToDoctorId }, initial: false },
+      });
 
     /**
      * Anything short of complete is asked of the API again: the profile held
@@ -51,11 +56,7 @@ export const useRequirePatientProfile = () => {
       if (isPatientProfileComplete(profile)) return true;
 
       toastStore.show(t('patientProfile.completeProfileFirst'), 'warning');
-      // Straight to the form, with the profile screen under it to go back to.
-      drawer?.navigate('MainTabs', {
-        screen: 'ProfileTab',
-        params: { screen: 'ProfileEdit', initial: false },
-      });
+      openProfileForm();
       return false;
     } catch (error: any) {
       console.log('[ProfileGate] getProfile error ==>', error?.message);
@@ -70,7 +71,7 @@ export const useRequirePatientProfile = () => {
       // The 404 is the API's "no profile yet" ("Profile not found. Use POST to
       // create one." — words for a developer), so the patient gets ours.
       toastStore.show(t('patientProfile.createProfileFirst'), 'warning');
-      drawer?.navigate('MainTabs', { screen: 'ProfileTab' });
+      openProfileForm();
       return false;
     } finally {
       isCheckingRef.current = false;

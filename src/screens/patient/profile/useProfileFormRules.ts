@@ -1,11 +1,9 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isBdMobile } from '@app/core';
+import { GENERAL_ID, isBdMobile } from '@app/core';
 
 /** Same shape the sign-up screen validates against, so both agree on "valid". */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-/** Any phone-looking number — a relative can live abroad, and the web's family form does not check. */
-const ANY_PHONE_PATTERN = /^[0-9+\-\s]{6,}$/;
 
 /**
  * Form values are typed `string | Date | undefined` (the date pickers share the
@@ -14,47 +12,53 @@ const ANY_PHONE_PATTERN = /^[0-9+\-\s]{6,}$/;
 const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
 /**
- * Validation rules for the profile forms, in the same `rules={{ required }}`
- * shape the auth screens use — so a missing field reads "Please enter your …"
- * under the field, not a silently disabled button.
- *
- * Required-ness follows the API: only `fullName` (plus `relationship` for a
- * relative) is mandatory — swagger's `CreatePatientProfileDto`, and
- * `strFullName`/`strCondition`/`strAllergen` are the NOT NULL columns.
- * Everything else is validated only once the user has filled it in.
+ * Validation for the profile form and the record sheets, as the portal checks
+ * them: name, date of birth, mobile, blood group and gender are required (what
+ * a booking needs), the ID number when the ID is not a General ID, and a phone
+ * or email only once it is filled in.
  */
 export const useProfileFormRules = () => {
   const { t } = useTranslation();
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const required = t('patientProfile.required');
+
+    return {
+      requiredText: {
+        validate: (value: unknown) => asText(value).length > 0 || required,
+      },
+      requiredDate: {
+        validate: (value: unknown) => value instanceof Date || required,
+      },
       fullName: {
         validate: (value: unknown) =>
           asText(value).length > 0 || t('patientProfile.invalidFullName'),
       },
-      relationship: {
-        validate: (value: unknown) =>
-          asText(value).length > 0 || t('patientProfile.invalidRelationship'),
+      // Needed only when the ID type has a number of its own.
+      identificationNumber: {
+        validate: (value: unknown, values: { identificationType?: string }) =>
+          (values?.identificationType || GENERAL_ID) === GENERAL_ID ||
+          asText(value).length > 0 ||
+          required,
       },
-      // Optional, but a typo must not reach the API as a 400.
-      email: {
+      mobile: {
         validate: (value: unknown) => {
           const text = asText(value);
-          return !text || EMAIL_PATTERN.test(text) || t('patientProfile.invalidEmail');
+          if (!text) return required;
+          return isBdMobile(text) || t('patientProfile.invalidBdPhone');
         },
       },
-      // A Bangladesh mobile number, as the web profile form requires
-      // (`validateBDPhone`) — '+880' and spaces are fine, any six digits are not.
-      phone: {
+      // Optional, but a Bangladesh mobile once filled in.
+      optionalMobile: {
         validate: (value: unknown) => {
           const text = asText(value);
           return !text || isBdMobile(text) || t('patientProfile.invalidBdPhone');
         },
       },
-      memberPhone: {
+      email: {
         validate: (value: unknown) => {
           const text = asText(value);
-          return !text || ANY_PHONE_PATTERN.test(text) || t('patientProfile.invalidPhone');
+          return !text || EMAIL_PATTERN.test(text) || t('patientProfile.invalidEmail');
         },
       },
       condition: {
@@ -65,9 +69,8 @@ export const useProfileFormRules = () => {
         validate: (value: unknown) =>
           asText(value).length > 0 || t('patientProfile.invalidAllergen'),
       },
-    }),
-    [t],
-  );
+    };
+  }, [t]);
 };
 
 export default useProfileFormRules;

@@ -7,7 +7,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { FamilyMember, UploadFile, useStores } from '@app/core';
+import { UploadFile, useStores } from '@app/core';
 import { CustomDialog } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import PhotoPickerSheet from '../../../components/PhotoPickerSheet';
@@ -15,6 +15,7 @@ import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { ProfileStackParamList } from '../../../navigation/ProfileStackNavigator';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useProfileViewModel } from './useProfileViewModel';
+import { useFamilyProfilesViewModel } from './useFamilyProfilesViewModel';
 import { EmptyState } from './ProfileComponents';
 import ProfileHeaderCard from './ProfileHeaderCard';
 import ProfileTabs from './ProfileTabs';
@@ -30,8 +31,19 @@ export const PatientProfileIndex = observer(() => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const insets = useSafeAreaInsets();
-  const { authStore, profileStore, toastStore } = useStores();
+  const { authStore, profileStore } = useStores();
   const viewModel = useProfileViewModel();
+
+  // The holder's card on the Family tab shares their records and photo.
+  const { reloadConditions, reloadAllergies } = viewModel;
+  const onOwnRecordsChanged = useCallback(() => {
+    reloadConditions();
+    reloadAllergies();
+  }, [reloadConditions, reloadAllergies]);
+  const familyViewModel = useFamilyProfilesViewModel({
+    onOwnRecordsChanged,
+    onOwnProfileChanged: viewModel.refreshProfile,
+  });
 
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
@@ -39,30 +51,21 @@ export const PatientProfileIndex = observer(() => {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showConditionSheet, setShowConditionSheet] = useState(false);
   const [showAllergySheet, setShowAllergySheet] = useState(false);
-  const [memberToRemove, setMemberToRemove] = useState<FamilyMember | null>(null);
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
 
   const months = Array.from({ length: 12 }, (_, index) => t(`months.${index}`));
 
-  // Anything added or edited on a pushed screen shows up when we come back.
-  // The store already carries a profile saved a moment ago; this re-read only
-  // catches changes made elsewhere, and never blanks the screen while it runs.
-  const reloadFamily = viewModel.reloadFamily;
+  // A profile changed elsewhere — on the web, say — shows when we come back.
+  // The store already carries one saved here a moment ago, and this re-read
+  // never blanks the screen while it runs.
   const refreshProfile = viewModel.refreshProfile;
-  const invalidateMemberRecords = viewModel.invalidateMemberRecords;
   const hasFocusedOnce = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      reloadFamily();
       // The view model already fetches on mount — skip that duplicate here.
-      if (hasFocusedOnce.current) {
-        refreshProfile();
-        // A relative's records screen may have added or removed something, so
-        // the counts on their card are re-read rather than trusted.
-        invalidateMemberRecords();
-      }
+      if (hasFocusedOnce.current) refreshProfile();
       hasFocusedOnce.current = true;
-    }, [reloadFamily, refreshProfile, invalidateMemberRecords]),
+    }, [refreshProfile]),
   );
 
   const handleConfirmLogout = useCallback(() => {
@@ -72,64 +75,15 @@ export const PatientProfileIndex = observer(() => {
   }, [authStore, profileStore]);
 
   const handleEdit = useCallback(() => navigation.navigate('ProfileEdit'), [navigation]);
-  const handleAddMember = useCallback(
-    () => navigation.navigate('AddFamilyMember'),
-    [navigation],
-  );
-  const handleEditMember = useCallback(
-    (member: FamilyMember) =>
-      navigation.navigate('AddFamilyMember', { patientCode: member?.patientCode }),
-    [navigation],
-  );
   const handlePhoto = useCallback(() => setShowPhotoSheet(true), []);
 
+  // The view model reports how it went.
+  const uploadPhoto = viewModel.uploadPhoto;
   const handlePhotoPicked = useCallback(
-    async (file: UploadFile) => {
-      toastStore.show(t('photoPicker.uploading'), 'info');
-      const uploaded = await viewModel.uploadPhoto(file);
-      toastStore.show(
-        uploaded ? t('photoPicker.uploaded') : t('photoPicker.uploadFailed'),
-        uploaded ? 'success' : 'error',
-      );
+    (file: UploadFile) => {
+      uploadPhoto(file);
     },
-    [viewModel, toastStore, t],
-  );
-
-  const handleConfirmRemoveMember = useCallback(async () => {
-    const code = memberToRemove?.patientCode ?? '';
-    setMemberToRemove(null);
-    if (!code) return;
-
-    const removed = await viewModel.removeFamilyMember(code);
-    toastStore.show(
-      removed ? t('patientProfile.memberRemoved') : t('patientProfile.loadFailed'),
-      removed ? 'success' : 'error',
-    );
-  }, [memberToRemove, viewModel, toastStore, t]);
-
-  /** Own records live in their own tabs; a relative's are shown on their card. */
-  /**
-   * The account holder's own records are two tabs away on this very screen; a
-   * relative's live on their own screen, because adding and removing there has
-   * to be scoped to their `patientCode`.
-   */
-  const handleOpenRecords = useCallback(
-    (member: FamilyMember, section: 'medical' | 'allergies') => {
-      if (member?.relationship === 'Myself') {
-        viewModel.setTab(section);
-        return;
-      }
-
-      const code = member?.patientCode ?? '';
-      if (!code) return;
-
-      navigation.navigate('MemberRecords', {
-        patientCode: code,
-        memberName: member?.fullName ?? '',
-        section,
-      });
-    },
-    [viewModel, navigation],
+    [uploadPhoto],
   );
 
   const profile = viewModel.profile;
@@ -162,7 +116,7 @@ export const PatientProfileIndex = observer(() => {
           <View style={styles.stateWrap}>
             <EmptyState
               icon="account-alert-outline"
-              title={t('patientProfile.loadFailed')}
+              title={viewModel.loadError || t('patientProfile.loadFailed')}
               actionLabel={t('common.retry')}
               onAction={refreshProfile}
             />
@@ -217,7 +171,12 @@ export const PatientProfileIndex = observer(() => {
           { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE },
         ]}
       >
-        <ProfileHeaderCard profile={profile} onEditPress={handleEdit} onPhotoPress={handlePhoto} />
+        <ProfileHeaderCard
+          profile={profile}
+          onEditPress={handleEdit}
+          onPhotoPress={handlePhoto}
+          isPhotoUploading={viewModel.isUploadingPhoto}
+        />
         <ProfileTabs value={viewModel.tab} onChange={viewModel.setTab} />
 
         <View style={styles.tabContent}>
@@ -229,6 +188,8 @@ export const PatientProfileIndex = observer(() => {
             <MedicalHistoryTab
               conditions={viewModel.conditions}
               isLoading={viewModel.isConditionsLoading}
+              error={viewModel.conditionsError}
+              onRetry={viewModel.reloadConditions}
               onAdd={() => setShowConditionSheet(true)}
               onRemove={viewModel.removeCondition}
             />
@@ -238,25 +199,15 @@ export const PatientProfileIndex = observer(() => {
             <AllergiesTab
               allergies={viewModel.allergies}
               isLoading={viewModel.isAllergiesLoading}
+              error={viewModel.allergiesError}
+              onRetry={viewModel.reloadAllergies}
               onAdd={() => setShowAllergySheet(true)}
               onRemove={viewModel.removeAllergy}
             />
           ) : null}
 
-          {viewModel.tab === 'family' ? (
-            <FamilyProfilesTab
-              members={viewModel.family}
-              isLoading={viewModel.isFamilyLoading}
-              selfConditionCount={viewModel.conditions?.length ?? 0}
-              selfAllergyCount={viewModel.allergies?.length ?? 0}
-              memberRecords={viewModel.memberRecords}
-              onLoadRecords={viewModel.loadMemberRecords}
-              onAddMember={handleAddMember}
-              onEditMember={handleEditMember}
-              onRemoveMember={setMemberToRemove}
-              onOpenRecords={handleOpenRecords}
-            />
-          ) : null}
+          {viewModel.tab === 'family' ? <FamilyProfilesTab viewModel={familyViewModel} /> : null}
+
         </View>
       </ScrollView>
 
@@ -275,18 +226,6 @@ export const PatientProfileIndex = observer(() => {
         visible={showAllergySheet}
         onClose={() => setShowAllergySheet(false)}
         onAdd={viewModel.addAllergy}
-      />
-
-      <CustomDialog
-        visible={!!memberToRemove}
-        title={t('patientProfile.removeMember')}
-        message={t('patientProfile.removeMemberConfirm', {
-          name: memberToRemove?.fullName ?? '',
-        })}
-        confirmText={t('patientProfile.removeMember')}
-        cancelText={t('common.cancel')}
-        onConfirm={handleConfirmRemoveMember}
-        onDismiss={() => setMemberToRemove(null)}
       />
 
       <CustomDialog

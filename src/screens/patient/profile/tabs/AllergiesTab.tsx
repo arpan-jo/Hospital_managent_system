@@ -12,6 +12,9 @@ import { SEVERITY_COLOR, useWarningColors } from '../profileConstants';
 interface AllergiesTabProps {
   allergies: Allergy[];
   isLoading: boolean;
+  /** Null while the list loaded; otherwise the server's words, '' when it sent none. */
+  error: string | null;
+  onRetry: () => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
 }
@@ -19,6 +22,8 @@ interface AllergiesTabProps {
 export const AllergiesTab = memo<AllergiesTabProps>(function AllergiesTab({
   allergies,
   isLoading,
+  error,
+  onRetry,
   onAdd,
   onRemove,
 }) {
@@ -53,6 +58,13 @@ export const AllergiesTab = memo<AllergiesTabProps>(function AllergiesTab({
 
       {isLoading ? (
         <SectionLoader />
+      ) : error !== null ? (
+        <EmptyState
+          icon="alert-circle-outline"
+          title={error || t('common.somethingWentWrong')}
+          actionLabel={t('common.retry')}
+          onAction={onRetry}
+        />
       ) : allergies?.length ? (
         allergies.map(allergy => (
           <RecordCard

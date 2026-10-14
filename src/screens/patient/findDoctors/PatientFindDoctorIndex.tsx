@@ -60,7 +60,7 @@ export const PatientFindDoctorIndex = observer(() => {
   const openDoctor = useCallback(
     async (doctor: PortalDoctor) => {
       if (!doctor?.employeeId) return;
-      if (!(await ensureProfile())) return;
+      if (!(await ensureProfile(doctor.employeeId))) return;
       navigation.navigate('DoctorDetails', { employeeId: doctor.employeeId });
     },
     [navigation, ensureProfile],

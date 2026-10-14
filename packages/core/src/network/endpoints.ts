@@ -4,6 +4,8 @@ export const ENDPOINTS = {
   patientProfileAll: '/hms/patient/profile/all',
   patientProfileAllergies: '/hms/patient/profile/allergies',
   patientProfileMedicalHistory: '/hms/patient/profile/medical-history',
+  /** The registration a patient's profile is — where the profile is created and saved. */
+  patientRegistration: '/hms/registration/patients',
   sendOtp: '/hms/auth/otp/send',
   verifyOtp: '/hms/auth/otp/verify',
   registerWithOtp: '/hms/auth/otp/register',

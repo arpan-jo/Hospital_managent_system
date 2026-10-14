@@ -1,30 +1,31 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Allergy,
   AllergySeverity,
   ConditionStatus,
-  FamilyMember,
-  FileRepository,
   MedicalCondition,
-  NewFamilyMember,
   PatientProfile,
+  PatientProfileForm,
   PatientRepository,
   UploadFile,
+  serverMessageOf,
   useStores,
 } from '@app/core';
 import { RequestState } from '../findDoctors/useFindDoctorsViewModel';
 
 export type ProfileTab = 'personal' | 'medical' | 'allergies' | 'family';
 
-/** Conditions + allergies of one relative, loaded when their card is expanded. */
-export interface MemberRecords {
-  isLoading: boolean;
-  conditions: MedicalCondition[];
-  allergies: Allergy[];
-}
+const NOT_FOUND = 404;
 
+/**
+ * My Profile, as the portal has it: the patient's own profile with its photo,
+ * and their medical history and allergies beside it. Every message shown is
+ * the server's own when it sent one, the screen's otherwise.
+ */
 export const useProfileViewModel = () => {
-  const { profileStore } = useStores();
+  const { t } = useTranslation();
+  const { profileStore, toastStore } = useStores();
 
   const [profileRequest, setProfileRequest] = useState<RequestState<PatientProfile | null>>({
     isLoading: true,
@@ -41,30 +42,18 @@ export const useProfileViewModel = () => {
     data: [],
     error: null,
   });
-  const [familyRequest, setFamilyRequest] = useState<RequestState<FamilyMember[]>>({
-    isLoading: true,
-    data: [],
-    error: null,
-  });
-  /** Keyed by patientCode — a relative's records are fetched only once opened. */
-  const [memberRecords, setMemberRecords] = useState<Record<string, MemberRecords>>({});
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [tab, setTab] = useState<ProfileTab>('personal');
-  /**
-   * The GET answered 404 — the account simply has no profile row yet, so the
-   * screen offers to create one. Any other failure only offers Retry: the
-   * create form POSTs, and the backend adds a second "self" row every time.
-   */
+  /** The GET answered 404 — the patient has no profile yet, so the screen offers to create one. */
   const [isMissing, setIsMissing] = useState(false);
 
   /**
    * The store is the one copy every screen reads: this hook runs once per
-   * screen, so a profile created on the edit screen would otherwise stay
-   * invisible to the index screen until the app restarted. `profileRequest`
-   * still owns the loader and the error for this screen's own fetch.
+   * screen, so a profile saved on the edit screen would otherwise stay
+   * invisible to the profile screen until it fetched again.
    */
   const profile = profileStore.patientProfileData ?? profileRequest?.data ?? null;
-  const patientCode = profile?.patientCode || undefined;
+  const hasProfile = Boolean(profile);
 
   const loadProfile = useCallback(async () => {
     setProfileRequest(prev => ({ ...prev, isLoading: true, error: null }));
@@ -75,8 +64,8 @@ export const useProfileViewModel = () => {
       setIsMissing(false);
     } catch (error: any) {
       console.log('[Profile] getProfile error ==>', error?.message);
-      setProfileRequest({ isLoading: false, data: null, error: error?.message || 'load' });
-      setIsMissing(error?.status === 404);
+      setProfileRequest({ isLoading: false, data: null, error: serverMessageOf(error) });
+      setIsMissing(error?.status === NOT_FOUND);
     }
   }, [profileStore]);
 
@@ -86,228 +75,183 @@ export const useProfileViewModel = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadConditions = useCallback(async (code?: string) => {
+  const loadConditions = useCallback(async () => {
     setConditionsRequest(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const response = await PatientRepository.getConditions(code);
+      const response = await PatientRepository.getConditions();
       setConditionsRequest({ isLoading: false, data: response ?? [], error: null });
     } catch (error: any) {
       console.log('[Profile] getConditions error ==>', error?.message);
-      setConditionsRequest({ isLoading: false, data: [], error: error?.message ?? null });
+      setConditionsRequest({ isLoading: false, data: [], error: serverMessageOf(error) });
     }
   }, []);
 
-  const loadAllergies = useCallback(async (code?: string) => {
+  const loadAllergies = useCallback(async () => {
     setAllergiesRequest(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const response = await PatientRepository.getAllergies(code);
+      const response = await PatientRepository.getAllergies();
       setAllergiesRequest({ isLoading: false, data: response ?? [], error: null });
     } catch (error: any) {
       console.log('[Profile] getAllergies error ==>', error?.message);
-      setAllergiesRequest({ isLoading: false, data: [], error: error?.message ?? null });
+      setAllergiesRequest({ isLoading: false, data: [], error: serverMessageOf(error) });
     }
   }, []);
 
-  // Own records hang off the profile's patientCode, so they load once it lands.
+  // The lists belong to the login, but there is nothing to show them under
+  // until the profile itself is there.
   useEffect(() => {
-    if (!profile) return;
-    loadConditions(patientCode);
-    loadAllergies(patientCode);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientCode]);
+    if (!hasProfile) return;
+    loadConditions();
+    loadAllergies();
+  }, [hasProfile, loadConditions, loadAllergies]);
 
-  /** The family roster is loaded (and re-loaded) by the screen that shows it. */
-  const reloadFamily = useCallback(async () => {
-    setFamilyRequest(prev => ({ ...prev, isLoading: true, error: null }));
-    try {
-      const response = await PatientRepository.getFamilyMembers();
-      setFamilyRequest({ isLoading: false, data: response ?? [], error: null });
-    } catch (error: any) {
-      console.log('[Profile] getFamilyMembers error ==>', error?.message);
-      setFamilyRequest({ isLoading: false, data: [], error: error?.message ?? null });
-    }
-  }, []);
-
-  /** Fetches a relative's records the first time their card is expanded. */
-  const loadMemberRecords = useCallback(
-    async (code?: string) => {
-      if (!code || memberRecords?.[code]) return;
-
-      setMemberRecords(prev => ({
-        ...prev,
-        [code]: { isLoading: true, conditions: [], allergies: [] },
-      }));
-
-      try {
-        const [conditions, allergies] = await Promise.all([
-          PatientRepository.getConditions(code),
-          PatientRepository.getAllergies(code),
-        ]);
-        setMemberRecords(prev => ({
-          ...prev,
-          [code]: {
-            isLoading: false,
-            conditions: conditions ?? [],
-            allergies: allergies ?? [],
-          },
-        }));
-      } catch (error: any) {
-        console.log('[Profile] member records error ==>', error?.message);
-        setMemberRecords(prev => ({
-          ...prev,
-          [code]: { isLoading: false, conditions: [], allergies: [] },
-        }));
-      }
-    },
-    [memberRecords],
-  );
-
-  /**
-   * Drops the cached relative records so an open card refetches them. Called
-   * when the screen regains focus: a relative's records may have been changed
-   * on their own screen since, and these counts would otherwise stay stale.
-   */
-  const invalidateMemberRecords = useCallback(() => setMemberRecords({}), []);
-
+  /** Resolves true once saved, so the sheet closes only then. */
   const addCondition = useCallback(
-    async (input: { name: string; diagnosedDate: string; status: ConditionStatus; notes: string }) => {
+    async (input: {
+      name: string;
+      diagnosedDate: string;
+      status: ConditionStatus;
+      notes: string;
+    }): Promise<boolean> => {
       try {
-        const created = await PatientRepository.addCondition(input, patientCode);
+        const created = await PatientRepository.addCondition(input);
         setConditionsRequest(prev => ({ ...prev, data: [...(prev?.data ?? []), created] }));
+        toastStore.show(t('patientProfile.conditionAdded'), 'success');
+        return true;
       } catch (error: any) {
         console.log('[Profile] addCondition error ==>', error?.message);
+        toastStore.show(serverMessageOf(error) || t('patientProfile.conditionAddFailed'), 'error');
+        return false;
       }
     },
-    [patientCode],
+    [toastStore, t],
   );
 
   const removeCondition = useCallback(
     async (id: string) => {
       try {
-        await PatientRepository.removeCondition(id, patientCode);
+        await PatientRepository.removeCondition(id);
         setConditionsRequest(prev => ({
           ...prev,
           data: prev?.data?.filter(item => item?.id !== id) ?? [],
         }));
       } catch (error: any) {
         console.log('[Profile] removeCondition error ==>', error?.message);
+        toastStore.show(serverMessageOf(error) || t('patientProfile.deleteFailed'), 'error');
       }
     },
-    [patientCode],
+    [toastStore, t],
   );
 
+  /** Resolves true once saved, so the sheet closes only then. */
   const addAllergy = useCallback(
-    async (input: { name: string; severity: AllergySeverity; reaction: string }) => {
+    async (input: { name: string; severity: AllergySeverity; reaction: string }): Promise<boolean> => {
       try {
-        const created = await PatientRepository.addAllergy(input, patientCode);
+        const created = await PatientRepository.addAllergy(input);
         setAllergiesRequest(prev => ({ ...prev, data: [...(prev?.data ?? []), created] }));
+        toastStore.show(t('patientProfile.allergyAdded'), 'success');
+        return true;
       } catch (error: any) {
         console.log('[Profile] addAllergy error ==>', error?.message);
+        toastStore.show(serverMessageOf(error) || t('patientProfile.allergyAddFailed'), 'error');
+        return false;
       }
     },
-    [patientCode],
+    [toastStore, t],
   );
 
   const removeAllergy = useCallback(
     async (id: string) => {
       try {
-        await PatientRepository.removeAllergy(id, patientCode);
+        await PatientRepository.removeAllergy(id);
         setAllergiesRequest(prev => ({
           ...prev,
           data: prev?.data?.filter(item => item?.id !== id) ?? [],
         }));
       } catch (error: any) {
         console.log('[Profile] removeAllergy error ==>', error?.message);
+        toastStore.show(serverMessageOf(error) || t('patientProfile.deleteFailed'), 'error');
       }
     },
-    [patientCode],
+    [toastStore, t],
   );
 
   /**
-   * POST the first time (a freshly registered patient has no profile row), PUT
-   * afterwards. Resolves false so the screen can keep the form open on failure.
+   * Creates the profile the first time — a newly signed-up patient has none —
+   * and updates it after that. A photo picked before the first save is
+   * uploaded here and saved with it. Resolves true once saved.
    */
   const saveProfile = useCallback(
-    async (input: Partial<NewFamilyMember>, photo?: UploadFile): Promise<boolean> => {
+    async (form: PatientProfileForm, photo?: UploadFile | null): Promise<boolean> => {
+      const isCreating = !profile?.registrationId;
       try {
-        // Creating has no row to attach a photo to yet, so the file is uploaded
-        // here and its blob name rides along with the create call.
-        const photoUrl = photo ? await FileRepository.upload(photo) : undefined;
-        const payload = photoUrl ? { ...input, photoUrl } : input;
-
-        const response = profile
-          ? await PatientRepository.updateProfile(payload)
-          : await PatientRepository.createProfile(payload);
+        const photoUrl = photo ? await PatientRepository.uploadPhoto(photo) : undefined;
+        const response = await PatientRepository.saveProfile(
+          form,
+          profile?.registrationId,
+          photoUrl,
+        );
         profileStore.setPatientProfile(response);
         setProfileRequest({ isLoading: false, data: response, error: null });
+        setIsMissing(false);
+        toastStore.show(
+          t(isCreating ? 'patientProfile.profileCreated' : 'patientProfile.profileUpdated'),
+          'success',
+        );
         return true;
       } catch (error: any) {
         console.log('[Profile] saveProfile error ==>', error?.message);
+        toastStore.show(serverMessageOf(error) || t('patientProfile.saveFailed'), 'error');
         return false;
       }
     },
-    [profile, profileStore],
+    [profile?.registrationId, profileStore, toastStore, t],
   );
 
-  /**
-   * Uploads the picked image and stores the blob name on the profile. `code`
-   * targets a relative; omitted, it updates the account holder's own photo.
-   */
+  /** Uploads the picked image and makes it the profile photo. */
   const uploadPhoto = useCallback(
-    async (file: UploadFile, code?: string): Promise<boolean> => {
+    async (file: UploadFile): Promise<boolean> => {
+      const registrationId = profile?.registrationId ?? 0;
+      if (!registrationId) return false;
+
       setIsUploadingPhoto(true);
       try {
-        const response = await PatientRepository.updatePhoto(file, code);
-        // Only the account holder's own photo is on this screen's header card.
-        if (!code) {
-          profileStore.setPatientProfile(response);
-          setProfileRequest({ isLoading: false, data: response, error: null });
-        }
+        const response = await PatientRepository.updatePhoto(file, registrationId);
+        profileStore.setPatientProfile(response);
+        setProfileRequest({ isLoading: false, data: response, error: null });
+        toastStore.show(t('photoPicker.uploaded'), 'success');
         return true;
       } catch (error: any) {
         console.log('[Profile] uploadPhoto error ==>', error?.message);
+        toastStore.show(serverMessageOf(error) || t('photoPicker.uploadFailed'), 'error');
         return false;
       } finally {
         setIsUploadingPhoto(false);
       }
     },
-    [profileStore],
+    [profile?.registrationId, profileStore, toastStore, t],
   );
-
-  const removeFamilyMember = useCallback(async (code: string): Promise<boolean> => {
-    try {
-      await PatientRepository.removeFamilyMember(code);
-      setFamilyRequest(prev => ({
-        ...prev,
-        data: prev?.data?.filter(item => item?.patientCode !== code) ?? [],
-      }));
-      return true;
-    } catch (error: any) {
-      console.log('[Profile] removeFamilyMember error ==>', error?.message);
-      return false;
-    }
-  }, []);
 
   return {
     profile,
     isProfileLoading: profileRequest?.isLoading ?? false,
-    /** Load finished and the account has no profile row yet — offer to create one. */
+    /** Load finished and the patient has no profile yet — offer to create one. */
     hasNoProfile: !profileRequest?.isLoading && !profile && isMissing,
     /** The profile could not be read — offer Retry, never the create form. */
     hasLoadFailed: !profileRequest?.isLoading && !profile && !isMissing,
+    /** The server's words when the profile could not be read; '' when it sent none. */
+    loadError: profileRequest?.error ?? '',
     conditions: conditionsRequest?.data ?? [],
     isConditionsLoading: conditionsRequest?.isLoading ?? false,
+    conditionsError: conditionsRequest?.error ?? null,
     allergies: allergiesRequest?.data ?? [],
     isAllergiesLoading: allergiesRequest?.isLoading ?? false,
-    family: familyRequest?.data ?? [],
-    isFamilyLoading: familyRequest?.isLoading ?? false,
-    memberRecords,
-    loadMemberRecords,
-    invalidateMemberRecords,
+    allergiesError: allergiesRequest?.error ?? null,
     tab,
     setTab,
     refreshProfile: loadProfile,
-    reloadFamily,
+    reloadConditions: loadConditions,
+    reloadAllergies: loadAllergies,
     addCondition,
     removeCondition,
     addAllergy,
@@ -315,7 +259,6 @@ export const useProfileViewModel = () => {
     saveProfile,
     uploadPhoto,
     isUploadingPhoto,
-    removeFamilyMember,
   };
 };
 

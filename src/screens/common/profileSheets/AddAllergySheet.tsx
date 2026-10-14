@@ -1,4 +1,4 @@
-import React, { memo, useEffect } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { IconButton, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +24,7 @@ const EMPTY_FORM: AllergyForm = { name: '', severity: 'Mild', reaction: '' };
 interface AddAllergySheetProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: (input: { name: string; severity: AllergySeverity; reaction: string }) => void;
+  onAdd: (input: { name: string; severity: AllergySeverity; reaction: string }) => Promise<boolean>;
 }
 
 export const AddAllergySheet = memo<AddAllergySheetProps>(function AddAllergySheet({
@@ -41,17 +41,22 @@ export const AddAllergySheet = memo<AddAllergySheetProps>(function AddAllergyShe
     mode: 'onBlur',
   });
 
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
     if (visible) reset(EMPTY_FORM);
   }, [visible, reset]);
 
-  const handleAdd = handleSubmit(values => {
-    onAdd({
+  // The sheet stays open when the save fails, so nothing typed is lost.
+  const handleAdd = handleSubmit(async values => {
+    setIsSaving(true);
+    const added = await onAdd({
       name: values?.name?.trim() ?? '',
       severity: values?.severity ?? 'Mild',
       reaction: values?.reaction?.trim() ?? '',
     });
-    onClose();
+    setIsSaving(false);
+    if (added) onClose();
   });
 
   return (
@@ -104,7 +109,13 @@ export const AddAllergySheet = memo<AddAllergySheetProps>(function AddAllergyShe
         >
           {t('common.cancel')}
         </CustomButton>
-        <CustomButton mode="contained" onPress={handleAdd} style={styles.actionButton}>
+        <CustomButton
+          mode="contained"
+          onPress={handleAdd}
+          loading={isSaving}
+          disabled={isSaving}
+          style={styles.actionButton}
+        >
           {t('patientProfile.addAllergyAction')}
         </CustomButton>
       </View>

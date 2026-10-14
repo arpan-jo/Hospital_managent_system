@@ -1,8 +1,14 @@
-import React, { memo } from 'react';
-import { StyleSheet, View, Modal, Platform, Pressable, ViewStyle } from 'react-native';
+import React, { memo, useCallback, useEffect, useRef } from 'react';
+import { Keyboard, StyleSheet, View, Modal, Platform, Pressable, ViewStyle } from 'react-native';
 import { Portal, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomToast } from './CustomToast';
+
+/**
+ * How long after the keyboard hides a back press still counts as the one that
+ * hid it — the two reach the app in either order.
+ */
+const KEYBOARD_BACK_GRACE_MS = 400;
 
 interface CustomBottomSheetProps {
   visible: boolean;
@@ -34,12 +40,41 @@ export const CustomBottomSheet = memo<CustomBottomSheetProps>(function CustomBot
    */
   const bottomPadding = Platform.OS === 'ios' ? insets.bottom + 12 : 16;
 
+  /**
+   * On Android the back press that hides the keyboard also reaches the Modal,
+   * which would close the sheet and lose what was typed. While the keyboard is
+   * up — or has only just gone — back only puts the keyboard away.
+   */
+  const keyboardRef = useRef({ isOpen: false, hiddenAt: 0 });
+  useEffect(() => {
+    if (!visible) return;
+    const shown = Keyboard.addListener('keyboardDidShow', () => {
+      keyboardRef.current = { isOpen: true, hiddenAt: 0 };
+    });
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardRef.current = { isOpen: false, hiddenAt: Date.now() };
+    });
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, [visible]);
+
+  const handleRequestClose = useCallback(() => {
+    const { isOpen, hiddenAt } = keyboardRef.current;
+    if (isOpen || Date.now() - hiddenAt < KEYBOARD_BACK_GRACE_MS) {
+      Keyboard.dismiss();
+      return;
+    }
+    onClose();
+  }, [onClose]);
+
   return (
     <Modal
       transparent
       visible={visible}
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleRequestClose}
     >
       {/*
         Portals mount into the nearest host above them, and the app-root host is

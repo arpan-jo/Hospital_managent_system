@@ -14,6 +14,14 @@ describe('serverMessageOf', () => {
     expect(serverMessageOf(failure('Invalid slotId.'))).toBe('Invalid slotId.');
   });
 
+  it("reads the first row of the file upload's list", () => {
+    expect(
+      serverMessageOf(
+        failure([{ fileName: 'files', message: 'Maximum File Size Allowed (5MB) Your File Size (7MB)' }]),
+      ),
+    ).toBe('Maximum File Size Allowed (5MB) Your File Size (7MB)');
+  });
+
   it('gives nothing when the server said nothing', () => {
     expect(serverMessageOf(failure({ code: 'SLOT_FULL' }))).toBe('');
     expect(serverMessageOf(failure(undefined))).toBe('');

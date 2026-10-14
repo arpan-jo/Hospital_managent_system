@@ -13,12 +13,14 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 import ProfileStackNavigator, {
   ProfileStackParamList,
 } from './ProfileStackNavigator';
-import FindDoctorsStackNavigator from './FindDoctorsStackNavigator';
+import FindDoctorsStackNavigator, {
+  FindDoctorsStackParamList,
+} from './FindDoctorsStackNavigator';
 import AppointmentsStackNavigator from './AppointmentsStackNavigator';
 import MyPrescriptionsStackNavigator from './MyPrescriptionsStackNavigator';
 
 export type TabParamList = {
-  HomeTab: undefined;
+  HomeTab: NavigatorScreenParams<FindDoctorsStackParamList> | undefined;
   ActivityTab: undefined;
   PrescriptionsTab: undefined;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList> | undefined;
