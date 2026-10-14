@@ -24,8 +24,11 @@ export interface WarningColors {
   border: string;
   /** Card title and field labels. */
   title: string;
-  /** Field values — the highest-contrast copy on the card. */
-  value: string;
+  /**
+   * Field values — the highest-contrast copy on the card. Not named `value`:
+   * reanimated's Babel plugin warns about any `x.value` inside a `style`.
+   */
+  text: string;
   /** Tint behind the small icon tiles. */
   iconTile: string;
 }
@@ -34,7 +37,7 @@ const LIGHT_WARNING: WarningColors = {
   background: '#FFFBF0',
   border: '#F5A623',
   title: '#B4780F',
-  value: '#3D2E05',
+  text: '#3D2E05',
   iconTile: '#FFF3D6',
 };
 
@@ -42,7 +45,7 @@ const DARK_WARNING: WarningColors = {
   background: '#2A2110',
   border: '#8A6114',
   title: '#F5C46B',
-  value: '#F6EEDD',
+  text: '#F6EEDD',
   iconTile: '#3A2D14',
 };
 

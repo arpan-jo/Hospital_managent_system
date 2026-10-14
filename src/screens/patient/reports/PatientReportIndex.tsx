@@ -104,10 +104,10 @@ export const PatientReportIndex = observer(() => {
       }
       if (downloadingId) return;
       setDownloadingId(document?.id ?? null);
-      const filePath = await download({ url, filename: document?.fileName ?? '' });
+      const { filePath, serverMessage } = await download({ url, filename: document?.fileName ?? '' });
       setDownloadingId(null);
       toastStore.show(
-        t(filePath ? 'reports.downloadSaved' : 'reports.downloadFailed'),
+        filePath ? t('reports.downloadSaved') : serverMessage || t('reports.downloadFailed'),
         filePath ? 'success' : 'error',
       );
     },

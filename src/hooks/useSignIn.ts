@@ -32,6 +32,9 @@ export const useSignIn = () => {
         throw new Error(t('login.roleNotSupported'));
       }
 
+      // A new session starts with no profile, as the portal clears its cache
+      // on sign-in: an account without one must not see the last one's.
+      profileStore.clear();
       authStore.login(result);
 
       // Fires after isAuthenticated flips (navigation already happens on

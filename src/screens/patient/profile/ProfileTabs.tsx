@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -13,7 +13,11 @@ const TABS: { key: ProfileTab; labelKey: string; icon: string }[] = [
   { key: 'family', labelKey: 'patientProfile.tabFamily', icon: 'account-multiple-outline' },
 ];
 
-/** The profile's sections as one segmented control, each segment an equal share. */
+/**
+ * The profile's sections as one segmented control. The segments share the
+ * strip when their labels fit and it scrolls sideways when they do not, as the
+ * portal's tab strip does — a narrow phone would otherwise cut them to "Perso…".
+ */
 export const ProfileTabs = memo<{
   value: ProfileTab;
   onChange: (tab: ProfileTab) => void;
@@ -22,12 +26,15 @@ export const ProfileTabs = memo<{
   const { t } = useTranslation();
 
   return (
-    <View
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
       accessibilityRole="tablist"
       style={[
         styles.row,
         { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
       ]}
+      contentContainerStyle={styles.rowContent}
     >
       {TABS.map(tab => {
         const selected = tab.key === value;
@@ -48,30 +55,34 @@ export const ProfileTabs = memo<{
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 });
 
 const styles = StyleSheet.create({
   row: {
-    flexDirection: 'row',
+    // A ScrollView shrinks by default — never below its own tabs.
+    flexGrow: 0,
+    flexShrink: 0,
     marginTop: 16,
-    padding: 4,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  rowContent: {
+    flexGrow: 1,
+    padding: 4,
+  },
   tab: {
-    flex: 1,
+    flexGrow: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 9,
-    paddingHorizontal: 6,
+    paddingHorizontal: 10,
     borderRadius: 10,
   },
   tabText: {
-    flexShrink: 1,
     fontFamily: fontFamilies.semibold,
     fontSize: 12.5,
   },

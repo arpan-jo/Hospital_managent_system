@@ -5,6 +5,7 @@ import {
   type DownloadConfig,
   type ActiveDownload,
 } from '../utils/downloader';
+import { serverMessageOf } from '../network/serverMessage';
 
 export interface DownloadState {
   isDownloading: boolean;
@@ -15,9 +16,16 @@ export interface DownloadState {
   error: string | null;
 }
 
+export interface DownloadOutcome {
+  /** Where the file was saved; null when it failed or was cancelled. */
+  filePath: string | null;
+  /** What the server said about a failure; '' when it said nothing. */
+  serverMessage: string;
+}
+
 export interface UseDownloadReturn extends DownloadState {
-  /** Start downloading; resolves with the saved path, or null when it failed. */
-  download: (config: Omit<DownloadConfig, 'onProgress'>) => Promise<string | null>;
+  /** Start downloading; resolves with the saved path, or with why it failed. */
+  download: (config: Omit<DownloadConfig, 'onProgress'>) => Promise<DownloadOutcome>;
   /** Abort an in-progress download and return to idle state. */
   cancel: () => void;
   /** Open the successfully downloaded file in the OS viewer. */
@@ -45,7 +53,7 @@ export const useDownload = (): UseDownloadReturn => {
   const taskRef = useRef<ActiveDownload | null>(null);
 
   const download = useCallback(
-    async (config: Omit<DownloadConfig, 'onProgress'>): Promise<string | null> => {
+    async (config: Omit<DownloadConfig, 'onProgress'>): Promise<DownloadOutcome> => {
       setState({ ...INITIAL_STATE, isDownloading: true });
 
       const task = startDownload({
@@ -70,19 +78,20 @@ export const useDownload = (): UseDownloadReturn => {
           progress: 1,
           filePath: result.filePath,
         }));
-        return result.filePath;
+        return { filePath: result.filePath, serverMessage: '' };
       } catch (err) {
         taskRef.current = null;
         if (isCancelError(err)) {
           setState(INITIAL_STATE);
-          return null;
+          return { filePath: null, serverMessage: '' };
         }
+        const serverMessage = serverMessageOf(err);
         setState(prev => ({
           ...prev,
           isDownloading: false,
-          error: (err as any)?.message || 'Download failed. Please try again.',
+          error: serverMessage || (err as any)?.message || 'Download failed. Please try again.',
         }));
-        return null;
+        return { filePath: null, serverMessage };
       }
     },
     [],

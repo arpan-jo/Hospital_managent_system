@@ -44,7 +44,7 @@ export const AllergiesTab = memo<AllergiesTabProps>(function AllergiesTab({
           <Text style={[styles.bannerTitle, { color: amber.title }]}>
             {t('patientProfile.knownAllergies')}
           </Text>
-          <Text style={[styles.bannerDesc, { color: amber.value }]}>
+          <Text style={[styles.bannerDesc, { color: amber.text }]}>
             {t('patientProfile.knownAllergiesDesc')}
           </Text>
         </View>

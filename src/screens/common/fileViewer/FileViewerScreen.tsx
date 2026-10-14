@@ -84,9 +84,9 @@ export const FileViewerScreen = () => {
 
   const handleDownload = useCallback(async () => {
     if (!url || isDownloading) return;
-    const filePath = await download({ url, filename: filename || 'file' });
+    const { filePath, serverMessage } = await download({ url, filename: filename || 'file' });
     toastStore.show(
-      t(filePath ? 'fileViewer.downloaded' : 'fileViewer.downloadFailed'),
+      filePath ? t('fileViewer.downloaded') : serverMessage || t('fileViewer.downloadFailed'),
       filePath ? 'success' : 'error',
     );
   }, [url, filename, isDownloading, download, toastStore, t]);

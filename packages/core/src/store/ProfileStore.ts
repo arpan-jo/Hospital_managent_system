@@ -1,4 +1,4 @@
-import { getSnapshot, types } from 'mobx-state-tree';
+import { getRoot, getSnapshot, types } from 'mobx-state-tree';
 import type { PatientProfile } from '../repositories/PatientRepository';
 
 export const PatientProfileModel = types.model('PatientProfileModel', {
@@ -38,6 +38,12 @@ export const PatientProfileModel = types.model('PatientProfileModel', {
   identityMark: types.optional(types.string, ''),
 });
 
+/** What this store reads of its sibling `authStore` — typed here to keep the stores' imports one-way. */
+interface SessionView {
+  isAuthenticated: boolean;
+  user: { userId: number } | null;
+}
+
 export const ProfileStore = types
   .model('ProfileStore', {
     patientProfile: types.maybeNull(PatientProfileModel),
@@ -58,7 +64,19 @@ export const ProfileStore = types
     },
   }))
   .actions(self => ({
+    /**
+     * Kept only for the session that is signed in. A profile read started
+     * before a logout can land after it; stored then, it would be the next
+     * account's profile in the drawer and on My Profile.
+     */
     setPatientProfile(profile: PatientProfile) {
+      const auth = (getRoot(self) as { authStore?: SessionView })?.authStore;
+      if (auth) {
+        if (!auth.isAuthenticated) return;
+        const signedIn = auth.user?.userId ?? 0;
+        const owner = profile?.userId ?? 0;
+        if (signedIn && owner && signedIn !== owner) return;
+      }
       self.patientProfile = PatientProfileModel.create(profile);
     },
     clear() {

@@ -44,7 +44,12 @@ export const PatientFindDoctorIndex = observer(() => {
   const insets = useSafeAreaInsets();
 
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
-  const userName = authStore.user?.fullName || t('common.na');
+  // The profile's name first, as the portal's header and the drawer have it —
+  // the account's own name is whatever was typed at sign-up ("dev.alamin").
+  const userName =
+    profileStore?.patientProfileData?.fullName?.trim() ||
+    authStore.user?.fullName?.trim() ||
+    t('common.na');
   const photoUrl = getFileUrl(profileStore?.patientProfileData?.photoUrl ?? '');
 
   const handleProfile = useCallback(

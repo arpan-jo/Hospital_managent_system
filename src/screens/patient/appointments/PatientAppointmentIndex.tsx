@@ -52,9 +52,14 @@ export const PatientAppointmentIndex = observer(() => {
 
   const months = useMemo(() => Array.from({ length: 12 }, (_, index) => t(`months.${index}`)), [t]);
 
-  /** "+ Book New" and the empty Upcoming tab both lead to Find Doctors. */
+  /**
+   * "+ Book New" and the empty Upcoming tab both lead to the doctor list —
+   * `pop` closes a doctor's page left open on that tab.
+   */
   const goToDoctors = useCallback(() => {
-    navigation.getParent<BottomTabNavigationProp<TabParamList>>()?.navigate('HomeTab');
+    navigation
+      .getParent<BottomTabNavigationProp<TabParamList>>()
+      ?.navigate('HomeTab', { screen: 'PatientFindDoctorIndex', pop: true });
   }, [navigation]);
 
   const openAppointment = useCallback(
@@ -95,12 +100,16 @@ export const PatientAppointmentIndex = observer(() => {
         }
       />
 
-      <View
+      {/* Scrolls sideways when the labels do not fit, as the portal's strip does. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         accessibilityRole="tablist"
         style={[
           styles.tabs,
           { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
         ]}
+        contentContainerStyle={styles.tabsContent}
       >
         {APPOINTMENT_TABS.map(tab => {
           const selected = viewModel.activeTab === tab;
@@ -141,7 +150,7 @@ export const PatientAppointmentIndex = observer(() => {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -224,25 +233,31 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
   },
   tabs: {
-    flexDirection: 'row',
+    // A ScrollView shrinks by default; under a long list it was squeezed
+    // until the labels were cut off at the bottom.
+    flexGrow: 0,
+    flexShrink: 0,
     marginHorizontal: 16,
     marginBottom: 14,
-    padding: 4,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  // Grows to fill the strip when the tabs fit, so they share it out.
+  tabsContent: {
+    flexGrow: 1,
+    padding: 4,
+  },
   tab: {
-    flex: 1,
+    flexGrow: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
     paddingVertical: 8,
-    paddingHorizontal: 2,
+    paddingHorizontal: 8,
     borderRadius: 10,
   },
   tabText: {
-    flexShrink: 1,
     fontFamily: fontFamilies.semibold,
     fontSize: 11.5,
   },

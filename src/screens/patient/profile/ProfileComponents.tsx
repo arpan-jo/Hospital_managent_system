@@ -55,7 +55,7 @@ export const InfoRow = memo<{
         >
           {label}
         </Text>
-        <Text style={[styles.infoValue, { color: warning ? amber.value : theme.colors.onSurface }]}>
+        <Text style={[styles.infoValue, { color: warning ? amber.text : theme.colors.onSurface }]}>
           {value || '—'}
         </Text>
       </View>

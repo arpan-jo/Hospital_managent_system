@@ -9,9 +9,16 @@
  * attributes.
  */
 
-export type ReportHtmlNode =
-  | { type: 'text'; text: string }
-  | { type: 'element'; tag: string; colSpan: number; children: ReportHtmlNode[] };
+export type ReportHtmlElement = {
+  type: 'element';
+  tag: string;
+  colSpan: number;
+  /** Only on a `td`/`th` that reaches down into the rows below. */
+  rowSpan?: number;
+  children: ReportHtmlNode[];
+};
+
+export type ReportHtmlNode = { type: 'text'; text: string } | ReportHtmlElement;
 
 const ALLOWED_TAGS = new Set([
   'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -66,19 +73,34 @@ export const decodeHtmlEntities = (text: string): string =>
     return NAMED_ENTITIES[entity.toLowerCase()] ?? match;
   });
 
-const readColSpan = (attributes: string): number => {
-  const match = /\b(?:colspan|span)\s*=\s*["']?(\d+)/i.exec(attributes ?? '');
+const readSpan = (attributes: string, name: RegExp, max: number): number => {
+  const match = name.exec(attributes ?? '');
   const span = match ? Number(match[1]) : 1;
-  return Number.isFinite(span) && span > 1 ? Math.min(span, 12) : 1;
+  return Number.isFinite(span) && span > 1 ? Math.min(span, max) : 1;
 };
 
-type Frame = { tag: string; colSpan: number; children: ReportHtmlNode[] };
+const readColSpan = (attributes: string): number =>
+  readSpan(attributes, /\b(?:colspan|span)\s*=\s*["']?(\d+)/i, 12);
+
+const readRowSpan = (attributes: string): number =>
+  readSpan(attributes, /\browspan\s*=\s*["']?(\d+)/i, 50);
+
+type Frame = { tag: string; colSpan: number; rowSpan: number; children: ReportHtmlNode[] };
+
+/** A finished frame as a node; `rowSpan` is written only when a cell has one. */
+const toElement = (frame: Frame): ReportHtmlElement => ({
+  type: 'element',
+  tag: frame.tag,
+  colSpan: frame.colSpan,
+  ...(frame.rowSpan > 1 ? { rowSpan: frame.rowSpan } : {}),
+  children: frame.children,
+});
 
 const TOKEN = /<!--[\s\S]*?-->|<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>|[^<]+|</g;
 
 /** The report's HTML as a tree of allowed elements and text. */
 export const parseReportHtml = (html?: string | null): ReportHtmlNode[] => {
-  const root: Frame = { tag: '#root', colSpan: 1, children: [] };
+  const root: Frame = { tag: '#root', colSpan: 1, rowSpan: 1, children: [] };
   const stack: Frame[] = [root];
   /** While inside a dropped tag: its name and how deep it is nested in itself. */
   let dropping: { tag: string; depth: number } | null = null;
@@ -125,36 +147,97 @@ export const parseReportHtml = (html?: string | null): ReportHtmlNode[] => {
       if (at <= 0) continue;
       while (stack.length > at) {
         const frame = stack.pop() as Frame;
-        stack[stack.length - 1].children.push({
-          type: 'element',
-          tag: frame.tag,
-          colSpan: frame.colSpan,
-          children: frame.children,
-        });
+        stack[stack.length - 1].children.push(toElement(frame));
       }
       continue;
     }
 
-    const colSpan = tagName === 'th' || tagName === 'td' || tagName === 'col' ? readColSpan(match[2]) : 1;
+    const isCell = tagName === 'th' || tagName === 'td';
+    const frame: Frame = {
+      tag: tagName,
+      colSpan: isCell || tagName === 'col' ? readColSpan(match[2]) : 1,
+      rowSpan: isCell ? readRowSpan(match[2]) : 1,
+      children: [],
+    };
     if (isSelfClosing) {
-      stack[stack.length - 1].children.push({ type: 'element', tag: tagName, colSpan, children: [] });
+      stack[stack.length - 1].children.push(toElement(frame));
     } else {
-      stack.push({ tag: tagName, colSpan, children: [] });
+      stack.push(frame);
     }
   }
 
   // Close whatever was left open.
   while (stack.length > 1) {
     const frame = stack.pop() as Frame;
-    stack[stack.length - 1].children.push({
-      type: 'element',
-      tag: frame.tag,
-      colSpan: frame.colSpan,
-      children: frame.children,
-    });
+    stack[stack.length - 1].children.push(toElement(frame));
   }
 
   return root.children;
+};
+
+/** One place in a drawn table row. */
+export interface ReportTableCell {
+  /** The cell drawn here; null where a cell from a row above reaches down. */
+  cell: ReportHtmlElement | null;
+  /** Columns it takes. */
+  colSpan: number;
+  /** It goes on into the next row, so no line is drawn under it. */
+  continuesBelow: boolean;
+}
+
+const isTableCell = (node: ReportHtmlNode): node is ReportHtmlElement =>
+  node.type === 'element' && (node.tag === 'td' || node.tag === 'th');
+
+/**
+ * A table's rows laid out for drawing row by row. A browser lets a `rowspan`
+ * cell fill the column below it; a row of views cannot, so each row it reaches
+ * gets an empty place in that column instead — otherwise the next row's cells
+ * would slide left into it ("11 cm" landing under "Kidney").
+ */
+export const layoutReportTable = (rows: ReportHtmlNode[]): ReportTableCell[][] => {
+  /** By starting column: a cell from above, with how many more rows it covers. */
+  const reaching = new Map<number, { rowsLeft: number; colSpan: number }>();
+
+  return rows.map(row => {
+    const cells = row.type === 'element' ? row.children.filter(isTableCell) : [];
+    const line: ReportTableCell[] = [];
+    /** What reached into this row before it started — each uses up one of its rows here. */
+    const fromAbove = new Map(reaching);
+    let column = 0;
+
+    /** One row of a cell from above used up; drawn as an empty place when `draw`. */
+    const spendRow = (start: number, draw: boolean) => {
+      const from = fromAbove.get(start);
+      if (!from) return;
+      fromAbove.delete(start);
+      from.rowsLeft -= 1;
+      if (from.rowsLeft === 0) reaching.delete(start);
+      if (draw) line.push({ cell: null, colSpan: from.colSpan, continuesBelow: from.rowsLeft > 0 });
+    };
+    const fillReaching = () => {
+      while (fromAbove.has(column)) {
+        const colSpan = fromAbove.get(column)?.colSpan ?? 1;
+        spendRow(column, true);
+        column += colSpan;
+      }
+    };
+
+    fillReaching();
+    cells.forEach(cell => {
+      const rowSpan = cell.rowSpan ?? 1;
+      line.push({ cell, colSpan: cell.colSpan, continuesBelow: rowSpan > 1 });
+      if (rowSpan > 1) reaching.set(column, { rowsLeft: rowSpan - 1, colSpan: cell.colSpan });
+      column += cell.colSpan;
+      fillReaching();
+    });
+    // Whatever is left still loses this row: past the row's end it gets its
+    // empty place; one a cell of this row ran over (bad markup) just counts down.
+    [...fromAbove.keys()]
+      .sort((a, b) => a - b)
+      .forEach(start => spendRow(start, start >= column));
+
+    return line;
+  });
 };
 
 /** Whether the report says anything once its tags are gone — `<p></p>` does not. */

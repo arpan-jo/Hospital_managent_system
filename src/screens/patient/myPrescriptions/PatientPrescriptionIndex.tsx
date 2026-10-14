@@ -77,13 +77,13 @@ export const PatientPrescriptionIndex = observer(() => {
     async (prescription: PortalPrescription) => {
       if (!prescription?.id || downloadingId !== null) return;
       setDownloadingId(prescription.id);
-      const filePath = await download({
+      const { filePath, serverMessage } = await download({
         url: PatientPrescriptionRepository.getPdfUrl(prescription.id),
         filename: PatientPrescriptionRepository.getPdfFileName(prescription?.code),
       });
       setDownloadingId(null);
       toastStore.show(
-        t(filePath ? 'myPrescriptions.downloadSaved' : 'myPrescriptions.downloadFailed'),
+        filePath ? t('myPrescriptions.downloadSaved') : serverMessage || t('myPrescriptions.downloadFailed'),
         filePath ? 'success' : 'error',
       );
     },
@@ -109,9 +109,9 @@ export const PatientPrescriptionIndex = observer(() => {
     async (attachment: PrescriptionAttachment) => {
       const url = getFileUrl(attachment?.url);
       if (!url) return;
-      const filePath = await download({ url, filename: attachment?.name ?? '' });
+      const { filePath, serverMessage } = await download({ url, filename: attachment?.name ?? '' });
       toastStore.show(
-        t(filePath ? 'myPrescriptions.downloadSaved' : 'myPrescriptions.downloadFailed'),
+        filePath ? t('myPrescriptions.downloadSaved') : serverMessage || t('myPrescriptions.downloadFailed'),
         filePath ? 'success' : 'error',
       );
     },

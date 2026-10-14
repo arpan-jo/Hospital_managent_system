@@ -102,6 +102,12 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
   const slotsRequestRef = useRef(0);
   /** Bumped by every load, so one doctor's answer never lands on another's page. */
   const loadRequestRef = useRef(0);
+  /**
+   * Set the moment a booking is sent. `isBooking` only changes on the next
+   * render, so a second tap before it would place a second appointment — and
+   * the server, given "Auto", would just give that one the next time.
+   */
+  const bookingInFlightRef = useRef(false);
 
   // ── The doctor, their terms, and the patient the visit is for ───────────────
 
@@ -142,6 +148,8 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
         }),
         PatientRepository.getProfile().catch(error => {
           console.log('[DoctorDetails] getProfile error ==>', error?.message);
+          // No profile on the server: the kept one below must not stand in.
+          if (error?.status === NOT_FOUND) profileStore.clear();
           return null;
         }),
       ]);
@@ -339,7 +347,7 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
    * time itself was lost the window's times are read again.
    */
   const book = useCallback(async (): Promise<BookingOutcome> => {
-    if (isBooking) return { ok: false, message: '' };
+    if (bookingInFlightRef.current) return { ok: false, message: '' };
 
     // A refusal closes the confirmation, so the reason is not hidden under it.
     const refuse = (message: string): BookingOutcome => {
@@ -355,6 +363,7 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
     }
     if (!doctor || !patient) return refuse(t('doctorProfile.selectPatient'));
 
+    bookingInFlightRef.current = true;
     setIsBooking(true);
     try {
       const result = await AppointmentBookingRepository.createAppointment({
@@ -371,6 +380,15 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
         reason,
         paymentAmount: currentFee,
       });
+
+      // A booking can move the registration to the doctor's hospital, and that
+      // re-issues the patient code. Read the profile again, as the portal does,
+      // so the drawer and My Profile do not keep the old code.
+      PatientRepository.getProfile()
+        .then(profile => {
+          if (profile) profileStore.setPatientProfile(profile);
+        })
+        .catch(error => console.log('[DoctorDetails] profile refresh error ==>', error?.message));
 
       return {
         ok: true,
@@ -417,10 +435,10 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
         message: failure?.message || t('doctorProfile.bookingFailed'),
       };
     } finally {
+      bookingInFlightRef.current = false;
       setIsBooking(false);
     }
   }, [
-    isBooking,
     date,
     selectedSlotId,
     consultationType,
@@ -429,6 +447,7 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
     patient,
     patientRegistrationId,
     authStore.user?.userId,
+    profileStore,
     subSlotTime,
     reason,
     currentFee,

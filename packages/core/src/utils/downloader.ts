@@ -59,6 +59,20 @@ export const getDestinationPath = (
   return `${dir}/${filename}`;
 };
 
+/** A failed answer's body — parsed when it is JSON, else its text; null when unreadable. */
+const readErrorBody = async (path: string): Promise<unknown> => {
+  try {
+    const text = await RNBlobUtil.fs.readFile(path, 'utf8');
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  } catch {
+    return null;
+  }
+};
+
 /** Android 10 is where scoped storage — and the Downloads collection — begins. */
 const isScopedStorage = Platform.OS === 'android' && Number(Platform.Version) >= 29;
 
@@ -141,8 +155,14 @@ export const startDownload = ({
     const fetchedPath = response.path() ?? destPath;
 
     if (status && (status < 200 || status >= 300)) {
+      const body = await readErrorBody(fetchedPath);
       await RNBlobUtil.fs.unlink(fetchedPath).catch(() => {});
-      throw new Error(`The file could not be downloaded (status ${status}).`);
+      // Shaped like an `apiRequest` rejection, so `serverMessageOf` finds the
+      // server's own words — a missing file answers `{ message: "File not found." }`.
+      throw Object.assign(
+        new Error(`The file could not be downloaded (status ${status}).`),
+        { status, data: body },
+      );
     }
 
     if (!savesToCollection) return { filePath: fetchedPath };

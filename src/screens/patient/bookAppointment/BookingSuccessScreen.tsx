@@ -58,10 +58,11 @@ export const BookingSuccessScreen = observer(() => {
   /** Where the portal sends a patient after booking: their appointments. */
   const handleViewAppointments = useCallback(() => {
     // Switched on the tab navigator itself: sent through the drawer as
-    // `MainTabs` params, the switch was lost to the pop below.
+    // `MainTabs` params, the switch was lost to the pop below. `pop` lands on
+    // the list even when an appointment's page was left open on that tab.
     navigation
       .getParent<BottomTabNavigationProp<TabParamList>>()
-      ?.navigate('ActivityTab');
+      ?.navigate('ActivityTab', { screen: 'AppointmentsList', pop: true });
     // So coming back to this tab shows the directory.
     navigation.popToTop();
   }, [navigation]);

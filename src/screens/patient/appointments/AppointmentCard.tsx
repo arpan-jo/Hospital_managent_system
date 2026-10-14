@@ -26,20 +26,31 @@ interface AppointmentCardProps {
   onPress: (appointment: AppointmentSummary) => void;
 }
 
-/** A date / time / token tile under the doctor. */
-const Tile = memo<{ icon: string; label: string; value: string }>(function Tile({
+/**
+ * A date / time / token tile under the doctor. `weight` is its share of the
+ * row: the date is the longest value and on a 360dp phone an equal third cut
+ * it to "Oct 15, 20…"; a value still too long (a long month name) shrinks a
+ * little instead.
+ */
+const Tile = memo<{ icon: string; label: string; value: string; weight?: number }>(function Tile({
   icon,
   label,
   value,
+  weight = 1,
 }) {
   const theme = useTheme();
   return (
-    <View style={[styles.tile, { backgroundColor: theme.colors.surfaceVariant }]}>
+    <View style={[styles.tile, { flex: weight, backgroundColor: theme.colors.surfaceVariant }]}>
       <View style={styles.tileLabelRow}>
         <Icon name={icon} size={12} color={theme.colors.onSurfaceVariant} />
         <Text style={[styles.tileLabel, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
       </View>
-      <Text numberOfLines={1} style={[styles.tileValue, { color: theme.colors.onSurface }]}>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        style={[styles.tileValue, { color: theme.colors.onSurface }]}
+      >
         {value}
       </Text>
     </View>
@@ -119,6 +130,7 @@ export const AppointmentCard = memo<AppointmentCardProps>(function AppointmentCa
           icon="calendar-blank-outline"
           label={t('appointments.date')}
           value={formatLongDate(appointment?.date ?? '', months) || '—'}
+          weight={1.35}
         />
         <Tile
           icon="clock-outline"
@@ -229,7 +241,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   tile: {
-    flex: 1,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 8,

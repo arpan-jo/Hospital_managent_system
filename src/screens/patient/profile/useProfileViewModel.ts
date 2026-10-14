@@ -64,6 +64,8 @@ export const useProfileViewModel = () => {
       setIsMissing(false);
     } catch (error: any) {
       console.log('[Profile] getProfile error ==>', error?.message);
+      // The server says this account has none — drop whatever was kept.
+      if (error?.status === NOT_FOUND) profileStore.clear();
       setProfileRequest({ isLoading: false, data: null, error: serverMessageOf(error) });
       setIsMissing(error?.status === NOT_FOUND);
     }
@@ -115,7 +117,8 @@ export const useProfileViewModel = () => {
     }): Promise<boolean> => {
       try {
         const created = await PatientRepository.addCondition(input);
-        setConditionsRequest(prev => ({ ...prev, data: [...(prev?.data ?? []), created] }));
+        // On top: the server lists them newest first.
+        setConditionsRequest(prev => ({ ...prev, data: [created, ...(prev?.data ?? [])] }));
         toastStore.show(t('patientProfile.conditionAdded'), 'success');
         return true;
       } catch (error: any) {
@@ -148,7 +151,7 @@ export const useProfileViewModel = () => {
     async (input: { name: string; severity: AllergySeverity; reaction: string }): Promise<boolean> => {
       try {
         const created = await PatientRepository.addAllergy(input);
-        setAllergiesRequest(prev => ({ ...prev, data: [...(prev?.data ?? []), created] }));
+        setAllergiesRequest(prev => ({ ...prev, data: [created, ...(prev?.data ?? [])] }));
         toastStore.show(t('patientProfile.allergyAdded'), 'success');
         return true;
       } catch (error: any) {

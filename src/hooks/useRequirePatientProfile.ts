@@ -73,6 +73,7 @@ export const useRequirePatientProfile = () => {
 
       // The 404 is the API's "no profile yet" ("Profile not found. Use POST to
       // create one." — words for a developer), so the patient gets ours.
+      profileStore.clear();
       toastStore.show(t('patientProfile.createProfileFirst'), 'warning');
       openProfileForm();
       return false;

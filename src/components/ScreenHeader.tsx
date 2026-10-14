@@ -63,7 +63,14 @@ export const ScreenHeader = memo<ScreenHeaderProps>(function ScreenHeader({
       </Pressable>
 
       <View style={styles.titles}>
-        <Text numberOfLines={1} style={[styles.title, { color: theme.colors.onSurface }]}>
+        {/* Shrinks a little before it is cut — "My Reports & Documents" beside
+            the Upload button does not fit a 360dp phone at full size. */}
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+          style={[styles.title, { color: theme.colors.onSurface }]}
+        >
           {title}
         </Text>
         {subtitle ? (

@@ -1,7 +1,7 @@
 import React, { ReactNode, useMemo } from 'react';
 import { Platform, StyleSheet, TextStyle, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import { ReportHtmlNode, parseReportHtml } from '@app/core';
+import { ReportHtmlNode, layoutReportTable, parseReportHtml } from '@app/core';
 import { fontFamilies } from '@app/ui';
 
 const BLOCK_TAGS = new Set([
@@ -182,33 +182,33 @@ const renderBlock = (
         <View key={key} style={styles.block}>
           {caption ? renderBlocks([caption], `${key}.c`, palette, textStyle) : null}
           <View style={[styles.table, { borderColor: palette.border }]}>
-            {tableRows(node.children).map((row, rowIndex) => (
+            {layoutReportTable(tableRows(node.children)).map((row, rowIndex) => (
               <View key={`${key}.r${rowIndex}`} style={styles.tableRow}>
-                {(row.type === 'element' ? row.children : [])
-                  .filter(cell => cell.type === 'element' && (cell.tag === 'td' || cell.tag === 'th'))
-                  .map((cell, cellIndex) => {
-                    const isHead = cell.type === 'element' && cell.tag === 'th';
-                    return (
-                      <View
-                        key={`${key}.r${rowIndex}.${cellIndex}`}
-                        style={[
-                          styles.cell,
-                          {
-                            flex: cell.type === 'element' ? cell.colSpan : 1,
-                            borderColor: palette.border,
-                            backgroundColor: isHead ? palette.headTint : undefined,
-                          },
-                        ]}
-                      >
-                        {renderBlocks(
-                          cell.type === 'element' ? cell.children : [],
-                          `${key}.r${rowIndex}.${cellIndex}`,
-                          palette,
-                          isHead ? { ...textStyle, fontFamily: fontFamilies.semibold } : textStyle,
-                        )}
-                      </View>
-                    );
-                  })}
+                {row.map(({ cell, colSpan, continuesBelow }, cellIndex) => {
+                  const isHead = cell?.tag === 'th';
+                  return (
+                    <View
+                      key={`${key}.r${rowIndex}.${cellIndex}`}
+                      style={[
+                        styles.cell,
+                        {
+                          flex: colSpan,
+                          borderColor: palette.border,
+                          backgroundColor: isHead ? palette.headTint : undefined,
+                        },
+                        // A row-spanning cell reads as one box down its rows.
+                        continuesBelow && styles.cellContinues,
+                      ]}
+                    >
+                      {renderBlocks(
+                        cell?.children ?? [],
+                        `${key}.r${rowIndex}.${cellIndex}`,
+                        palette,
+                        isHead ? { ...textStyle, fontFamily: fontFamilies.semibold } : textStyle,
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             ))}
           </View>
@@ -291,6 +291,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 6,
     paddingVertical: 5,
+  },
+  cellContinues: {
+    borderBottomWidth: 0,
   },
 });
 
