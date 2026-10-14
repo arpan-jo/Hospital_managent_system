@@ -8,7 +8,9 @@ import {
 import TabNavigator, { TabParamList } from './TabNavigator';
 import SettingsScreen from '../screens/common/settings/SettingsScreen';
 import PatientFollowUpIndex from '../screens/patient/followUps/PatientFollowUpIndex';
-import ReportsStackNavigator, { ReportsStackParamList } from './ReportsStackNavigator';
+import MyPrescriptionsStackNavigator, {
+  MyPrescriptionsStackParamList,
+} from './MyPrescriptionsStackNavigator';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
@@ -22,7 +24,7 @@ export type DrawerParamList = {
   MainTabs: NavigatorScreenParams<TabParamList> | undefined;
   Settings: undefined;
   FollowUps: undefined;
-  Reports: NavigatorScreenParams<ReportsStackParamList> | undefined;
+  Prescriptions: NavigatorScreenParams<MyPrescriptionsStackParamList> | undefined;
 };
 
 type MenuItem = {
@@ -58,10 +60,9 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'calendar-refresh-outline',
   },
   {
-    name: 'MainTabs',
+    name: 'Prescriptions',
     labelKey: 'drawer.prescriptions',
     icon: 'clipboard-text-outline',
-    tab: 'PrescriptionsTab',
   },
   {
     name: 'MainTabs',
@@ -69,7 +70,12 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'account-circle-outline',
     tab: 'ProfileTab',
   },
-  { name: 'Reports', labelKey: 'drawer.reports', icon: 'file-chart-outline' },
+  {
+    name: 'MainTabs',
+    labelKey: 'drawer.reports',
+    icon: 'file-chart-outline',
+    tab: 'ReportsTab',
+  },
   {
     name: 'Settings',
     labelKey: 'settings.title',
@@ -348,7 +354,7 @@ export const DrawerNavigator = () => {
       <Drawer.Screen name="MainTabs" component={TabNavigator} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
       <Drawer.Screen name="FollowUps" component={PatientFollowUpIndex} />
-      <Drawer.Screen name="Reports" component={ReportsStackNavigator} />
+      <Drawer.Screen name="Prescriptions" component={MyPrescriptionsStackNavigator} />
     </Drawer.Navigator>
   );
 };

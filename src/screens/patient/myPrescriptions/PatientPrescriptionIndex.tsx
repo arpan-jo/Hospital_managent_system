@@ -23,7 +23,6 @@ import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { MyPrescriptionsStackParamList } from '../../../navigation/MyPrescriptionsStackNavigator';
-import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import PrescriptionCard from './PrescriptionCard';
 import PrescriptionFilterSheet from './PrescriptionFilterSheet';
 import UploadDocumentSheet from './UploadDocumentSheet';
@@ -347,7 +346,7 @@ export const PatientPrescriptionIndex = observer(() => {
             tintColor={theme.colors.primary}
           />
         }
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
         ListHeaderComponent={
           showToday ? (
             <TodayMedicinesPanel

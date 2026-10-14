@@ -20,7 +20,7 @@ export type ReportsStackParamList = {
 
 const Stack = createNativeStackNavigator<ReportsStackParamList>();
 
-/** The drawer's Reports entry — the list and everything opened from it, with its own back stack. */
+/** The Reports tab — the list and everything opened from it, with its own back stack. */
 export const ReportsStackNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ReportsHome" component={PatientReportIndex} />

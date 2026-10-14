@@ -7,6 +7,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { serverMessageOf } from '@app/core';
 import { fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
+import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import RecordState from './RecordState';
 
@@ -95,7 +96,7 @@ export const RecordDetailScreen = ({
       <ScreenHeader title={title} subtitle={subtitle} leading="back" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
         refreshControl={
           error === null && !isLoading ? (
             <RefreshControl

@@ -19,12 +19,14 @@ import FindDoctorsStackNavigator, {
 import AppointmentsStackNavigator, {
   AppointmentsStackParamList,
 } from './AppointmentsStackNavigator';
-import MyPrescriptionsStackNavigator from './MyPrescriptionsStackNavigator';
+import ReportsStackNavigator, {
+  ReportsStackParamList,
+} from './ReportsStackNavigator';
 
 export type TabParamList = {
   HomeTab: NavigatorScreenParams<FindDoctorsStackParamList> | undefined;
   ActivityTab: NavigatorScreenParams<AppointmentsStackParamList> | undefined;
-  PrescriptionsTab: undefined;
+  ReportsTab: NavigatorScreenParams<ReportsStackParamList> | undefined;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
@@ -38,7 +40,7 @@ type TabConfig = {
 };
 
 /**
- * The tab bar — Find Doctors, Appointments, Prescription, Profile. Each tab is
+ * The tab bar — Find Doctors, Appointments, Reports, Profile. Each tab is
  * labelled after the screen it actually shows; the route names stay as they
  * were so existing `navigate('MainTabs', { screen: ... })` calls keep working.
  * The drawer entries of the same names focus these tabs, so each screen exists
@@ -60,11 +62,11 @@ export const TABS: TabConfig[] = [
     component: AppointmentsStackNavigator,
   },
   {
-    name: 'PrescriptionsTab',
-    titleKey: 'tabs.prescriptions',
-    icon: 'clipboard-text-outline',
-    activeIcon: 'clipboard-text',
-    component: MyPrescriptionsStackNavigator,
+    name: 'ReportsTab',
+    titleKey: 'tabs.reports',
+    icon: 'file-chart-outline',
+    activeIcon: 'file-chart',
+    component: ReportsStackNavigator,
   },
   {
     name: 'ProfileTab',

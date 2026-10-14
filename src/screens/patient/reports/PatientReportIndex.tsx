@@ -13,6 +13,7 @@ import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
+import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { PathologySection, RadiologySection, VisitPrescriptionsSection } from './RecordSections';
 import UploadReportSheet from './UploadReportSheet';
 import UploadsSection from './UploadsSection';
@@ -127,7 +128,7 @@ export const PatientReportIndex = observer(() => {
   }, [deleteTarget, uploads]);
 
   const active = SECTIONS.find(item => item.key === section) ?? SECTIONS[0];
-  const bottomPadding = insets.bottom + 24;
+  const bottomPadding = insets.bottom + TAB_BAR_CLEARANCE;
 
   return (
     <SafeAreaView
