@@ -33,8 +33,9 @@ export * from './utils/medicineSlots';
 export * from './utils/followUps';
 export * from './repositories/PatientFollowUpRepository';
 export * from './repositories/PatientReportRepository';
+export * from './repositories/MedicalRecordRepository';
+export * from './utils/reportHtml';
+export * from './utils/code128';
 export * from './repositories/PatientPrescriptionRepository';
-export * from './utils/documentViewer';
-export * from './hooks/useDocumentViewer';
 
 

@@ -41,7 +41,7 @@ interface UploadFileSheetProps<T extends string> {
   subtitle?: string;
   categoryItems: DropdownItem<T>[];
   defaultCategory: T;
-  /** Ceiling the API enforces — shown in the hint, not checked here. */
+  /** Ceiling the API enforces — shown in the hint and checked on pick, as the web does. */
   maxBytes?: number;
   /** Extensions the backend accepts, lowercase and without the dot. */
   allowedExtensions?: string[];
@@ -114,9 +114,9 @@ export function UploadFileSheet<T extends string>({
   );
 
   /**
-   * Only the type is checked here — a file picker on some Android providers
-   * ignores `allowedTypes`. The size ceiling is the API's to enforce; the hint
-   * above states it so the file can be picked right the first time.
+   * The type and the size are checked on pick, as the web's forms do — a file
+   * picker on some Android providers ignores `allowedTypes`, and the server
+   * turns away anything over the ceiling only after the whole upload.
    */
   const validateFile = useCallback(
     (picked: PickedFile): string | null => {
@@ -124,9 +124,12 @@ export function UploadFileSheet<T extends string>({
       if (extension && !allowedExtensions.includes(extension)) {
         return t('uploadFile.typeNotAllowed', { types: typeLabel });
       }
+      if ((picked?.size ?? 0) > maxBytes) {
+        return t('uploadFile.fileTooLarge', { size: formatFileSize(maxBytes) });
+      }
       return null;
     },
-    [allowedExtensions, typeLabel, t],
+    [allowedExtensions, typeLabel, maxBytes, t],
   );
 
   const handleFilePicked = useCallback(
@@ -142,6 +145,11 @@ export function UploadFileSheet<T extends string>({
       setFileError(error);
       // A rejected file is not kept, so "Upload" cannot send it anyway.
       setFile(error ? null : picked);
+      // An empty title takes the file's name, without its extension — as on the web.
+      if (!error) {
+        setName(prev => prev || String(picked?.name ?? '').replace(/\.[^.]+$/, ''));
+        setTitleError(null);
+      }
     },
     [validateFile],
   );

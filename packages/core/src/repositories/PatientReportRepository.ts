@@ -1,108 +1,77 @@
+/**
+ * The patient's own documents — the Reports page's "My Uploads": files the
+ * patient uploaded themselves, read and filed through `/hms/patient/documents`.
+ * The same endpoint backs the documents a prescription card lists, which file
+ * under a family member's `patientCode`.
+ */
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
-import { getFileUrl } from '../utils/fileUrl';
-import { toISODateFromApi } from '../utils/format';
 import FileRepository, { UploadFile } from './FileRepository';
 
 /**
- * The trailing `| string` this used to carry made the type effectively `string`,
- * so a `Record<ReportCategory, …>` lookup type-checked while returning
- * `undefined` at runtime — that is what crashed the report card. Keep it closed
- * and put every payload through `toReportCategory`.
+ * The six the web's upload forms offer, in its order. The column behind them
+ * (`tblPatientDocument.strCategory`) is free text with no whitelist, so a
+ * category that arrives from elsewhere is kept as sent.
  */
-export type ReportCategory =
-  | 'Prescription'
-  | 'Laboratory'
-  | 'Radiology and Imaging'
-  | 'Other';
-
-/**
- * `category` is free text on the API (`strCategory nvarchar(100)`, default
- * 'Other', no enum in swagger and no check constraint), and the clients that
- * wrote the older rows disagree on the wording — "Lab Report" and "X-Ray /
- * Scan" where the web now writes "Laboratory" and "Radiology and Imaging".
- * Matching on keywords keeps every row readable, and anything unrecognised
- * lands on 'Other' so the lookups built on this type always hit.
- */
-export const toReportCategory = (value: any): ReportCategory => {
-  const text = String(value ?? '').toLowerCase();
-
-  if (text.includes('prescription')) return 'Prescription';
-  if (text.includes('lab')) return 'Laboratory';
-  if (/x-?ray|scan|radiolog|imaging|mri|ultraso|\bct\b/.test(text)) {
-    return 'Radiology and Imaging';
-  }
-  return 'Other';
-};
-
-/** Every category a card or a filter chip can show. */
-export const REPORT_CATEGORIES: ReportCategory[] = [
+export const DOCUMENT_CATEGORIES = [
+  'Lab Report',
+  'X-Ray / Scan',
   'Prescription',
-  'Laboratory',
-  'Radiology and Imaging',
+  'Medical Certificate',
+  'Discharge Summary',
   'Other',
-];
+] as const;
 
-/**
- * What the upload form offers, in the web's order and wording — the three the
- * web writes to `strCategory`. 'Other' is deliberately absent: it is where
- * unrecognised legacy rows land, not something a patient files a new document
- * under.
- */
-export const UPLOAD_REPORT_CATEGORIES: ReportCategory[] = [
-  'Prescription',
-  'Laboratory',
-  'Radiology and Imaging',
-];
+export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
 
-/**
- * The ceiling the API enforces, mirrored only so the upload form can state it.
- * The client does not pre-check a file against it.
- */
+/** The ceiling the upload endpoint enforces per file, checked before sending as on the web. */
 export const REPORT_MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-export const REPORT_ALLOWED_EXTENSIONS = [
-  'pdf',
-  'jpg',
-  'jpeg',
-  'png',
-  'gif',
-  'webp',
-  'svg',
-];
+/** What the web's forms accept: images and PDF. */
+export const REPORT_ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
 
+/** One row of `GET /hms/patient/documents` — `PatientDocumentDto`. */
 export interface PatientDocument {
+  /** `documentId` — what the delete call keys off. */
   id: string;
-  consultationId?: number | null;
-  patientCode?: string;
+  /** '' for the account's own documents; a family member's code otherwise. */
+  patientCode: string;
   title: string;
-  /** Filename including extension, e.g. "OIP.jpg". */
+  /** The name it was picked under, e.g. "cbc.pdf". */
   fileName: string;
-  category: ReportCategory;
+  category: string;
+  /** "PDF", "JPG"… — '' when the name has none. */
+  extension: string;
   sizeBytes: number;
-  /** 'YYYY-MM-DD' — '' when the payload carried no readable date. */
+  /** As the server formats it, e.g. "14 Oct 2026". */
   uploadedAt: string;
-  /** Ready to open or download; '' when the row stored no file. */
+  /** Blob name — run it through `getFileUrl` before opening or downloading. */
   url: string;
-  notes?: string;
+  notes: string;
 }
 
-/** Defensive mapping — never trust the payload shape once this hits a real API. */
-const toReport = (raw: any, index: number): PatientDocument => ({
-  id: String(raw?.documentId ?? raw?.id ?? index),
-  consultationId: raw?.consultationId != null ? Number(raw.consultationId) : null,
-  patientCode: raw?.patientCode ?? '',
-  title: raw?.title ?? raw?.fileName ?? 'Document',
-  fileName: raw?.fileName ?? raw?.title ?? 'document',
-  category: toReportCategory(raw?.category),
-  sizeBytes: Number(raw?.fileSize ?? raw?.sizeBytes ?? 0),
-  uploadedAt: toISODateFromApi(raw?.uploadedAt),
-  url: getFileUrl(raw?.fileUrl ?? raw?.url ?? ''),
-  notes: raw?.notes || undefined,
-});
+const toText = (value: any): string => String(value ?? '').trim();
 
-/** `POST /api/patient/documents` body (`CreatePatientDocumentDto`). */
+const toDocument = (raw: any, index: number): PatientDocument => {
+  const fileName = toText(raw?.fileName) || toText(raw?.title);
+  const extension =
+    toText(raw?.extension).replace(/^\./, '') || (/\.([a-z0-9]+)$/i.exec(fileName)?.[1] ?? '');
+  return {
+    id: toText(raw?.documentId) || String(index),
+    patientCode: toText(raw?.patientCode),
+    title: toText(raw?.title) || fileName,
+    fileName,
+    category: toText(raw?.category) || 'Other',
+    extension: extension.toUpperCase(),
+    sizeBytes: Number(raw?.fileSize ?? 0) || 0,
+    uploadedAt: toText(raw?.uploadedAt),
+    url: toText(raw?.fileUrl),
+    notes: toText(raw?.notes),
+  };
+};
+
+/** `POST /hms/patient/documents` body — `CreatePatientDocumentDto`. */
 export interface CreateReportPayload {
   category: string;
   title: string;
@@ -110,74 +79,57 @@ export interface CreateReportPayload {
   fileUrl: string;
   fileName: string;
   fileSize: number;
-  notes: string;
+  notes?: string;
   /**
-   * Documents are filed against a patient, not a visit. Left blank — which is
-   * what the Reports screen sends, matching the web — the API files the
-   * document against the signed-in account. Blank goes up as `null`: the
-   * API stores the value as sent, and lists the account's own documents by
-   * `patientCode IS NULL`, so one filed under `''` would never show again.
+   * Blank files the document under the account itself; the server lists those
+   * by `patientCode IS NULL`, so blank goes up as `null`, never `''`.
    */
   patientCode?: string;
-  consultationId?: number | null;
 }
 
 export const PatientReportRepository = {
   /**
-   * `GET /api/patient/documents`. Left without a `patientCode` the endpoint
-   * answers the account's own documents, which is the whole Reports list.
+   * `GET /hms/patient/documents` — sent without a `patientCode`, the server
+   * answers the account's own documents only, newest first, as the web lists them.
    */
-  getReports: async (patientCode?: string): Promise<PatientDocument[]> => {
+  getDocuments: async (): Promise<PatientDocument[]> => {
     const api_params: ApiRequestOptions = {
       url: ENDPOINTS.patientDocuments,
       method: 'GET',
-      params: patientCode ? { patientCode } : undefined,
       baseUrl: API_URL,
     };
     const response = await apiRequest<any>(api_params);
 
-    return Array.isArray(response) ? response.map(toReport) : [];
+    if (!Array.isArray(response)) throw new Error('Unexpected documents response');
+    return response?.map(toDocument) ?? [];
   },
 
-  /**
-   * The file crosses to the server first and answers with a blob name; that
-   * name is what `createReport` stores as `fileUrl`.
-   */
-  uploadFile: async (file: UploadFile): Promise<string> =>
-    FileRepository.upload(file),
+  /** The file crosses first and answers with a blob name, which `createReport` files. */
+  uploadFile: async (file: UploadFile): Promise<string> => FileRepository.upload(file),
 
-  /**
-   * `POST /api/patient/documents`. The API echoes the stored row back, so the
-   * created document is returned for the list to prepend — `null` when the
-   * response carried nothing, which tells the caller to refetch instead.
-   */
-  createReport: async (
-    payload: CreateReportPayload,
-  ): Promise<PatientDocument | null> => {
+  /** `POST /hms/patient/documents`. */
+  createReport: async (payload: CreateReportPayload): Promise<void> => {
     const api_params: ApiRequestOptions = {
       url: ENDPOINTS.patientDocuments,
       method: 'POST',
       baseUrl: API_URL,
       data: {
-        consultationId: payload?.consultationId ?? null,
         patientCode: payload?.patientCode?.trim() || null,
-        category: payload?.category ?? 'Other',
-        title: payload?.title ?? '',
+        category: payload?.category || 'Other',
+        title: payload?.title?.trim() ?? '',
         fileUrl: payload?.fileUrl ?? '',
         fileName: payload?.fileName ?? '',
-        fileSize: Number(payload?.fileSize ?? 0),
-        notes: payload?.notes ?? '',
+        fileSize: Number(payload?.fileSize ?? 0) || 0,
+        notes: payload?.notes?.trim() || null,
       },
     };
-    const response = await apiRequest<any>(api_params);
-
-    return response?.documentId != null ? toReport(response, 0) : null;
+    await apiRequest<any>(api_params);
   },
 
-  /** `DELETE /api/patient/documents/{documentId}`. */
+  /** `DELETE /hms/patient/documents/{documentId}`. */
   deleteReport: async (documentId: string): Promise<void> => {
     const api_params: ApiRequestOptions = {
-      url: `${ENDPOINTS.patientDocuments}/${documentId}`,
+      url: `${ENDPOINTS.patientDocuments}/${encodeURIComponent(documentId ?? '')}`,
       method: 'DELETE',
       baseUrl: API_URL,
     };

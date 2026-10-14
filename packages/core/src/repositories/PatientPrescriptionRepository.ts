@@ -8,7 +8,10 @@ import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
 import FileRepository, { UploadFile } from './FileRepository';
-import PatientReportRepository from './PatientReportRepository';
+import PatientReportRepository, {
+  DOCUMENT_CATEGORIES,
+  DocumentCategory,
+} from './PatientReportRepository';
 
 /** Where the prescription was written. */
 export type PrescriptionVisitType = 'opd' | 'emergency' | 'ipd';
@@ -33,21 +36,10 @@ export interface PortalPrescription {
   patientCode: string;
 }
 
-/**
- * The six the web's upload form offers, in its order. The column behind them
- * (`tblPatientDocument.strCategory`) is free text, so a category that arrives
- * from elsewhere is kept as sent — only the picker is limited to these.
- */
-export const ATTACHMENT_CATEGORIES = [
-  'Lab Report',
-  'X-Ray / Scan',
-  'Prescription',
-  'Medical Certificate',
-  'Discharge Summary',
-  'Other',
-] as const;
+/** The web's upload categories — the same list the Reports page files under. */
+export const ATTACHMENT_CATEGORIES = DOCUMENT_CATEGORIES;
 
-export type AttachmentCategory = (typeof ATTACHMENT_CATEGORIES)[number];
+export type AttachmentCategory = DocumentCategory;
 
 /**
  * One row of `GET /hms/patient/documents` — a file the patient attached.
@@ -97,7 +89,7 @@ const toVisitType = (raw: any): PrescriptionVisitType => {
 };
 
 /** Defensive mapping — every field on the payload can come back null. */
-const toPortalPrescription = (raw: any): PortalPrescription => ({
+export const toPortalPrescription = (raw: any): PortalPrescription => ({
   id: Number(raw?.prescriptionId ?? 0) || 0,
   code: toText(raw?.prescriptionCode),
   prescribedAt: toText(raw?.prescribedAt),

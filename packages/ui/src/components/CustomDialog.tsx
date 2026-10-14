@@ -17,6 +17,8 @@ interface CustomDialogProps {
    * buttons answer it then, never a stray tap outside or Android Back.
    */
   dismissable?: boolean;
+  /** Shows the confirm button busy while its action runs. */
+  loading?: boolean;
 }
 
 export const CustomDialog = memo<CustomDialogProps>(function CustomDialog({
@@ -29,6 +31,7 @@ export const CustomDialog = memo<CustomDialogProps>(function CustomDialog({
   cancelText = 'Cancel',
   showCancel = true,
   dismissable = true,
+  loading = false,
 }) {
   return (
     <Portal>
@@ -45,7 +48,12 @@ export const CustomDialog = memo<CustomDialogProps>(function CustomDialog({
               {cancelText}
             </Button>
           )}
-          <Button onPress={onConfirm} labelStyle={styles.actionBtn}>
+          <Button
+            onPress={onConfirm}
+            loading={loading}
+            disabled={loading}
+            labelStyle={styles.actionBtn}
+          >
             {confirmText}
           </Button>
         </Dialog.Actions>

@@ -8,7 +8,7 @@ import {
 import TabNavigator, { TabParamList } from './TabNavigator';
 import SettingsScreen from '../screens/common/settings/SettingsScreen';
 import PatientFollowUpIndex from '../screens/patient/followUps/PatientFollowUpIndex';
-import PatientReportIndex from '../screens/patient/reports/PatientReportIndex';
+import ReportsStackNavigator, { ReportsStackParamList } from './ReportsStackNavigator';
 import { View, StyleSheet } from 'react-native';
 import { Text, useTheme, Divider } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
@@ -22,7 +22,7 @@ export type DrawerParamList = {
   MainTabs: NavigatorScreenParams<TabParamList> | undefined;
   Settings: undefined;
   FollowUps: undefined;
-  Reports: undefined;
+  Reports: NavigatorScreenParams<ReportsStackParamList> | undefined;
 };
 
 type MenuItem = {
@@ -273,7 +273,7 @@ export const DrawerNavigator = () => {
       <Drawer.Screen name="MainTabs" component={TabNavigator} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
       <Drawer.Screen name="FollowUps" component={PatientFollowUpIndex} />
-      <Drawer.Screen name="Reports" component={PatientReportIndex} />
+      <Drawer.Screen name="Reports" component={ReportsStackNavigator} />
     </Drawer.Navigator>
   );
 };
