@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Text, ThemeProvider } from 'react-native-paper';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -48,7 +49,15 @@ export const AuthScreenLayout = ({
 }: AuthScreenLayoutProps) => {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
-  const keyboardHeight = useKeyboardHeight();
+  /**
+   * Screens lower in the stack stay mounted and hear the same keyboard events.
+   * One that scrolled for the keyboard of the screen above it cannot settle
+   * back while hidden, and comes back shifted up over a blank strip — so only
+   * the focused screen follows the keyboard.
+   */
+  const isFocused = useIsFocused();
+  const screenKeyboardHeight = useKeyboardHeight();
+  const keyboardHeight = isFocused ? screenKeyboardHeight : 0;
   const scrollRef = useRef<ScrollView>(null);
   const heroHeight = useRef(0);
   // The hero is a dark block in both themes, so the status bar is always light.
