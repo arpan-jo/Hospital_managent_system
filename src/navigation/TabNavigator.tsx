@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import {
   createBottomTabNavigator,
   BottomTabBarProps,
@@ -31,8 +31,9 @@ export type TabParamList = {
 type TabConfig = {
   name: keyof TabParamList;
   titleKey: string;
-  /** MaterialCommunityIcons name. */
+  /** MaterialCommunityIcons names — outlined at rest, filled when the tab is open. */
   icon: string;
+  activeIcon: string;
   component: React.ComponentType<any>;
 };
 
@@ -43,39 +44,109 @@ type TabConfig = {
  * The drawer entries of the same names focus these tabs, so each screen exists
  * exactly once whichever entry point is used.
  */
-const TABS: TabConfig[] = [
+export const TABS: TabConfig[] = [
   {
     name: 'HomeTab',
     titleKey: 'tabs.findDoctors',
-    icon: 'account-search-outline',
+    icon: 'stethoscope',
+    activeIcon: 'stethoscope',
     component: FindDoctorsStackNavigator,
   },
   {
     name: 'ActivityTab',
     titleKey: 'tabs.appointments',
-    icon: 'calendar-check-outline',
+    icon: 'calendar-month-outline',
+    activeIcon: 'calendar-month',
     component: AppointmentsStackNavigator,
   },
   {
     name: 'PrescriptionsTab',
     titleKey: 'tabs.prescriptions',
-    icon: 'file-document-edit-outline',
+    icon: 'clipboard-text-outline',
+    activeIcon: 'clipboard-text',
     component: MyPrescriptionsStackNavigator,
   },
   {
     name: 'ProfileTab',
     titleKey: 'tabs.profile',
-    icon: 'account-outline',
+    icon: 'account-circle-outline',
+    activeIcon: 'account-circle',
     component: ProfileStackNavigator,
   },
 ];
 
-/** Route name -> icon, for the custom tab bar below. */
-const TAB_ICONS: Record<string, string> = Object.fromEntries(
-  TABS.map(tab => [tab.name, tab.icon]),
+const TAB_BY_ROUTE: Record<string, TabConfig> = Object.fromEntries(
+  TABS.map(tab => [tab.name, tab]),
 );
 
 const Tab = createBottomTabNavigator<TabParamList>();
+
+interface TabItemProps {
+  label: string;
+  icon: string;
+  activeIcon: string;
+  isFocused: boolean;
+  onPress: () => void;
+}
+
+/**
+ * One tab: the icon sits on a pill that grows in when the tab opens — the
+ * Material 3 navigation bar's active indicator.
+ */
+const TabItem = ({ label, icon, activeIcon, isFocused, onPress }: TabItemProps) => {
+  const theme = useTheme();
+  const progress = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: isFocused ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isFocused, progress]);
+
+  const tint = isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={isFocused ? { selected: true } : {}}
+      accessibilityLabel={label}
+      hitSlop={4}
+      android_ripple={{ color: 'transparent' }}
+      style={styles.item}
+    >
+      <View style={styles.iconWrap}>
+        <Animated.View
+          style={[
+            styles.indicator,
+            {
+              backgroundColor: theme.colors.primaryContainer,
+              opacity: progress,
+              transform: [
+                { scaleX: progress.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) },
+              ],
+            },
+          ]}
+        />
+        <Icon name={isFocused ? activeIcon : icon} size={22} color={tint} />
+      </View>
+      <Text
+        numberOfLines={1}
+        style={[
+          styles.label,
+          {
+            color: isFocused ? theme.colors.onSurface : theme.colors.onSurfaceVariant,
+            fontFamily: isFocused ? fontFamilies.semibold : fontFamilies.medium,
+          },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+};
 
 const CustomTabBar = ({
   state,
@@ -89,29 +160,18 @@ const CustomTabBar = ({
     <View
       style={[
         styles.bar,
+        theme.dark ? styles.barShadowDark : styles.barShadowLight,
         {
           backgroundColor: theme.colors.surface,
           paddingBottom: insets.bottom + 8,
-          shadowColor: theme.dark ? '#000000' : '#0B1030',
-          borderTopWidth: 1,
           borderTopColor: theme.colors.outlineVariant,
         },
       ]}
     >
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
-        const label = (options.title ?? route.name) as string;
+        const tab = TAB_BY_ROUTE[route.name];
         const isFocused = state.index === index;
-        const outlineIcon = TAB_ICONS?.[route.name] ?? 'circle-outline';
-        // Every icon in the map above follows MaterialCommunityIcons' outline
-        // naming, so the filled variant for the active tab is the same name
-        // with that suffix dropped.
-        const iconName = isFocused
-          ? outlineIcon.replace(/-outline$/, '')
-          : outlineIcon;
-        const tintColor = isFocused
-          ? theme.colors.primary
-          : theme.colors.onSurfaceVariant;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -125,34 +185,14 @@ const CustomTabBar = ({
         };
 
         return (
-          <Pressable
+          <TabItem
             key={route.key}
+            label={(options.title ?? route.name) as string}
+            icon={tab?.icon ?? 'circle-outline'}
+            activeIcon={tab?.activeIcon ?? 'circle'}
+            isFocused={isFocused}
             onPress={onPress}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={label}
-            hitSlop={4}
-            android_ripple={{ color: 'transparent' }}
-            style={styles.item}
-          >
-            <View style={styles.itemInner}>
-              <Icon name={iconName} size={22} color={tintColor} />
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.label,
-                  {
-                    color: tintColor,
-                    fontFamily: isFocused
-                      ? fontFamilies.semibold
-                      : fontFamilies.regular,
-                  },
-                ]}
-              >
-                {label}
-              </Text>
-            </View>
-          </Pressable>
+          />
         );
       })}
     </View>
@@ -189,25 +229,38 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingTop: 8,
-    elevation: 10,
+    paddingHorizontal: 8,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    elevation: 12,
     shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -2 },
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -3 },
+  },
+  barShadowLight: {
+    shadowColor: '#0B1030',
+  },
+  barShadowDark: {
+    shadowColor: '#000000',
   },
   item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  itemInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 4,
   },
+  iconWrap: {
+    width: 60,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indicator: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 16,
+  },
   label: {
-    fontSize: 10.5,
+    fontSize: 11,
   },
 });
 

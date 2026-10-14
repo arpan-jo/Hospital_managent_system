@@ -42,13 +42,13 @@ const MENU_ITEMS: MenuItem[] = [
   {
     name: 'MainTabs',
     labelKey: 'drawer.findDoctors',
-    icon: 'account-search-outline',
+    icon: 'stethoscope',
     tab: 'HomeTab',
   },
   {
     name: 'MainTabs',
     labelKey: 'drawer.appointments',
-    icon: 'calendar-check-outline',
+    icon: 'calendar-month-outline',
     tab: 'ActivityTab',
   },
   {
@@ -59,13 +59,13 @@ const MENU_ITEMS: MenuItem[] = [
   {
     name: 'MainTabs',
     labelKey: 'drawer.prescriptions',
-    icon: 'file-document-edit-outline',
+    icon: 'clipboard-text-outline',
     tab: 'PrescriptionsTab',
   },
   {
     name: 'MainTabs',
     labelKey: 'drawer.profile',
-    icon: 'account-outline',
+    icon: 'account-circle-outline',
     tab: 'ProfileTab',
   },
   { name: 'Reports', labelKey: 'drawer.reports', icon: 'file-chart-outline' },
