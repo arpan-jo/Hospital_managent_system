@@ -1,4 +1,4 @@
-package com.managerium_health
+package com.ibos.hms
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

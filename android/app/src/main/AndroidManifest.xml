@@ -27,13 +27,11 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
-        <intent-filter android:label="filter_managerium_health">
+        <intent-filter android:label="filter_hms">
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="Managerium_Health" />
-            <data android:scheme="https" android:host="Managerium_Health.com" />
-            <data android:scheme="http" android:host="Managerium_Health.com" />
+            <data android:scheme="com.ibos.hms" />
         </intent-filter>
       </activity>
     </application>

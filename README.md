@@ -727,11 +727,11 @@ To add a new screen (e.g. `Dashboard`):
 
 ## 🔗 Deep Linking Configuration
 
-The app is configured for deep linking (custom URL schemes and Universal/App Links) out-of-the-box:
+The app id is `com.ibos.hms` (Android `applicationId`, iOS bundle identifier), and its custom URL scheme is the same: `com.ibos.hms://`.
 
-*   **iOS URL Scheme:** Registered in `Info.plist` under `CFBundleURLTypes` using the scheme `Managerium_Health`.
-*   **iOS URL Handler:** Implemented inside `AppDelegate.swift` overriding `application(_:open:options:)` and Universal Links continuation.
-*   **Android Scheme & Hosts:** Configured in `AndroidManifest.xml` under `<intent-filter>` mapping the scheme `Managerium_Health` and host `Managerium_Health.com`.
+*   **iOS URL Scheme:** Registered in `Info.plist` under `CFBundleURLTypes` using the scheme `com.ibos.hms`.
+*   **iOS URL Handler:** Implemented inside `AppDelegate.swift` overriding `application(_:open:options:)`.
+*   **Android Scheme:** Configured in `AndroidManifest.xml` under an `<intent-filter>` mapping the scheme `com.ibos.hms`.
 *   **React Navigation Mapping:** Configured inside `src/navigation/AppNavigator.tsx` pointing to nested screens:
     *   `login` -> Login Screen
     *   `main/home` -> Find Doctors tab
@@ -741,22 +741,12 @@ The app is configured for deep linking (custom URL schemes and Universal/App Lin
 
 ### How to Test Deep Linking
 
-#### Testing on Android Emulator:
 ```bash
-# Test URL Scheme (Custom URI)
-npx uri-scheme open "Managerium_Health://settings" --android
+# Android emulator
+npx uri-scheme open "com.ibos.hms://settings" --android
 
-# Test App Link (HTTP/HTTPS)
-npx uri-scheme open "https://Managerium_Health.com/main/home" --android
-```
-
-#### Testing on iOS Simulator:
-```bash
-# Test URL Scheme (Custom URI)
-npx uri-scheme open "Managerium_Health://settings" --ios
-
-# Test Universal Link (HTTP/HTTPS)
-npx uri-scheme open "https://Managerium_Health.com/main/home" --ios
+# iOS simulator
+npx uri-scheme open "com.ibos.hms://settings" --ios
 ```
 
 ## ➕ How to Add a New Workspace Package (Module)

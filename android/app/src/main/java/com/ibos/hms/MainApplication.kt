@@ -1,4 +1,4 @@
-package com.managerium_health
+package com.ibos.hms
 
 import android.app.Application
 import com.facebook.react.PackageList

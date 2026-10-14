@@ -14,10 +14,7 @@ import { navigationRef } from './navigationRef';
  * mounted, and the unmounted one's paths simply never match.
  */
 const linking = {
-  prefixes: [
-    'Managerium_Health://',
-    'https://Managerium_Health.com',
-  ],
+  prefixes: ['com.ibos.hms://'],
   config: {
     screens: {
       // Unauthenticated screen (AuthStackNavigator)
