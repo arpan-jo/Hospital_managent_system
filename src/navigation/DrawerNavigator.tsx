@@ -14,7 +14,10 @@ import MyPrescriptionsStackNavigator, {
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
-import { NavigatorScreenParams, getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import {
+  NavigatorScreenParams,
+  getFocusedRouteNameFromRoute,
+} from '@react-navigation/native';
 import { useStores, getFileUrl } from '@app/core';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -24,7 +27,9 @@ export type DrawerParamList = {
   MainTabs: NavigatorScreenParams<TabParamList> | undefined;
   Settings: undefined;
   FollowUps: undefined;
-  Prescriptions: NavigatorScreenParams<MyPrescriptionsStackParamList> | undefined;
+  Prescriptions:
+    | NavigatorScreenParams<MyPrescriptionsStackParamList>
+    | undefined;
 };
 
 type MenuItem = {
@@ -54,27 +59,29 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'calendar-month-outline',
     tab: 'ActivityTab',
   },
+  // Follow-ups and Prescriptions are off the menu for this release — uncomment to bring them back.
+  // {
+  //   name: 'FollowUps',
+  //   labelKey: 'drawer.followUps',
+  //   icon: 'calendar-refresh-outline',
+  // },
+  // {
+  //   name: 'Prescriptions',
+  //   labelKey: 'drawer.prescriptions',
+  //   icon: 'clipboard-text-outline',
+  // },
+
   {
-    name: 'FollowUps',
-    labelKey: 'drawer.followUps',
-    icon: 'calendar-refresh-outline',
-  },
-  {
-    name: 'Prescriptions',
-    labelKey: 'drawer.prescriptions',
-    icon: 'clipboard-text-outline',
+    name: 'MainTabs',
+    labelKey: 'drawer.reports',
+    icon: 'file-chart-outline',
+    tab: 'ReportsTab',
   },
   {
     name: 'MainTabs',
     labelKey: 'drawer.profile',
     icon: 'account-circle-outline',
     tab: 'ProfileTab',
-  },
-  {
-    name: 'MainTabs',
-    labelKey: 'drawer.reports',
-    icon: 'file-chart-outline',
-    tab: 'ReportsTab',
   },
   {
     name: 'Settings',
@@ -354,7 +361,10 @@ export const DrawerNavigator = () => {
       <Drawer.Screen name="MainTabs" component={TabNavigator} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
       <Drawer.Screen name="FollowUps" component={PatientFollowUpIndex} />
-      <Drawer.Screen name="Prescriptions" component={MyPrescriptionsStackNavigator} />
+      <Drawer.Screen
+        name="Prescriptions"
+        component={MyPrescriptionsStackNavigator}
+      />
     </Drawer.Navigator>
   );
 };
