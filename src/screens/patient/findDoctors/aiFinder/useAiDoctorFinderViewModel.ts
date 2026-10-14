@@ -22,7 +22,8 @@ import { useAudioClip } from '../../../../hooks/useAudioClip';
  *
  * Each ask stands alone, as on the portal: only the words just typed or spoken
  * go up, and a new ask replaces the answer before it. When the answer comes
- * with its summary read aloud, that plays at once, as it does on the portal.
+ * with its summary read aloud, it plays only when the patient taps Listen —
+ * the portal starts it at once, but a phone that speaks unasked surprises.
  */
 
 export type AiFinderPhase = 'idle' | 'recording' | 'transcribing' | 'thinking';
@@ -85,7 +86,6 @@ export const useAiDoctorFinderViewModel = () => {
         if (signal.aborted || flow !== flowRef.current) return;
 
         setMatch(answer);
-        if (answer?.audio) playClip(answer.audio.base64, answer.audio.format);
         setInput('');
       } catch (error) {
         if (signal.aborted || flow !== flowRef.current) return;
@@ -97,7 +97,7 @@ export const useAiDoctorFinderViewModel = () => {
         if (flow === flowRef.current && !signal.aborted) setPhase('idle');
       }
     },
-    [setNotice, playClip, stopClip],
+    [setNotice, stopClip],
   );
 
   /** A fresh request for this flow, replacing any still on its way. */
