@@ -46,8 +46,7 @@ type MenuItem = {
 
 /**
  * The patient portal's menu, in the order of the web's sidebar — every entry
- * there is open to the Patient role. Settings is the app's own addition, and
- * Notifications is the portal header's bell given a row of its own.
+ * there is open to the Patient role. Settings is the app's own addition.
  */
 const MENU_ITEMS: MenuItem[] = [
   {
@@ -88,15 +87,10 @@ const MENU_ITEMS: MenuItem[] = [
     tab: 'ProfileTab',
   },
   {
-    name: 'Notifications',
-    labelKey: 'notifications.title',
-    icon: 'bell-outline',
-    sectionKey: 'drawer.sectionGeneral',
-  },
-  {
     name: 'Settings',
     labelKey: 'settings.title',
     icon: 'cog-outline',
+    sectionKey: 'drawer.sectionGeneral',
   },
 ];
 
@@ -114,21 +108,19 @@ const Glass = ({ color }: { color: string }) => (
 );
 
 /**
- * One menu row: a tinted icon tile and the label, with an optional count at the
- * end. The open screen's row sits on the brand tint with its tile filled.
+ * One menu row: a tinted icon tile and the label. The open screen's row sits on
+ * the brand tint with its tile filled.
  */
 const MenuRow = ({
   icon,
   label,
   active = false,
-  count = 0,
   destructive = false,
   onPress,
 }: {
   icon: string;
   label: string;
   active?: boolean;
-  count?: number;
   destructive?: boolean;
   onPress: () => void;
 }) => {
@@ -190,22 +182,14 @@ const MenuRow = ({
       >
         {label}
       </Text>
-      {count > 0 ? (
-        <View style={[styles.countPill, { backgroundColor: theme.colors.error }]}>
-          <Text style={[styles.countText, { color: theme.colors.onError }]}>
-            {count > 99 ? '99+' : count}
-          </Text>
-        </View>
-      ) : null}
     </Pressable>
   );
 };
 
 const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
-  const { authStore, profileStore, notificationStore } = useStores();
+  const { authStore, profileStore } = useStores();
   const { t } = useTranslation();
   const theme = useTheme();
-  const unreadCount = notificationStore.unreadCount;
   const insets = useSafeAreaInsets();
 
   const activeRoute = props.state.routes[props.state.index];
@@ -349,7 +333,6 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
               icon={item.icon}
               label={t(item.labelKey)}
               active={isActive(item)}
-              count={item.name === 'Notifications' ? unreadCount : 0}
               onPress={() =>
                 item.tab
                   ? props.navigation.navigate('MainTabs', {
@@ -541,18 +524,6 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     fontSize: 14.5,
-  },
-  countPill: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countText: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 11,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
