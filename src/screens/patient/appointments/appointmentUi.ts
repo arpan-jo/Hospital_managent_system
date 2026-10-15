@@ -6,7 +6,7 @@
 import {
   AppointmentPaymentStatus,
   AppointmentStatus,
-  stripHonorific,
+  withDoctorTitle,
 } from '@app/core';
 
 type Tone = { color: string; tint: string };
@@ -85,7 +85,4 @@ export const paymentBadge = (status: AppointmentPaymentStatus, isDark?: boolean)
 };
 
 /** "Dr." in front, as the portal names doctors — once, whatever the stored name carries. */
-export const doctorDisplayName = (name?: string): string => {
-  const bare = stripHonorific(name);
-  return bare ? `Dr. ${bare}` : '';
-};
+export const doctorDisplayName = (name?: string): string => withDoctorTitle(name);

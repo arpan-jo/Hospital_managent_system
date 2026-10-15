@@ -1,0 +1,4 @@
+<resources>
+    <!-- The app's brand blue (theme.colors.primary, light), for native dialogs. -->
+    <color name="datePicker_colorAccent">#2F45E5</color>
+</resources>

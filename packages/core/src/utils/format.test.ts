@@ -5,6 +5,7 @@ import {
   formatDayMonthYear,
   stripHonorific,
   to12Hour,
+  withDoctorTitle,
 } from './format';
 
 describe('groupThousands', () => {
@@ -58,6 +59,27 @@ describe('to12Hour', () => {
     expect(to12Hour('')).toBe('');
     expect(to12Hour('nope')).toBe('nope');
     expect(to12Hour('99:00')).toBe('99:00');
+  });
+});
+
+describe('withDoctorTitle', () => {
+  it('keeps "Md." and "Mohammad", which are part of the name', () => {
+    expect(withDoctorTitle('Md. Emdad Karim')).toBe('Dr. Md. Emdad Karim');
+    expect(withDoctorTitle('Mohammad Ali')).toBe('Dr. Mohammad Ali');
+  });
+
+  it('puts "Dr." in front once, whatever title the stored name carries', () => {
+    expect(withDoctorTitle('Dr. Ahsan Habib')).toBe('Dr. Ahsan Habib');
+    expect(withDoctorTitle('Dr.Ahmed')).toBe('Dr. Ahmed');
+    expect(withDoctorTitle('dr ahmed')).toBe('Dr. ahmed');
+    expect(withDoctorTitle('Bijoy Saha')).toBe('Dr. Bijoy Saha');
+    expect(withDoctorTitle('Drake Ramos')).toBe('Dr. Drake Ramos');
+  });
+
+  it('gives nothing for no name', () => {
+    expect(withDoctorTitle('')).toBe('');
+    expect(withDoctorTitle('   ')).toBe('');
+    expect(withDoctorTitle(null)).toBe('');
   });
 });
 

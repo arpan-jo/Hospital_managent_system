@@ -6,12 +6,16 @@ import {
   FollowUpBucket,
   PatientFollowUpRepository,
   followUpBucket,
+  isServerUnreachable,
   serverMessageOf,
   toISODate,
 } from '@app/core';
 
-/** Why the list could not be read: the server's words ('' when none) and its status (0 when unreached). */
-export type FollowUpsError = { message: string; status: number };
+/**
+ * Why the list could not be read: the server's words ('' when none), its status
+ * (0 when it gave none) and whether no answer came back at all.
+ */
+export type FollowUpsError = { message: string; status: number; unreachable: boolean };
 
 const EMPTY_COUNTS: Record<FollowUpBucket, number> = {
   upcoming: 0,
@@ -44,7 +48,11 @@ export const useFollowUpsViewModel = () => {
       // A quiet re-read that fails keeps what is already on screen.
       if (mode !== 'quiet') {
         setFollowUps([]);
-        setError({ message: serverMessageOf(e), status: Number(e?.status ?? 0) || 0 });
+        setError({
+          message: serverMessageOf(e),
+          status: Number(e?.status ?? 0) || 0,
+          unreachable: isServerUnreachable(e),
+        });
       }
     } finally {
       setIsLoading(false);

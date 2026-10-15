@@ -123,6 +123,19 @@ export const stripHonorific = (name: string | undefined | null): string =>
     .replace(/^\s*(dr|prof|mr|mrs|ms|md|mohammad)(\.\s*|\s+)/i, '')
     .trim();
 
+/**
+ * A doctor's name as the portal shows it: "Dr." in front, once.
+ * "Md. Emdad Karim" -> "Dr. Md. Emdad Karim", "Dr.Ahmed" -> "Dr. Ahmed".
+ *
+ * Only a "Dr" title already in the stored name is replaced. "Md." and
+ * "Mohammad" are part of a Bangladeshi name, not a title to drop —
+ * `stripHonorific` drops them because it only feeds initials.
+ */
+export const withDoctorTitle = (name: string | undefined | null): string => {
+  const bare = (name ?? '').replace(/^\s*dr(\.\s*|\s+)/i, '').trim();
+  return bare ? `Dr. ${bare}` : '';
+};
+
 const FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB'];
 
 /** 954368 -> "932 KB". Falls back to "0 B" for missing or nonsense input. */

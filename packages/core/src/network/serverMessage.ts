@@ -60,3 +60,13 @@ export const serverMessageOf = (error: any): string => {
   // A proxy's error page is not a message, and neither is cipher text.
   return text.startsWith('<') || looksLikeCipher(text) ? '' : text;
 };
+
+/**
+ * True only when no answer came back at all — offline, unreachable, timed out.
+ * `apiClient` keeps the axios error on `originalError`, and one without a
+ * `response` never reached the server. An answer the app could not read (a
+ * repository's own "unexpected response" error) is not this, nor is any
+ * answer with a status.
+ */
+export const isServerUnreachable = (error: any): boolean =>
+  !error?.status && !!error?.originalError && !error?.originalError?.response;

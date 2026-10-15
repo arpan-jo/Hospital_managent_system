@@ -6,6 +6,7 @@ import {
   serverMessageOf,
   useStores,
 } from '@app/core';
+import { useReloadOnRefocus } from '../../../hooks/useReloadOnRefocus';
 
 /**
  * One appointment, as the portal's detail page has it: read from the portal
@@ -30,7 +31,13 @@ export const useAppointmentDetailsViewModel = (appointmentId: number) => {
   const load = useCallback(
     async (quiet = false) => {
       const requestId = ++requestRef.current;
-      if (!quiet) setIsLoading(true);
+      if (!quiet) {
+        // Another appointment opened onto this screen (from a notification or a
+        // follow-up) must not show under the last one's data while it loads.
+        setDetail(null);
+        setIsNotFound(false);
+        setIsLoading(true);
+      }
       try {
         const response = await AppointmentRepository.getAppointmentDetail(appointmentId);
         if (requestId !== requestRef.current) return;
@@ -54,6 +61,10 @@ export const useAppointmentDetailsViewModel = (appointmentId: number) => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Coming back to an appointment left open re-reads it behind what is shown,
+  // so a status changed since — confirmed, cancelled — is not shown stale.
+  useReloadOnRefocus(() => load(true));
 
   const canCancel =
     (detail?.status === 'pending' || detail?.status === 'confirmed') && !detail?.hasConsultation;

@@ -154,7 +154,9 @@ export const PatientFollowUpIndex = observer(() => {
               {error.message ||
                 (error.status
                   ? t('followUps.serverResponded', { status: error.status })
-                  : t('followUps.serverUnreachable'))}
+                  : error.unreachable
+                  ? t('followUps.serverUnreachable')
+                  : t('common.somethingWentWrong'))}
             </Text>
             <CustomButton mode="outlined" onPress={viewModel.retry} style={styles.stateButton}>
               {t('followUps.tryAgain')}

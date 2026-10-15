@@ -251,7 +251,9 @@ export const NotificationsScreen = observer(() => {
               error.message ||
               (error.status
                 ? t('notifications.serverResponded', { status: error.status })
-                : t('notifications.serverUnreachable'))
+                : error.unreachable
+                ? t('notifications.serverUnreachable')
+                : t('common.somethingWentWrong'))
             }
             action={t('notifications.tryAgain')}
             onAction={viewModel.retry}

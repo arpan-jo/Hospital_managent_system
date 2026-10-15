@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
@@ -205,10 +205,14 @@ export const AppointmentDetailsScreen = observer(() => {
   const insets = useSafeAreaInsets();
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
-  const viewModel = useAppointmentDetailsViewModel(Number(route?.params?.appointmentId ?? 0));
+  const appointmentId = Number(route?.params?.appointmentId ?? 0);
+  const viewModel = useAppointmentDetailsViewModel(appointmentId);
   const detail = viewModel.detail;
 
   const [tab, setTab] = useState<DetailTab>('overview');
+  // The screen is reused when another appointment is opened onto it: that one
+  // starts on its Overview, not on the tab the last one was left on.
+  useEffect(() => setTab('overview'), [appointmentId]);
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const months = useMemo(() => Array.from({ length: 12 }, (_, index) => t(`months.${index}`)), [t]);
 

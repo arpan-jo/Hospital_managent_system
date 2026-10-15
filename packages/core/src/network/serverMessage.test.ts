@@ -1,4 +1,4 @@
-import { serverMessageOf } from './serverMessage';
+import { isServerUnreachable, serverMessageOf } from './serverMessage';
 
 /** What `apiClient` rejects with: an Error carrying the decoded body on `data`. */
 const failure = (data?: unknown) =>
@@ -75,5 +75,23 @@ describe('serverMessageOf', () => {
 
   it("does not take a proxy's error page for a message", () => {
     expect(serverMessageOf(failure('<html><body>502 Bad Gateway</body></html>'))).toBe('');
+  });
+});
+
+describe('isServerUnreachable', () => {
+  it('is true only when no answer came back at all', () => {
+    const offline = Object.assign(new Error('Network error: No response from server.'), {
+      originalError: { request: {} },
+    });
+    const answered = Object.assign(new Error('Error: 500'), {
+      status: 500,
+      originalError: { response: { status: 500 } },
+    });
+    const unreadable = new Error('Unexpected notifications response');
+
+    expect(isServerUnreachable(offline)).toBe(true);
+    expect(isServerUnreachable(answered)).toBe(false);
+    expect(isServerUnreachable(unreadable)).toBe(false);
+    expect(isServerUnreachable(null)).toBe(false);
   });
 });

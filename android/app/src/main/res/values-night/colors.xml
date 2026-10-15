@@ -1,0 +1,4 @@
+<resources>
+    <!-- The app's dark-theme primary, readable on the dark dialog. -->
+    <color name="datePicker_colorAccent">#9FB0FF</color>
+</resources>

@@ -1,26 +1,39 @@
 import { useCallback, useEffect } from 'react';
 import { INotificationStore, NotificationRepository, useStores } from '@app/core';
 
-/** One read at a time: a call made while one is on its way shares it. */
-let inFlight: Promise<void> | null = null;
 /** Bumped on sign-out, so a read that left before it does not land on the next account's badge. */
 let session = 0;
+/**
+ * One read at a time per signed-in account: a call made while one is on its
+ * way shares it — but never one the previous account left on its way.
+ */
+let inFlight: { session: number; read: Promise<void> } | null = null;
 
-const readUnreadCount = (store: INotificationStore): Promise<void> => {
-  if (inFlight) return inFlight;
-  const readSession = session;
-  inFlight = (async () => {
+/** The sign-in a count belongs to; a count read under an older one is dropped. */
+export const unreadSession = (): number => session;
+
+export const readUnreadCount = (store: INotificationStore): Promise<void> => {
+  if (inFlight?.session === session) return inFlight.read;
+  const entry: { session: number; read: Promise<void> } = { session, read: Promise.resolve() };
+  inFlight = entry;
+  entry.read = (async () => {
     try {
       const count = await NotificationRepository.getUnreadCount();
-      if (readSession === session) store.setUnreadCount(count);
+      if (entry.session === session) store.setUnreadCount(count);
     } catch (e: any) {
       // The badge keeps its last count; the next moment it is read tries again.
       console.log('getUnreadCount error ==>', e?.message);
     } finally {
-      inFlight = null;
+      if (inFlight === entry) inFlight = null;
     }
   })();
-  return inFlight;
+  return entry.read;
+};
+
+/** Signing out: whatever is still on its way belongs to the account that left. */
+export const endUnreadSession = (store: INotificationStore): void => {
+  session += 1;
+  store.reset();
 };
 
 /**
@@ -42,9 +55,6 @@ export const useUnreadNotificationsSync = () => {
 
   useEffect(() => {
     refresh();
-    return () => {
-      session += 1;
-      notificationStore.reset();
-    };
+    return () => endUnreadSession(notificationStore);
   }, [refresh, notificationStore]);
 };

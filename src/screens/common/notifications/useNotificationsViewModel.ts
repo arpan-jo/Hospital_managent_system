@@ -1,14 +1,24 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { AppNotification, NotificationRepository, serverMessageOf, useStores } from '@app/core';
+import {
+  AppNotification,
+  NotificationRepository,
+  isServerUnreachable,
+  serverMessageOf,
+  useStores,
+} from '@app/core';
+import { unreadSession } from '../../../hooks/useUnreadNotifications';
 
 export type NotificationFilter = 'all' | 'unread';
 export type NotificationSectionKey = 'today' | 'yesterday' | 'earlier';
 export type NotificationSection = { key: NotificationSectionKey; data: AppNotification[] };
 
-/** Why the list could not be read: the server's words ('' when none) and its status (0 when unreached). */
-export type NotificationsError = { message: string; status: number };
+/**
+ * Why the list could not be read: the server's words ('' when none), its status
+ * (0 when it gave none) and whether no answer came back at all.
+ */
+export type NotificationsError = { message: string; status: number; unreachable: boolean };
 
 const SECTION_ORDER: NotificationSectionKey[] = ['today', 'yesterday', 'earlier'];
 
@@ -56,13 +66,17 @@ export const useNotificationsViewModel = () => {
     async (mode: 'initial' | 'quiet' | 'refresh' = 'initial') => {
       const requestId = ++requestRef.current;
       const changeId = changeRef.current;
+      const readSession = unreadSession();
       if (mode === 'initial') setIsLoading(true);
       if (mode === 'refresh') setIsRefreshing(true);
       try {
         const page = await NotificationRepository.getNotifications();
         if (requestId !== requestRef.current || changeId !== changeRef.current) return;
         setNotifications(page?.notifications ?? []);
-        notificationStore.setUnreadCount(page?.unreadCount ?? 0);
+        // An answer that arrives after sign-out is the old account's count.
+        if (readSession === unreadSession()) {
+          notificationStore.setUnreadCount(page?.unreadCount ?? 0);
+        }
         setError(null);
       } catch (e: any) {
         if (requestId !== requestRef.current) return;
@@ -70,7 +84,11 @@ export const useNotificationsViewModel = () => {
         // A quiet re-read that fails keeps what is already on screen.
         if (mode !== 'quiet') {
           setNotifications([]);
-          setError({ message: serverMessageOf(e), status: Number(e?.status ?? 0) || 0 });
+          setError({
+          message: serverMessageOf(e),
+          status: Number(e?.status ?? 0) || 0,
+          unreachable: isServerUnreachable(e),
+        });
         }
       } finally {
         if (requestId === requestRef.current) {
