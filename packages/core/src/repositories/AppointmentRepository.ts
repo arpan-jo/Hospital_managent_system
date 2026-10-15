@@ -158,15 +158,20 @@ export const AppointmentRepository = {
     }
   },
 
-  /** `PATCH /hms/appointments/{id}/status` with `{ status: 'cancelled' }`, as the portal sends it. */
-  cancelAppointment: async (appointmentId: number): Promise<void> => {
+  /**
+   * `PATCH /hms/portal/appointments/CancelAppointment?appointmentId=`, no body,
+   * as the portal sends it. Answers the appointment as it now stands — null
+   * when the answer carries none.
+   */
+  cancelAppointment: async (appointmentId: number): Promise<AppointmentDetail | null> => {
     const api_params: ApiRequestOptions = {
-      url: `${ENDPOINTS.appointments}/${toNumber(appointmentId)}/status`,
+      url: ENDPOINTS.portalAppointmentCancel,
       method: 'PATCH',
       baseUrl: API_URL,
-      data: { status: 'cancelled' },
+      params: { appointmentId: toNumber(appointmentId) },
     };
-    await apiRequest<any>(api_params);
+    const response = await apiRequest<any>(api_params);
+    return toNumber(response?.appointmentId) ? toDetail(response) : null;
   },
 };
 

@@ -59,17 +59,17 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'calendar-month-outline',
     tab: 'ActivityTab',
   },
-  // Follow-ups and Prescriptions are off the menu for this release — uncomment to bring them back.
-  // {
-  //   name: 'FollowUps',
-  //   labelKey: 'drawer.followUps',
-  //   icon: 'calendar-refresh-outline',
-  // },
-  // {
-  //   name: 'Prescriptions',
-  //   labelKey: 'drawer.prescriptions',
-  //   icon: 'clipboard-text-outline',
-  // },
+
+  {
+    name: 'FollowUps',
+    labelKey: 'drawer.followUps',
+    icon: 'calendar-refresh-outline',
+  },
+  {
+    name: 'Prescriptions',
+    labelKey: 'drawer.prescriptions',
+    icon: 'clipboard-text-outline',
+  },
 
   {
     name: 'MainTabs',

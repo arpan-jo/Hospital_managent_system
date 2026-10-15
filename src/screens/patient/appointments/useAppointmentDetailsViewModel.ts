@@ -58,15 +58,19 @@ export const useAppointmentDetailsViewModel = (appointmentId: number) => {
   const canCancel =
     (detail?.status === 'pending' || detail?.status === 'confirmed') && !detail?.hasConsultation;
 
-  /** Cancels, then reads the appointment again — the patient stays on it, as on the portal. */
+  /**
+   * Cancels and shows the appointment as the server answered it — the patient
+   * stays on it, as on the portal. Reads it again only when the answer had none.
+   */
   const cancel = useCallback(async (): Promise<boolean> => {
     if (!detail?.id || isCancelling) return false;
 
     setIsCancelling(true);
     try {
-      await AppointmentRepository.cancelAppointment(detail.id);
+      const updated = await AppointmentRepository.cancelAppointment(detail.id);
       toastStore.show(t('appointmentDetails.updated'), 'success');
-      await load(true);
+      if (updated) setDetail(updated);
+      else await load(true);
       return true;
     } catch (e: any) {
       console.log('cancelAppointment error ==>', e?.message);

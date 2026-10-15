@@ -713,8 +713,8 @@
   },
   "drawer": {
     "appointments": "Appointments",
-    "prescriptions": "My Prescriptions",
-    "profile": "My Profile",
+    "prescriptions": "Prescriptions",
+    "profile": "Profile",
     "findDoctors": "Find Doctors",
     "followUps": "Follow-ups",
     "reports": "Reports",

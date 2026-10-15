@@ -713,8 +713,8 @@
   },
   "drawer": {
     "appointments": "অ্যাপয়েন্টমেন্ট",
-    "prescriptions": "আমার প্রেসক্রিপশন",
-    "profile": "আমার প্রোফাইল",
+    "prescriptions": "প্রেসক্রিপশন",
+    "profile": "প্রোফাইল",
     "findDoctors": "ডাক্তার খুঁজুন",
     "followUps": "ফলো-আপ",
     "reports": "রিপোর্ট",

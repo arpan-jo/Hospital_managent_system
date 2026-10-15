@@ -27,6 +27,8 @@ export const ENDPOINTS = {
   appointments: '/hms/appointments',
   /** One appointment in full, for its patient. */
   portalAppointmentDetail: '/hms/portal/appointments/GetAppointmentDetail',
+  /** The patient cancels one of their own pending or confirmed appointments. */
+  portalAppointmentCancel: '/hms/portal/appointments/CancelAppointment',
   /** The patient's prescriptions, and one drawn as a PDF (outside the API's encryption). */
   portalPrescriptions: '/hms/portal/medical-records/GetMyPrescriptions',
   portalPrescriptionPdf: '/hms/portal/medical-records/GetPrescriptionPdf',
