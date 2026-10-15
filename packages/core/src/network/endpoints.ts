@@ -45,6 +45,11 @@ export const ENDPOINTS = {
   patientDocuments: '/hms/patient/documents',
   /** The patient's follow-ups. */
   portalFollowUps: '/hms/portal/followups/GetMyFollowUps',
+  /**
+   * The signed-in user's notifications — the portal header's bell. The unread
+   * count, marking read and deleting hang off this path.
+   */
+  notifications: '/hms/notifications',
 
   // ── Find Doctors: AI doctor finder — pepobot, on AI_ASSIST_URL ────────────
   /** A patient's symptoms into a recommended specialist and doctors from this hospital. */

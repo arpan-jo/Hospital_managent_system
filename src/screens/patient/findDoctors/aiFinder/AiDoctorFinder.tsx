@@ -1,5 +1,5 @@
 import React, { memo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -95,6 +95,22 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
   const isBusy = phase !== 'idle';
   const canSend = Boolean(input.trim()) && !isBusy;
 
+  // Sending or speaking swaps the text box for the working or listening row, so
+  // the keyboard goes with it — as the keyboard's own Search key already does.
+  // The box is gone before its blur arrives, so it is marked unfocused here.
+  const putKeyboardAway = () => {
+    Keyboard.dismiss();
+    setIsFocused(false);
+  };
+  const send = (text?: string) => {
+    putKeyboardAway();
+    submit(text);
+  };
+  const listen = () => {
+    putKeyboardAway();
+    startVoice();
+  };
+
   return (
     <View
       style={[
@@ -184,7 +200,7 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
               style={[styles.input, { color: theme.colors.onSurface }]}
             />
             <Pressable
-              onPress={startVoice}
+              onPress={listen}
               accessibilityRole="button"
               accessibilityLabel={t('findDoctors.ai.speak')}
               style={[styles.roundButton, { backgroundColor: theme.colors.primaryContainer }]}
@@ -192,7 +208,7 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
               <Icon name="microphone" size={20} color={theme.colors.onPrimaryContainer} />
             </Pressable>
             <Pressable
-              onPress={() => submit()}
+              onPress={() => send()}
               disabled={!canSend}
               accessibilityRole="button"
               accessibilityLabel={t('findDoctors.ai.send')}
@@ -228,7 +244,7 @@ export const AiDoctorFinder = memo<AiDoctorFinderProps>(function AiDoctorFinder(
               return (
                 <Pressable
                   key={key}
-                  onPress={() => submit(example)}
+                  onPress={() => send(example)}
                   accessibilityRole="button"
                   style={[
                     styles.example,

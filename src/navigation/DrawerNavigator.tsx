@@ -3,11 +3,12 @@ import {
   createDrawerNavigator,
   DrawerContentComponentProps,
   DrawerContentScrollView,
-  DrawerItem,
 } from '@react-navigation/drawer';
 import TabNavigator, { TabParamList } from './TabNavigator';
 import SettingsScreen from '../screens/common/settings/SettingsScreen';
 import PatientFollowUpIndex from '../screens/patient/followUps/PatientFollowUpIndex';
+import NotificationsScreen from '../screens/common/notifications/NotificationsScreen';
+import { useUnreadNotificationsSync } from '../hooks/useUnreadNotifications';
 import MyPrescriptionsStackNavigator, {
   MyPrescriptionsStackParamList,
 } from './MyPrescriptionsStackNavigator';
@@ -18,6 +19,7 @@ import {
   NavigatorScreenParams,
   getFocusedRouteNameFromRoute,
 } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStores, getFileUrl } from '@app/core';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -26,6 +28,7 @@ import { CustomAvatar, fontFamilies } from '@app/ui';
 export type DrawerParamList = {
   MainTabs: NavigatorScreenParams<TabParamList> | undefined;
   Settings: undefined;
+  Notifications: undefined;
   FollowUps: undefined;
   Prescriptions:
     | NavigatorScreenParams<MyPrescriptionsStackParamList>
@@ -43,7 +46,8 @@ type MenuItem = {
 
 /**
  * The patient portal's menu, in the order of the web's sidebar — every entry
- * there is open to the Patient role. Settings is the app's own addition.
+ * there is open to the Patient role. Settings is the app's own addition, and
+ * Notifications is the portal header's bell given a row of its own.
  */
 const MENU_ITEMS: MenuItem[] = [
   {
@@ -84,10 +88,15 @@ const MENU_ITEMS: MenuItem[] = [
     tab: 'ProfileTab',
   },
   {
+    name: 'Notifications',
+    labelKey: 'notifications.title',
+    icon: 'bell-outline',
+    sectionKey: 'drawer.sectionGeneral',
+  },
+  {
     name: 'Settings',
     labelKey: 'settings.title',
     icon: 'cog-outline',
-    sectionKey: 'drawer.sectionGeneral',
   },
 ];
 
@@ -104,10 +113,100 @@ const Glass = ({ color }: { color: string }) => (
   />
 );
 
+/**
+ * One menu row: a tinted icon tile and the label, with an optional count at the
+ * end. The open screen's row sits on the brand tint with its tile filled.
+ */
+const MenuRow = ({
+  icon,
+  label,
+  active = false,
+  count = 0,
+  destructive = false,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  active?: boolean;
+  count?: number;
+  destructive?: boolean;
+  onPress: () => void;
+}) => {
+  const theme = useTheme();
+
+  const tile = destructive
+    ? theme.colors.errorContainer
+    : active
+    ? theme.colors.primary
+    : theme.colors.surfaceVariant;
+  const ink = destructive
+    ? theme.colors.error
+    : active
+    ? theme.colors.onPrimary
+    : theme.colors.onSurfaceVariant;
+  const labelColor = destructive
+    ? theme.colors.error
+    : active
+    ? theme.colors.onPrimaryContainer
+    : theme.colors.onSurface;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={({ pressed }) => [
+        styles.row,
+        active
+          ? { backgroundColor: theme.colors.primaryContainer }
+          : pressed
+          ? {
+              backgroundColor: destructive
+                ? theme.colors.errorContainer
+                : theme.colors.surfaceVariant,
+            }
+          : null,
+      ]}
+    >
+      <View style={[styles.rowIcon, { backgroundColor: tile }]}>
+        {/* Filled on the open screen's row, as on the tab bar: every icon in
+            the menu has a variant without the `-outline` suffix. */}
+        <Icon
+          name={active ? icon.replace(/-outline$/, '') : icon}
+          color={ink}
+          size={19}
+        />
+      </View>
+      <Text
+        numberOfLines={1}
+        style={[
+          styles.rowLabel,
+          {
+            color: labelColor,
+            fontFamily:
+              active || destructive ? fontFamilies.semibold : fontFamilies.medium,
+          },
+        ]}
+      >
+        {label}
+      </Text>
+      {count > 0 ? (
+        <View style={[styles.countPill, { backgroundColor: theme.colors.error }]}>
+          <Text style={[styles.countText, { color: theme.colors.onError }]}>
+            {count > 99 ? '99+' : count}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+};
+
 const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
-  const { authStore, profileStore } = useStores();
+  const { authStore, profileStore, notificationStore } = useStores();
   const { t } = useTranslation();
   const theme = useTheme();
+  const unreadCount = notificationStore.unreadCount;
+  const insets = useSafeAreaInsets();
 
   const activeRoute = props.state.routes[props.state.index];
 
@@ -146,195 +245,145 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
     : theme.colors.onPrimary;
 
   return (
-    <DrawerContentScrollView
-      {...props}
-      contentContainerStyle={styles.scrollContainer}
-    >
-      <Pressable
-        onPress={() =>
-          props.navigation.navigate('MainTabs', { screen: 'ProfileTab' })
-        }
-        accessibilityRole="button"
-        accessibilityLabel={t('drawer.viewProfile')}
-        style={({ pressed }) => [
-          styles.profileCard,
-          { backgroundColor: cardColor, opacity: pressed ? 0.92 : 1 },
-        ]}
+    <View style={styles.root}>
+      <DrawerContentScrollView
+        {...props}
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Echo of the rings on the sign-in hero. */}
-        <View
-          pointerEvents="none"
-          style={[styles.ring, styles.ringLarge, { borderColor: cardInk }]}
-        />
-        <View
-          pointerEvents="none"
-          style={[styles.ring, styles.ringSmall, { borderColor: cardInk }]}
-        />
+        <Pressable
+          onPress={() =>
+            props.navigation.navigate('MainTabs', { screen: 'ProfileTab' })
+          }
+          accessibilityRole="button"
+          accessibilityLabel={t('drawer.viewProfile')}
+          style={({ pressed }) => [
+            styles.profileCard,
+            { backgroundColor: cardColor, opacity: pressed ? 0.92 : 1 },
+          ]}
+        >
+          {/* Echo of the rings on the sign-in hero. */}
+          <View
+            pointerEvents="none"
+            style={[styles.ring, styles.ringLarge, { borderColor: cardInk }]}
+          />
+          <View
+            pointerEvents="none"
+            style={[styles.ring, styles.ringSmall, { borderColor: cardInk }]}
+          />
 
-        <View style={styles.cardTop}>
-          {/* The ring keeps the avatar off a card of its own colour. */}
-          <View style={[styles.avatarRing, { borderColor: cardInk }]}>
-            <CustomAvatar
-              type="image"
-              value={photoUrl}
-              fallback={displayName}
-              size={52}
-            />
-          </View>
-          <View style={styles.cardAction}>
-            <Glass color={cardInk} />
-            <Icon name="chevron-right" size={20} color={cardInk} />
-          </View>
-        </View>
-
-        <Text numberOfLines={1} style={[styles.name, { color: cardInk }]}>
-          {displayName}
-        </Text>
-        {contactLine ? (
-          <Text numberOfLines={1} style={[styles.email, { color: cardInk }]}>
-            {contactLine}
-          </Text>
-        ) : null}
-
-        {/* A profile not saved yet has neither. */}
-        {patientCode || bloodType ? (
-          <View style={styles.chipRow}>
-            {patientCode ? (
-              <View style={styles.chip}>
-                <Glass color={cardInk} />
-                <Icon
-                  name="card-account-details-outline"
-                  size={12}
-                  color={cardInk}
-                />
+          <View style={styles.identity}>
+            {/* The ring keeps the avatar off a card of its own colour. */}
+            <View style={[styles.avatarRing, { borderColor: cardInk }]}>
+              <CustomAvatar
+                type="image"
+                value={photoUrl}
+                fallback={displayName}
+                size={50}
+              />
+            </View>
+            <View style={styles.identityText}>
+              <Text numberOfLines={1} style={[styles.name, { color: cardInk }]}>
+                {displayName}
+              </Text>
+              {contactLine ? (
                 <Text
                   numberOfLines={1}
-                  style={[styles.chipText, { color: cardInk }]}
+                  style={[styles.email, { color: cardInk }]}
                 >
-                  {patientCode}
-                </Text>
-              </View>
-            ) : null}
-            {bloodType ? (
-              <View style={styles.chip}>
-                <Glass color={cardInk} />
-                <Icon name="water" size={12} color={cardInk} />
-                <Text style={[styles.chipText, { color: cardInk }]}>
-                  {bloodType}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-      </Pressable>
-
-      <View style={styles.drawerList}>
-        {MENU_ITEMS.map(item => {
-          const active = isActive(item);
-
-          return (
-            <React.Fragment key={item.labelKey}>
-              {item.sectionKey ? (
-                <Text
-                  style={[
-                    styles.sectionLabel,
-                    { color: theme.colors.onSurfaceVariant },
-                  ]}
-                >
-                  {t(item.sectionKey)}
+                  {contactLine}
                 </Text>
               ) : null}
-              <DrawerItem
-                focused={active}
-                activeBackgroundColor={theme.colors.primaryContainer}
-                style={styles.item}
-                icon={() => (
-                  <View
-                    style={[
-                      styles.iconTile,
-                      {
-                        backgroundColor: active
-                          ? theme.colors.primary
-                          : theme.colors.surfaceVariant,
-                      },
-                    ]}
-                  >
-                    {/* Filled on the open screen's row, as on the tab bar:
-                        every icon in the menu has a variant without the
-                        `-outline` suffix. */}
-                    <Icon
-                      name={
-                        active ? item.icon.replace(/-outline$/, '') : item.icon
-                      }
-                      color={
-                        active
-                          ? theme.colors.onPrimary
-                          : theme.colors.onSurfaceVariant
-                      }
-                      size={20}
-                    />
-                  </View>
-                )}
-                label={() => (
+            </View>
+            <View style={styles.cardAction}>
+              <Glass color={cardInk} />
+              <Icon name="chevron-right" size={20} color={cardInk} />
+            </View>
+          </View>
+
+          {/* A profile not saved yet has neither. */}
+          {patientCode || bloodType ? (
+            <View style={styles.chipRow}>
+              {patientCode ? (
+                <View style={styles.chip}>
+                  <Glass color={cardInk} />
+                  <Icon
+                    name="card-account-details-outline"
+                    size={12}
+                    color={cardInk}
+                  />
                   <Text
                     numberOfLines={1}
-                    style={[
-                      styles.itemLabel,
-                      {
-                        color: active
-                          ? theme.colors.onPrimaryContainer
-                          : theme.colors.onSurface,
-                        fontFamily: active
-                          ? fontFamilies.semibold
-                          : fontFamilies.medium,
-                      },
-                    ]}
+                    style={[styles.chipText, { color: cardInk }]}
                   >
-                    {t(item.labelKey)}
+                    {patientCode}
                   </Text>
-                )}
-                onPress={() =>
-                  item.tab
-                    ? props.navigation.navigate('MainTabs', {
-                        screen: item.tab,
-                      })
-                    : props.navigation.navigate(item.name)
-                }
-              />
-            </React.Fragment>
-          );
-        })}
-      </View>
+                </View>
+              ) : null}
+              {bloodType ? (
+                <View style={styles.chip}>
+                  <Glass color={cardInk} />
+                  <Icon name="water" size={12} color={cardInk} />
+                  <Text style={[styles.chipText, { color: cardInk }]}>
+                    {bloodType}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+        </Pressable>
 
-      {/* A tonal row in the error tone at the foot of the menu — the same
-          shape as the rows above, so it reads as part of the list. */}
-      <DrawerItem
-        style={[styles.item, styles.logoutItem]}
-        inactiveBackgroundColor={theme.colors.errorContainer}
-        icon={() => (
-          <View
-            style={[styles.iconTile, { backgroundColor: theme.colors.surface }]}
-          >
-            <Icon name="logout" color={theme.colors.error} size={20} />
-          </View>
-        )}
-        label={() => (
-          <Text
-            style={[
-              styles.itemLabel,
-              styles.logoutLabel,
-              { color: theme.colors.onErrorContainer },
-            ]}
-          >
-            {t('profile.logoutButton')}
-          </Text>
-        )}
-        onPress={() => {
-          authStore.logout();
-          profileStore.clear();
-        }}
-      />
-    </DrawerContentScrollView>
+        {MENU_ITEMS.map(item => (
+          <React.Fragment key={item.labelKey}>
+            {item.sectionKey ? (
+              <Text
+                style={[
+                  styles.sectionLabel,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+              >
+                {t(item.sectionKey)}
+              </Text>
+            ) : null}
+            <MenuRow
+              icon={item.icon}
+              label={t(item.labelKey)}
+              active={isActive(item)}
+              count={item.name === 'Notifications' ? unreadCount : 0}
+              onPress={() =>
+                item.tab
+                  ? props.navigation.navigate('MainTabs', {
+                      screen: item.tab,
+                    })
+                  : props.navigation.navigate(item.name)
+              }
+            />
+          </React.Fragment>
+        ))}
+      </DrawerContentScrollView>
+
+      {/* Held at the foot of the drawer, under a hairline, so it is always in
+          reach — the menu above scrolls on a short phone instead. */}
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: theme.colors.outlineVariant,
+            paddingBottom: insets.bottom + 12,
+          },
+        ]}
+      >
+        <MenuRow
+          icon="logout"
+          label={t('profile.logoutButton')}
+          destructive
+          onPress={() => {
+            authStore.logout();
+            profileStore.clear();
+          }}
+        />
+      </View>
+    </View>
   );
 });
 
@@ -344,6 +393,8 @@ const renderDrawerContent = (props: DrawerContentComponentProps) => (
 
 export const DrawerNavigator = () => {
   const theme = useTheme();
+  // Signed in from here down: the bell's count is read once on sign-in.
+  useUnreadNotificationsSync();
 
   return (
     <Drawer.Navigator
@@ -360,6 +411,7 @@ export const DrawerNavigator = () => {
     >
       <Drawer.Screen name="MainTabs" component={TabNavigator} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
+      <Drawer.Screen name="Notifications" component={NotificationsScreen} />
       <Drawer.Screen name="FollowUps" component={PatientFollowUpIndex} />
       <Drawer.Screen
         name="Prescriptions"
@@ -370,18 +422,18 @@ export const DrawerNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  /*
-   * Grows to the drawer's height, so Logout sits at the bottom when the menu is
-   * short, but is never held to it — with `flex: 1` a menu taller than a small
-   * phone ran under Logout instead of scrolling.
-   */
+  root: {
+    flex: 1,
+  },
+  // The footer below owns the bottom inset, so the list only needs a little air.
   scrollContainer: {
-    flexGrow: 1,
+    paddingBottom: 8,
   },
   profileCard: {
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 22,
+    padding: 14,
     marginTop: 4,
+    marginBottom: 6,
     overflow: 'hidden',
   },
   ring: {
@@ -390,34 +442,37 @@ const styles = StyleSheet.create({
     opacity: 0.16,
   },
   ringLarge: {
-    width: 190,
-    height: 190,
-    borderRadius: 95,
-    top: -90,
-    right: -70,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    top: -84,
+    right: -60,
   },
   ringSmall: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    bottom: -62,
-    right: -28,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    bottom: -56,
+    right: -22,
   },
-  cardTop: {
+  identity: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'center',
+  },
+  identityText: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
   },
   avatarRing: {
     borderWidth: 2,
-    borderRadius: 31,
-    padding: 3,
+    borderRadius: 30,
+    padding: 2,
   },
   cardAction: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -427,11 +482,11 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: fontFamilies.bold,
-    fontSize: 17,
+    fontSize: 16.5,
   },
   email: {
     fontFamily: fontFamilies.regular,
-    fontSize: 12.5,
+    fontSize: 12,
     marginTop: 2,
     opacity: 0.85,
   },
@@ -456,40 +511,53 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     flexShrink: 1,
   },
-  // Takes the spare height without being squeezed below its own items.
-  drawerList: {
-    flexGrow: 1,
-    paddingBottom: 12,
-  },
   sectionLabel: {
     fontFamily: fontFamilies.semibold,
     fontSize: 11,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    marginTop: 20,
+    paddingHorizontal: 10,
+    marginTop: 16,
     marginBottom: 6,
   },
-  item: {
-    borderRadius: 16,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 48,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 14,
     marginVertical: 1,
   },
   // The tinted tile the app puts behind an icon, as on the profile rows.
-  iconTile: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  itemLabel: {
+  rowLabel: {
+    flex: 1,
     fontSize: 14.5,
   },
-  logoutItem: {
-    marginBottom: 4,
+  countPill: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  logoutLabel: {
-    fontFamily: fontFamilies.semibold,
+  countText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 11,
+  },
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
+    paddingHorizontal: 12,
   },
 });
 export default DrawerNavigator;

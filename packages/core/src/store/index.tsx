@@ -5,6 +5,7 @@ import { ThemeStore } from './ThemeStore';
 import { LanguageStore } from './LanguageStore';
 import { ToastStore } from './ToastStore';
 import { ProfileStore } from './ProfileStore';
+import { NotificationStore } from './NotificationStore';
 import { storage } from '../utils/secureStorage';
 import i18next from '../utils/i18n';
 
@@ -16,6 +17,7 @@ export const RootStore = types.model('RootStore', {
   languageStore: types.optional(LanguageStore, {}),
   toastStore: types.optional(ToastStore, {}),
   profileStore: types.optional(ProfileStore, {}),
+  notificationStore: types.optional(NotificationStore, {}),
 });
 
 // Load saved snapshot state from MMKV
@@ -55,8 +57,9 @@ if (rootStore.languageStore.language) {
 // Sync updates to MMKV automatically
 onSnapshot(rootStore, (snapshot) => {
   try {
+    // The unread count is read from the server on every start — a saved one is only stale.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { toastStore, ...persistentSnapshot } = snapshot;
+    const { toastStore, notificationStore, ...persistentSnapshot } = snapshot;
     storage.set(ROOT_STORAGE_KEY, JSON.stringify(persistentSnapshot));
   } catch (e) {
     console.warn('[RootStore] Failed to save snapshot to MMKV:', e);

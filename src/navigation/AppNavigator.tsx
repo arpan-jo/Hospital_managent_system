@@ -30,6 +30,7 @@ const linking = {
         },
       },
       Settings: 'settings',
+      Notifications: 'notifications',
     },
   },
 };

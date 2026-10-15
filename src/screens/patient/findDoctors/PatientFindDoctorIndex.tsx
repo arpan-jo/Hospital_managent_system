@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import {
@@ -21,6 +21,7 @@ import {
   fontFamilies,
 } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
+import NotificationBell from '../../../components/NotificationBell';
 import { DrawerParamList } from '../../../navigation/DrawerNavigator';
 import { FindDoctorsStackParamList } from '../../../navigation/FindDoctorsStackNavigator';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
@@ -31,6 +32,7 @@ import FilterBottomSheet from './FilterBottomSheet';
 import { AiDoctorFinder } from './aiFinder/AiDoctorFinder';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useRequirePatientProfile } from '../../../hooks/useRequirePatientProfile';
+import { useRefreshUnreadNotifications } from '../../../hooks/useUnreadNotifications';
 
 export const PatientFindDoctorIndex = observer(() => {
   const theme = useTheme();
@@ -57,6 +59,22 @@ export const PatientFindDoctorIndex = observer(() => {
       navigation
         .getParent<DrawerNavigationProp<DrawerParamList>>()
         ?.navigate('MainTabs', { screen: 'ProfileTab' }),
+    [navigation],
+  );
+
+  // The bell lives on this screen: its count is read again each time it comes into view.
+  const refreshUnread = useRefreshUnreadNotifications();
+  useFocusEffect(
+    useCallback(() => {
+      refreshUnread();
+    }, [refreshUnread]),
+  );
+
+  const handleNotifications = useCallback(
+    () =>
+      navigation
+        .getParent<DrawerNavigationProp<DrawerParamList>>()
+        ?.navigate('Notifications'),
     [navigation],
   );
 
@@ -114,15 +132,18 @@ export const PatientFindDoctorIndex = observer(() => {
         title={t('findDoctors.title')}
         leading="menu"
         right={
-          <Pressable
-            onPress={handleProfile}
-            accessibilityRole="button"
-            accessibilityLabel={t('profile.title')}
-          >
-            <View style={[styles.headerAvatar, { borderColor: theme.colors.primaryContainer }]}>
-              <CustomAvatar type="image" value={photoUrl} fallback={userName} size={36} />
-            </View>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <NotificationBell onPress={handleNotifications} />
+            <Pressable
+              onPress={handleProfile}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.title')}
+            >
+              <View style={[styles.headerAvatar, { borderColor: theme.colors.primaryContainer }]}>
+                <CustomAvatar type="image" value={photoUrl} fallback={userName} size={36} />
+              </View>
+            </Pressable>
+          </View>
         }
       />
 
@@ -342,6 +363,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingRight: 7,
     boxShadow: '0px 4px 14px rgba(21, 30, 79, 0.07)',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerAvatar: {
     borderWidth: 2,

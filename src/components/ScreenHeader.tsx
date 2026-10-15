@@ -1,9 +1,11 @@
-import React, { memo, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { observer } from 'mobx-react-lite';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useStores } from '@app/core';
 import { fontFamilies } from '@app/ui';
 
 interface ScreenHeaderProps {
@@ -25,16 +27,19 @@ interface ScreenHeaderProps {
   right?: React.ReactNode;
 }
 
-export const ScreenHeader = memo<ScreenHeaderProps>(function ScreenHeader({
+export const ScreenHeader = observer(function ScreenHeader({
   title,
   leading,
   onLeadingPress,
   subtitle,
   right,
-}) {
+}: ScreenHeaderProps) {
   const theme = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const { notificationStore } = useStores();
+  // Unread notifications wait in the drawer: the menu button carries a dot for them.
+  const showMenuDot = leading === 'menu' && notificationStore.unreadCount > 0;
 
   const handlePress = useCallback(() => {
     if (onLeadingPress) {
@@ -60,6 +65,14 @@ export const ScreenHeader = memo<ScreenHeaderProps>(function ScreenHeader({
           size={22}
           color={theme.colors.onSurface}
         />
+        {showMenuDot ? (
+          <View
+            style={[
+              styles.menuDot,
+              { backgroundColor: theme.colors.error, borderColor: theme.colors.background },
+            ]}
+          />
+        ) : null}
       </Pressable>
 
       <View style={styles.titles}>
@@ -102,6 +115,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: -6,
+  },
+  menuDot: {
+    position: 'absolute',
+    top: 3,
+    right: 1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
   },
   titles: {
     flex: 1,
