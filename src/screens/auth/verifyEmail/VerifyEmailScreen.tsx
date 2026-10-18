@@ -20,9 +20,9 @@ export const VerifyEmailScreen = observer(() => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const route = useRoute<RouteProp<AuthStackParamList, 'VerifyEmail'>>();
-  const { email, expiresInSeconds } = route?.params ?? {};
+  const { email, phone, expiresInSeconds } = route?.params ?? {};
   const { toastStore } = useStores();
-  const viewModel = useVerifyEmailViewModel(email, expiresInSeconds);
+  const viewModel = useVerifyEmailViewModel({ email, phone }, expiresInSeconds);
   const errorDialog = useErrorDialog();
 
   const goBack = useCallback(() => {
@@ -41,9 +41,13 @@ export const VerifyEmailScreen = observer(() => {
       errorDialog.show(message || t('verifyEmail.verifyFailed'));
       return;
     }
-    toastStore.show(message || t('verifyEmail.verified'), 'success');
-    navigation.replace('SetPassword', { email, code });
-  }, [viewModel, navigation, email, toastStore, errorDialog, t]);
+    toastStore.show(
+      message ||
+        (phone ? t('verifyEmail.phoneVerified') : t('verifyEmail.verified')),
+      'success',
+    );
+    navigation.replace('SetPassword', { email, phone, code });
+  }, [viewModel, navigation, email, phone, toastStore, errorDialog, t]);
 
   const handleResend = useCallback(async () => {
     if (!viewModel.isExpired) {
@@ -78,6 +82,10 @@ export const VerifyEmailScreen = observer(() => {
     [resendColor],
   );
 
+  const backLabel = phone
+    ? t('verifyEmail.backToPhone')
+    : t('verifyEmail.backToEmail');
+
   const linkStyle = useMemo(
     () => [styles.link, styles.backLink, { color: theme.colors.primary }],
     [theme.colors.primary],
@@ -87,9 +95,9 @@ export const VerifyEmailScreen = observer(() => {
     <>
       <AuthScreenLayout
         title={t('verifyEmail.title')}
-        subtitle={t('verifyEmail.subtitle', { email })}
+        subtitle={t('verifyEmail.subtitle', { email: phone ?? email })}
         onBack={goBack}
-        backLabel={t('verifyEmail.backToEmail')}
+        backLabel={backLabel}
       >
         <OtpCodeInput
           digits={viewModel.digits}
@@ -120,11 +128,11 @@ export const VerifyEmailScreen = observer(() => {
           loading={viewModel.isLoading}
           style={styles.button}
         >
-          {t('verifyEmail.button')}
+          {phone ? t('verifyEmail.phoneButton') : t('verifyEmail.button')}
         </CustomButton>
 
         <Pressable onPress={goBack} hitSlop={8} accessibilityRole="button">
-          <Text style={linkStyle}>{t('verifyEmail.backToEmail')}</Text>
+          <Text style={linkStyle}>{backLabel}</Text>
         </Pressable>
       </AuthScreenLayout>
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { SegmentedButtons, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -15,7 +15,7 @@ import {
 import { useErrorDialog } from '../../../hooks/useErrorDialog';
 import { AuthStackParamList } from '../../../navigation/AuthStackNavigator';
 import AuthScreenLayout from '../AuthScreenLayout';
-import { useSignupViewModel } from './useSignupViewModel';
+import { SignupMethod, useSignupViewModel } from './useSignupViewModel';
 
 export const SignupScreen = observer(() => {
   const { t } = useTranslation();
@@ -44,9 +44,36 @@ export const SignupScreen = observer(() => {
     toastStore.show(data?.message || t('signup.codeSent'), 'success');
     navigation.navigate('VerifyEmail', {
       email: data?.email,
+      phone: data?.phone,
       expiresInSeconds: data?.expiresInSeconds,
     });
   }, [viewModel, navigation, toastStore, errorDialog, t]);
+
+  const handleMethodChange = useCallback(
+    (value: string) => viewModel.setMethod(value as SignupMethod),
+    [viewModel],
+  );
+
+  const tabs = useMemo(
+    () => [
+      { value: 'email', label: t('signup.emailTab'), icon: 'email-outline' },
+      { value: 'phone', label: t('signup.phoneTab'), icon: 'phone-outline' },
+    ],
+    [t],
+  );
+
+  // Paper tints the chosen segment with `secondaryContainer`, which the app
+  // theme leaves at Paper's own lilac — the brand's container tone goes in,
+  // as on the language toggle.
+  const tabsTheme = useMemo(
+    () => ({
+      colors: {
+        secondaryContainer: theme.colors.primaryContainer,
+        onSecondaryContainer: theme.colors.onPrimaryContainer,
+      },
+    }),
+    [theme.colors.primaryContainer, theme.colors.onPrimaryContainer],
+  );
 
   const linkStyle = useMemo(
     () => [styles.link, { color: theme.colors.primary }],
@@ -66,17 +93,39 @@ export const SignupScreen = observer(() => {
         onBack={goBack}
         backLabel={t('signup.signIn')}
       >
-        <CustomFormInput
-          name="email"
-          control={viewModel.control}
-          label={t('signup.emailLabel')}
-          placeholder={t('signup.emailPlaceholder')}
-          keyboardType="email-address"
-          leftIcon="email-outline"
-          rules={viewModel.rules?.email}
-          returnKeyType="done"
-          onSubmitEditing={handleSubmit}
+        <SegmentedButtons
+          value={viewModel.method}
+          onValueChange={handleMethodChange}
+          buttons={tabs}
+          style={styles.tabs}
+          theme={tabsTheme}
         />
+
+        {viewModel.method === 'phone' ? (
+          <CustomFormInput
+            name="phone"
+            control={viewModel.control}
+            label={t('signup.phoneLabel')}
+            placeholder={t('signup.phonePlaceholder')}
+            keyboardType="phone-pad"
+            leftIcon="phone-outline"
+            rules={viewModel.rules?.phone}
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
+          />
+        ) : (
+          <CustomFormInput
+            name="email"
+            control={viewModel.control}
+            label={t('signup.emailLabel')}
+            placeholder={t('signup.emailPlaceholder')}
+            keyboardType="email-address"
+            leftIcon="email-outline"
+            rules={viewModel.rules?.email}
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
+          />
+        )}
 
         <CustomButton
           mode="contained"
@@ -109,6 +158,9 @@ export const SignupScreen = observer(() => {
 });
 
 const styles = StyleSheet.create({
+  tabs: {
+    marginBottom: 16,
+  },
   button: {
     marginTop: 8,
     paddingVertical: 6,

@@ -10,12 +10,15 @@ export type AuthStackParamList = {
   Login: undefined;
   ForgotPassword: undefined;
   Signup: undefined;
+  /** Exactly one of `email` / `phone`: where the code went. */
   VerifyEmail: {
-    email: string;
+    email?: string;
+    phone?: string;
     expiresInSeconds?: number;
   };
   SetPassword: {
-    email: string;
+    email?: string;
+    phone?: string;
     /** Verified OTP, required to register. */
     code: string;
   };

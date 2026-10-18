@@ -23,7 +23,7 @@ export const SetPasswordScreen = observer(() => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const route = useRoute<RouteProp<AuthStackParamList, 'SetPassword'>>();
-  const { email } = route?.params ?? {};
+  const { email, phone } = route?.params ?? {};
   const { toastStore } = useStores();
   const viewModel = useSetPasswordViewModel(route?.params);
   const errorDialog = useErrorDialog();
@@ -44,6 +44,8 @@ export const SetPasswordScreen = observer(() => {
       // sign in themselves.
       toastStore.show(t('setPassword.accountCreatedSignIn'), 'success');
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } else if (status === 'pending') {
+      toastStore.show(t('setPassword.phonePending'), 'info', 5000);
     } else if (status === 'created') {
       // Signed in already — the root navigator swaps to the app stack, so
       // there's no navigation to do here.
@@ -60,11 +62,13 @@ export const SetPasswordScreen = observer(() => {
         backLabel={t('setPassword.back')}
       >
         <CustomInput
-          label={t('setPassword.emailLabel')}
-          value={email ?? ''}
+          label={
+            phone ? t('setPassword.phoneLabel') : t('setPassword.emailLabel')
+          }
+          value={phone ?? email ?? ''}
           onChangeText={noop}
           disabled
-          leftIcon="email-outline"
+          leftIcon={phone ? 'phone-outline' : 'email-outline'}
         />
 
         <CustomFormInput

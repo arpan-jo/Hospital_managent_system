@@ -16,12 +16,21 @@ export interface VerifyEmailResult {
   code?: string;
 }
 
+export interface VerifyCodeTarget {
+  /** Exactly one of these: where the code went. */
+  email?: string;
+  phone?: string;
+}
+
 /**
  * OTP entry for the sign-up flow. A complete 6-digit code is checked against
  * `AuthRepository.verifyOtp`; `resend` re-binds the email via `sendOtp`.
+ *
+ * A mobile number goes through the same screen once the backend has an SMS
+ * code API; until then its two calls are left empty.
  */
 export const useVerifyEmailViewModel = (
-  email: string,
+  { email, phone }: VerifyCodeTarget,
   initialExpiresInSeconds?: number,
 ) => {
   const [digits, setDigits] = useState<string[]>(() =>
@@ -54,7 +63,10 @@ export const useVerifyEmailViewModel = (
   }> => {
     setIsResending(true);
     try {
-      const res = await AuthRepository.sendOtp(email, SIGNUP_ROLE);
+      // Waiting on the backend: a phone's code is sent again here.
+      const res = phone
+        ? null
+        : await AuthRepository.sendOtp(email ?? '', SIGNUP_ROLE);
       setDigits(Array(CODE_LENGTH).fill(''));
       setSecondsLeft(res?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS);
       return { ok: true, message: res?.message };
@@ -63,7 +75,7 @@ export const useVerifyEmailViewModel = (
     } finally {
       setIsResending(false);
     }
-  }, [email]);
+  }, [email, phone]);
 
   const submit = async (): Promise<VerifyEmailResult> => {
     const code = digits.join('');
@@ -71,9 +83,15 @@ export const useVerifyEmailViewModel = (
       return { status: 'incomplete' };
     }
 
+    if (phone) {
+      // Waiting on the backend: a phone's code is checked here. Until then
+      // any six digits pass, so the flow's screens can be walked through.
+      return { status: 'verified', code };
+    }
+
     setIsLoading(true);
     try {
-      const res = await AuthRepository.verifyOtp(email, code);
+      const res = await AuthRepository.verifyOtp(email ?? '', code);
       return {
         status: res?.isValid ? 'verified' : 'rejected',
         message: res?.message,

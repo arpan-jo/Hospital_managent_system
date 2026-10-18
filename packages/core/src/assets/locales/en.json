@@ -48,7 +48,12 @@
     "codeSent": "Verification code sent.",
     "invalidEmail": "Please enter a valid email address",
     "errorTitle": "Sign-up Failed",
-    "sendFailed": "Failed to send code."
+    "sendFailed": "Failed to send code.",
+    "emailTab": "Email",
+    "phoneTab": "Phone",
+    "phoneLabel": "Mobile number",
+    "phonePlaceholder": "01XXXXXXXXX",
+    "invalidPhone": "Please enter a valid mobile number (01XXXXXXXXX)"
   },
   "verifyEmail": {
     "title": "Enter Code",
@@ -63,7 +68,10 @@
     "backToEmail": "Back to email",
     "invalidCode": "Please enter the full 6-digit code",
     "errorTitle": "Verification Failed",
-    "verifyFailed": "Invalid or expired code."
+    "verifyFailed": "Invalid or expired code.",
+    "phoneButton": "Verify Number",
+    "backToPhone": "Back to mobile number",
+    "phoneVerified": "Mobile number verified successfully."
   },
   "setPassword": {
     "title": "Set Password",
@@ -81,7 +89,9 @@
     "accountCreated": "Account created successfully!",
     "accountCreatedSignIn": "Account created. Please sign in to continue.",
     "accountFailed": "Registration failed.",
-    "errorTitle": "Couldn't Create Account"
+    "errorTitle": "Couldn't Create Account",
+    "phoneLabel": "Mobile number",
+    "phonePending": "Signing up with a mobile number will be available soon."
   },
   "findDoctors": {
     "title": "Find Doctors",
