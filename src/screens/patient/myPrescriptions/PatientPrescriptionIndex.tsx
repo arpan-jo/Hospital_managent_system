@@ -39,6 +39,7 @@ import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { MyPrescriptionsStackParamList } from '../../../navigation/MyPrescriptionsStackNavigator';
+import AlarmSheet from './AlarmSheet';
 import PrescriptionCard from './PrescriptionCard';
 import PrescriptionFilterSheet from './PrescriptionFilterSheet';
 import UploadDocumentSheet from './UploadDocumentSheet';
@@ -68,6 +69,7 @@ export const PatientPrescriptionIndex = observer(() => {
     useState<PrescriptionAttachment | null>(null);
   /** The portal's "Today's Medicines" toggle — the panel opens above the list. */
   const [showToday, setShowToday] = useState(false);
+  const [showAlarm, setShowAlarm] = useState(false);
 
   /** The prescription itself is the PDF the server draws, as on the portal. */
   const openPrescription = useCallback(
@@ -350,33 +352,54 @@ export const PatientPrescriptionIndex = observer(() => {
         subtitle={subtitle}
         leading="menu"
         right={
-          <Pressable
-            onPress={viewModel.openFilters}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={t('myPrescriptions.filterTitle')}
-            style={[
-              styles.filterButton,
-              {
-                backgroundColor: viewModel.hasActiveFilters
-                  ? theme.colors.primary
-                  : theme.colors.surface,
-                borderColor: viewModel.hasActiveFilters
-                  ? theme.colors.primary
-                  : theme.colors.outlineVariant,
-              },
-            ]}
-          >
-            <Icon
-              name="tune-variant"
-              size={18}
-              color={
-                viewModel.hasActiveFilters
-                  ? theme.colors.onPrimary
-                  : theme.colors.onSurface
-              }
-            />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => setShowAlarm(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('alarm.title')}
+              style={[
+                styles.filterButton,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.outlineVariant,
+                },
+              ]}
+            >
+              <Icon
+                name="alarm-plus"
+                size={18}
+                color={theme.colors.onSurface}
+              />
+            </Pressable>
+            <Pressable
+              onPress={viewModel.openFilters}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('myPrescriptions.filterTitle')}
+              style={[
+                styles.filterButton,
+                {
+                  backgroundColor: viewModel.hasActiveFilters
+                    ? theme.colors.primary
+                    : theme.colors.surface,
+                  borderColor: viewModel.hasActiveFilters
+                    ? theme.colors.primary
+                    : theme.colors.outlineVariant,
+                },
+              ]}
+            >
+              <Icon
+                name="tune-variant"
+                size={18}
+                color={
+                  viewModel.hasActiveFilters
+                    ? theme.colors.onPrimary
+                    : theme.colors.onSurface
+                }
+              />
+            </Pressable>
+          </View>
         }
       />
 
@@ -501,6 +524,8 @@ export const PatientPrescriptionIndex = observer(() => {
         onApply={viewModel.applyFilters}
       />
 
+      <AlarmSheet visible={showAlarm} onClose={() => setShowAlarm(false)} />
+
       <UploadDocumentSheet
         visible={viewModel.uploadTarget !== null}
         prescription={viewModel.uploadTarget}
@@ -526,6 +551,10 @@ export const PatientPrescriptionIndex = observer(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   filterButton: {
     width: 38,

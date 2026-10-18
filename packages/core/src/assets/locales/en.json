@@ -785,6 +785,24 @@
     "lateNight": "You have {{count}} untaken dose today. Please take it before sleeping.",
     "lateNight_plural": "You have {{count}} untaken doses today. Please take them before sleeping."
   },
+  "alarm": {
+    "title": "New Alarm",
+    "hint": "At this time your phone rings for up to {{seconds}} seconds and shows your message, even if the app is closed. Tap OK to stop it.",
+    "time": "Time",
+    "message": "Message",
+    "messagePlaceholder": "e.g. Time to take Napa",
+    "messageRequired": "Write a message for the alarm",
+    "messageTooLong": "Keep the message within {{count}} characters",
+    "save": "Set Alarm",
+    "stop": "OK",
+    "channelName": "Alarms",
+    "setToday": "Alarm set for {{time}}",
+    "setTomorrow": "Alarm set for {{time}} tomorrow",
+    "failed": "Could not set the alarm. Please try again.",
+    "notificationsBlocked": "Notifications are off for this app. Turn them on, then set the alarm again.",
+    "exactAlarmBlocked": "Allow \"Alarms & reminders\" for this app, then set the alarm again.",
+    "unavailable": "Alarms need the latest version of the app."
+  },
   "notifications": {
     "title": "Notifications",
     "unreadSubtitle": "{{count}} unread",
