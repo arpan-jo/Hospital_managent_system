@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { StyleSheet } from 'react-native';
+import { Keyboard, StyleSheet } from 'react-native';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -35,6 +35,8 @@ export const SetPasswordScreen = observer(() => {
   }, [navigation]);
 
   const handleCreateAccount = useCallback(async () => {
+    // The toasts show at the foot of the screen, where an open keyboard hides them.
+    Keyboard.dismiss();
     const { status, message } = await viewModel.submit();
 
     if (status === 'failed') {
