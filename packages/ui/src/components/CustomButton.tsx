@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { ComponentProps, memo } from 'react';
 import { StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { Button } from 'react-native-paper';
 import { fontFamilies } from '../theme/typography';
@@ -8,7 +8,8 @@ interface CustomButtonProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  icon?: string;
+  /** An icon name, or a render function for an image that must keep its own colours. */
+  icon?: ComponentProps<typeof Button>['icon'];
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   labelStyle?: StyleProp<TextStyle>;

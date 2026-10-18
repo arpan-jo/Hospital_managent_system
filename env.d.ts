@@ -5,4 +5,5 @@ declare module '@env' {
   export const AI_STT_API_KEY: string;
   export const MMKV_ENCRYPTION_KEY: string;
   export const API_ENCRYPTION_KEY: string;
+  export const GOOGLE_WEB_CLIENT_ID: string;
 }

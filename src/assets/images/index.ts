@@ -10,6 +10,8 @@ import { ImageSourcePropType } from 'react-native';
  */
 export const images = {
   logo: require('./logo-mediplex.png'),
+  /** Google's "G", taken from the web's sign-in button. */
+  google: require('./google.png'),
 } satisfies Record<string, ImageSourcePropType>;
 
 export default images;

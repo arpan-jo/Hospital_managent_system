@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, View, Pressable } from 'react-native';
+import { Image, StyleSheet, View, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { images } from '../../../assets/images';
 import { useErrorDialog } from '../../../hooks/useErrorDialog';
 import { AuthStackParamList } from '../../../navigation/AuthStackNavigator';
 import AuthScreenLayout from '../AuthScreenLayout';
@@ -17,6 +18,12 @@ import {
   fontFamilies,
 } from '@app/ui';
 
+// A render function, not an image source: Paper tints image icons to the
+// label colour, and Google's "G" has to keep its own colours.
+const renderGoogleIcon = () => (
+  <Image source={images.google} style={styles.googleIcon} />
+);
+
 export const LoginScreen = observer(() => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -27,6 +34,13 @@ export const LoginScreen = observer(() => {
 
   const handleLogin = useCallback(async () => {
     const error = await viewModel.submitLogin();
+    if (error) {
+      errorDialog.show(error);
+    }
+  }, [viewModel, errorDialog]);
+
+  const handleGoogleLogin = useCallback(async () => {
+    const error = await viewModel.submitGoogleLogin();
     if (error) {
       errorDialog.show(error);
     }
@@ -90,9 +104,21 @@ export const LoginScreen = observer(() => {
           mode="contained"
           onPress={handleLogin}
           loading={viewModel.isLoading}
+          disabled={viewModel.isGoogleLoading}
           style={styles.button}
         >
           {t('login.button')}
+        </CustomButton>
+
+        <CustomButton
+          mode="outlined"
+          onPress={handleGoogleLogin}
+          loading={viewModel.isGoogleLoading}
+          disabled={viewModel.isLoading}
+          icon={renderGoogleIcon}
+          style={styles.googleButton}
+        >
+          {t('login.googleButton')}
         </CustomButton>
 
         <View style={styles.signupRow}>
@@ -136,6 +162,13 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 16,
     paddingVertical: 6,
+  },
+  googleButton: {
+    paddingVertical: 6,
+  },
+  googleIcon: {
+    width: 18,
+    height: 18,
   },
   signupRow: {
     flexDirection: 'row',

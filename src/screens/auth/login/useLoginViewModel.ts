@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { serverMessageOf, useStores } from '@app/core';
+import { pickGoogleAccount, serverMessageOf, useStores } from '@app/core';
 import { useSignIn } from '../../../hooks/useSignIn';
 
 export interface LoginForm {
@@ -31,6 +31,7 @@ export const useLoginViewModel = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const rules = useMemo(
     () => ({
@@ -55,7 +56,7 @@ export const useLoginViewModel = () => {
    */
   const submitLogin = async (): Promise<string | null> => {
     // The keyboard's Done key can fire again while a request is in flight.
-    if (isLoading) {
+    if (isLoading || isGoogleLoading) {
       return null;
     }
 
@@ -82,11 +83,46 @@ export const useLoginViewModel = () => {
     return error;
   };
 
+  /**
+   * Sign in with Google. Resolves to the failure message, or null — also when
+   * the user backed out of Google's account picker.
+   */
+  const submitGoogleLogin = async (): Promise<string | null> => {
+    if (isLoading || isGoogleLoading) {
+      return null;
+    }
+
+    setIsGoogleLoading(true);
+
+    try {
+      const account = await pickGoogleAccount();
+      if (!account?.idToken) {
+        return null;
+      }
+
+      // Waiting on the backend: account.idToken goes to its Google sign-in
+      // API, and that login-shaped answer starts the session as `signIn` does.
+      toastStore.show(
+        t('login.googlePending', { email: account?.user?.email ?? '' }),
+        'info',
+        5000,
+      );
+      return null;
+    } catch (e: any) {
+      console.log('google sign-in failed ==>', e?.code, e?.message);
+      return t('login.googleFailed');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   return {
     control,
     rules,
     isLoading,
+    isGoogleLoading,
     submitLogin,
+    submitGoogleLogin,
   };
 };
 

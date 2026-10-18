@@ -15,7 +15,10 @@
     "welcome": "Welcome back!",
     "forgotPassword": "Forgot your password?",
     "noAccount": "Don't have an account?",
-    "createAccount": "Create new account"
+    "createAccount": "Create new account",
+    "googleButton": "Sign in with Google",
+    "googleFailed": "Could not sign in with Google. Please try again.",
+    "googlePending": "Google account {{email}} selected. Signing in with Google will be available soon."
   },
   "forgotPassword": {
     "title": "Forgot your password?",

@@ -15,7 +15,10 @@
     "welcome": "আবার স্বাগতম!",
     "forgotPassword": "পাসওয়ার্ড ভুলে গেছেন?",
     "noAccount": "অ্যাকাউন্ট নেই?",
-    "createAccount": "নতুন অ্যাকাউন্ট তৈরি করুন"
+    "createAccount": "নতুন অ্যাকাউন্ট তৈরি করুন",
+    "googleButton": "Google দিয়ে সাইন ইন",
+    "googleFailed": "Google দিয়ে সাইন ইন করা যায়নি। আবার চেষ্টা করুন।",
+    "googlePending": "Google অ্যাকাউন্ট {{email}} বাছাই হয়েছে। Google দিয়ে সাইন ইন শীঘ্রই চালু হবে।"
   },
   "forgotPassword": {
     "title": "পাসওয়ার্ড ভুলে গেছেন?",
