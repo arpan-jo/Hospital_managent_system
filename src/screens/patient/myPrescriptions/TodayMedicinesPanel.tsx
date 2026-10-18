@@ -8,9 +8,16 @@ import { CustomButton, CustomDatePicker, fontFamilies } from '@app/ui';
 import { doseKey, useTodayMedicines } from './useTodayMedicines';
 import { doctorTitle } from './prescriptionUi';
 
-const SLOT_LOOK: Record<MedicineSlot, { icon: string; color: string; tint: string }> = {
+const SLOT_LOOK: Record<
+  MedicineSlot,
+  { icon: string; color: string; tint: string }
+> = {
   morning: { icon: 'weather-sunny', color: '#D97706', tint: '#FEF3C7' },
-  afternoon: { icon: 'weather-partly-cloudy', color: '#0284C7', tint: '#E0F2FE' },
+  afternoon: {
+    icon: 'weather-partly-cloudy',
+    color: '#0284C7',
+    tint: '#E0F2FE',
+  },
   evening: { icon: 'weather-sunset', color: '#EA580C', tint: '#FFEDD5' },
   night: { icon: 'weather-night', color: '#6366F1', tint: '#E0E7FF' },
 };
@@ -20,13 +27,17 @@ const DONE_TINT = '#DCFCE7';
 
 /** 'HH:mm' ↔ the time picker's Date. */
 const toDate = (hhmm: string) => {
-  const [h, m] = String(hhmm ?? '').split(':').map(Number);
+  const [h, m] = String(hhmm ?? '')
+    .split(':')
+    .map(Number);
   const date = new Date();
   date.setHours(Number.isFinite(h) ? h : 0, Number.isFinite(m) ? m : 0, 0, 0);
   return date;
 };
 const toHHmm = (date: Date) =>
-  `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  `${String(date.getHours()).padStart(2, '0')}:${String(
+    date.getMinutes(),
+  ).padStart(2, '0')}`;
 
 interface TodayMedicinesPanelProps {
   /** One family member's medicines; null for everyone's. */
@@ -36,263 +47,419 @@ interface TodayMedicinesPanelProps {
 }
 
 /** The portal's Today's Medicines panel. */
-export const TodayMedicinesPanel = memo<TodayMedicinesPanelProps>(function TodayMedicinesPanel({
-  patientCode,
-  patientName,
-}) {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  const today = useTodayMedicines(patientCode || null);
-  const [showSettings, setShowSettings] = useState(false);
-  const muted = theme.colors.onSurfaceVariant;
+export const TodayMedicinesPanel = memo<TodayMedicinesPanelProps>(
+  function TodayMedicinesPanel({ patientCode, patientName }) {
+    const theme = useTheme();
+    const { t } = useTranslation();
+    const today = useTodayMedicines(patientCode || null);
+    const [showSettings, setShowSettings] = useState(false);
+    const muted = theme.colors.onSurfaceVariant;
 
-  if (today.isLoading) {
-    return (
-      <View style={[styles.card, styles.center, { backgroundColor: theme.colors.surface }]}>
-        <ActivityIndicator size="small" color={theme.colors.primary} />
-      </View>
-    );
-  }
-
-  if (!today.medicines.length) {
-    return (
-      <View style={[styles.card, styles.center, { backgroundColor: theme.colors.surface }]}>
-        <View style={[styles.emptyIcon, { backgroundColor: theme.colors.primaryContainer }]}>
-          <Icon name="pill" size={26} color={theme.colors.primary} />
+    if (today.isLoading) {
+      return (
+        <View
+          style={[
+            styles.card,
+            styles.center,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          <ActivityIndicator size="small" color={theme.colors.primary} />
         </View>
-        <Text style={[styles.emptyTitle, { color: theme.colors.onSurface }]}>
-          {patientName
-            ? t('todayMedicines.emptyFor', { name: patientName })
-            : t('todayMedicines.empty')}
-        </Text>
-        <Text style={[styles.emptyHint, { color: muted }]}>{t('todayMedicines.emptyHint')}</Text>
-      </View>
-    );
-  }
+      );
+    }
 
-  const total = today.totalDoses;
-  const taken = today.takenDoses;
-  const allTaken = total > 0 && taken === total;
-  const percent = total > 0 ? Math.round((taken / total) * 100) : 0;
-  const lateNight = !allTaken && new Date().getHours() >= 21;
-  const accent = allTaken ? DONE : theme.colors.primary;
-
-  return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: theme.colors.surface, borderColor: allTaken ? DONE : 'transparent' },
-      ]}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={[styles.headerIcon, { backgroundColor: theme.colors.primaryContainer }]}>
-          <Icon name="pill" size={18} color={theme.colors.primary} />
-        </View>
-        <View style={styles.headerBody}>
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: theme.colors.onSurface }]}>{t('todayMedicines.title')}</Text>
-            {patientName ? (
-              <View style={[styles.badge, { backgroundColor: theme.colors.primaryContainer }]}>
-                <Icon name="account-outline" size={11} color={theme.colors.primary} />
-                <Text style={[styles.badgeText, { color: theme.colors.primary }]}>{patientName}</Text>
-              </View>
-            ) : null}
+    if (!today.medicines.length) {
+      return (
+        <View
+          style={[
+            styles.card,
+            styles.center,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          <View
+            style={[
+              styles.emptyIcon,
+              { backgroundColor: theme.colors.primaryContainer },
+            ]}
+          >
+            <Icon name="pill" size={26} color={theme.colors.primary} />
           </View>
-          <Text style={[styles.progressText, { color: allTaken ? DONE : muted }]}>
-            {allTaken
-              ? t('todayMedicines.allTaken')
-              : t('todayMedicines.takenOf', { taken, count: total })}
+          <Text style={[styles.emptyTitle, { color: theme.colors.onSurface }]}>
+            {patientName
+              ? t('todayMedicines.emptyFor', { name: patientName })
+              : t('todayMedicines.empty')}
+          </Text>
+          <Text style={[styles.emptyHint, { color: muted }]}>
+            {t('todayMedicines.emptyHint')}
           </Text>
         </View>
-        <View style={[styles.percent, { borderColor: accent }]}>
-          <Text style={[styles.percentText, { color: accent }]}>{`${percent}%`}</Text>
-        </View>
-      </View>
+      );
+    }
 
-      <View style={[styles.bar, { backgroundColor: theme.colors.surfaceVariant }]}>
-        <View style={[styles.barFill, { width: `${percent}%`, backgroundColor: accent }]} />
-      </View>
+    const total = today.totalDoses;
+    const taken = today.takenDoses;
+    const allTaken = total > 0 && taken === total;
+    const percent = total > 0 ? Math.round((taken / total) * 100) : 0;
+    const lateNight = !allTaken && new Date().getHours() >= 21;
+    const accent = allTaken ? DONE : theme.colors.primary;
 
-      <Pressable
-        onPress={() => setShowSettings(value => !value)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: showSettings }}
+    return (
+      <View
         style={[
-          styles.scheduleToggle,
-          showSettings
-            ? { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
-            : { borderColor: theme.colors.outlineVariant },
+          styles.card,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: allTaken ? DONE : 'transparent',
+          },
         ]}
       >
-        <Icon name="cog-outline" size={14} color={showSettings ? theme.colors.onPrimary : muted} />
-        <Text style={[styles.scheduleText, { color: showSettings ? theme.colors.onPrimary : muted }]}>
-          {t('todayMedicines.schedule')}
-        </Text>
-        <Icon
-          name={showSettings ? 'chevron-up' : 'chevron-down'}
-          size={14}
-          color={showSettings ? theme.colors.onPrimary : muted}
-        />
-      </Pressable>
-
-      {/* Reminder times */}
-      {showSettings ? (
-        <View style={[styles.settings, { backgroundColor: theme.colors.surfaceVariant }]}>
-          <Text style={[styles.settingsTitle, { color: theme.colors.onSurface }]}>
-            {t('todayMedicines.reminderTimes')}
-          </Text>
-          <Text style={[styles.settingsHint, { color: muted }]}>{t('todayMedicines.reminderHint')}</Text>
-          <View style={styles.timeGrid}>
-            {MEDICINE_SLOTS.map(slot => (
-              <View key={slot} style={[styles.timeCell, { backgroundColor: theme.colors.surface }]}>
-                <View style={styles.slotLabelRow}>
-                  <Icon name={SLOT_LOOK[slot].icon} size={14} color={SLOT_LOOK[slot].color} />
-                  <Text style={[styles.slotLabel, { color: theme.colors.onSurface }]}>
-                    {t(`todayMedicines.slot.${slot}`)}
+        {/* Header */}
+        <View style={styles.header}>
+          <View
+            style={[
+              styles.headerIcon,
+              { backgroundColor: theme.colors.primaryContainer },
+            ]}
+          >
+            <Icon name="pill" size={18} color={theme.colors.primary} />
+          </View>
+          <View style={styles.headerBody}>
+            <View style={styles.titleRow}>
+              <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+                {t('todayMedicines.title')}
+              </Text>
+              {patientName ? (
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: theme.colors.primaryContainer },
+                  ]}
+                >
+                  <Icon
+                    name="account-outline"
+                    size={11}
+                    color={theme.colors.primary}
+                  />
+                  <Text
+                    style={[styles.badgeText, { color: theme.colors.primary }]}
+                  >
+                    {patientName}
                   </Text>
-                </View>
-                <CustomDatePicker
-                  label=""
-                  mode="time"
-                  value={toDate(today.draftTimes?.[slot])}
-                  onChange={(date?: Date) => {
-                    if (date) today.setDraftTime(slot, toHHmm(date));
-                  }}
-                />
-                <Text style={[styles.activeTime, { color: muted }]}>
-                  {t('todayMedicines.active', { time: to12Hour(today.slotTimes?.[slot]) })}
-                </Text>
-              </View>
-            ))}
-          </View>
-          <View style={styles.settingsActions}>
-            <CustomButton
-              mode="outlined"
-              icon="refresh"
-              onPress={today.resetSchedule}
-              disabled={today.isScheduling}
-              style={styles.settingsButton}
-            >
-              {t('todayMedicines.resetDefaults')}
-            </CustomButton>
-            <CustomButton
-              mode="contained"
-              icon="check"
-              onPress={async () => {
-                if (await today.saveSchedule()) setShowSettings(false);
-              }}
-              loading={today.isScheduling}
-              disabled={today.isScheduling}
-              style={styles.settingsButton}
-            >
-              {t('todayMedicines.saveSchedule')}
-            </CustomButton>
-          </View>
-        </View>
-      ) : null}
-
-      {/* Slots */}
-      {today.groups.map(group => {
-        const look = SLOT_LOOK[group.slot];
-        const state = today.slotState(group.slot);
-        const slotDone = group.medicines.every(item => today.log?.[doseKey(item?.prescriptionId, group.slot)]);
-        return (
-          <View key={group.slot} style={styles.slot}>
-            <View style={[styles.slotHeader, { backgroundColor: look.tint }]}>
-              <Icon name={look.icon} size={16} color={look.color} />
-              <Text style={[styles.slotName, { color: look.color }]}>{t(`todayMedicines.slot.${group.slot}`)}</Text>
-              <Text style={[styles.slotTime, { color: muted }]}>{to12Hour(today.slotTimes?.[group.slot])}</Text>
-              {state === 'now' ? (
-                <View style={[styles.stateTag, { backgroundColor: theme.colors.primary }]}>
-                  <Text style={[styles.stateTagText, { color: theme.colors.onPrimary }]}>{t('todayMedicines.now')}</Text>
-                </View>
-              ) : state === 'past' ? (
-                <View style={[styles.stateTag, { backgroundColor: 'rgba(0,0,0,0.08)' }]}>
-                  <Text style={[styles.stateTagText, { color: muted }]}>{t('todayMedicines.past')}</Text>
-                </View>
-              ) : null}
-              {slotDone ? (
-                <View style={styles.slotDone}>
-                  <Icon name="check" size={12} color={DONE} />
-                  <Text style={[styles.slotDoneText, { color: DONE }]}>{t('todayMedicines.slotAllTaken')}</Text>
                 </View>
               ) : null}
             </View>
+            <Text
+              style={[styles.progressText, { color: allTaken ? DONE : muted }]}
+            >
+              {allTaken
+                ? t('todayMedicines.allTaken')
+                : t('todayMedicines.takenOf', { taken, count: total })}
+            </Text>
+          </View>
+          <View style={[styles.percent, { borderColor: accent }]}>
+            <Text
+              style={[styles.percentText, { color: accent }]}
+            >{`${percent}%`}</Text>
+          </View>
+        </View>
 
-            {group.medicines.map(item => {
-              const key = doseKey(item?.prescriptionId, group.slot);
-              const isTaken = !!today.log?.[key];
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => today.toggleTaken(item?.prescriptionId, group.slot)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: isTaken }}
+        <View
+          style={[styles.bar, { backgroundColor: theme.colors.surfaceVariant }]}
+        >
+          <View
+            style={[
+              styles.barFill,
+              { width: `${percent}%`, backgroundColor: accent },
+            ]}
+          />
+        </View>
+
+        <Pressable
+          onPress={() => setShowSettings(value => !value)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showSettings }}
+          style={[
+            styles.scheduleToggle,
+            showSettings
+              ? {
+                  backgroundColor: theme.colors.primary,
+                  borderColor: theme.colors.primary,
+                }
+              : { borderColor: theme.colors.outlineVariant },
+          ]}
+        >
+          <Icon
+            name="cog-outline"
+            size={14}
+            color={showSettings ? theme.colors.onPrimary : muted}
+          />
+          <Text
+            style={[
+              styles.scheduleText,
+              { color: showSettings ? theme.colors.onPrimary : muted },
+            ]}
+          >
+            {t('todayMedicines.schedule')}
+          </Text>
+          <Icon
+            name={showSettings ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color={showSettings ? theme.colors.onPrimary : muted}
+          />
+        </Pressable>
+
+        {/* Reminder times */}
+        {showSettings ? (
+          <View
+            style={[
+              styles.settings,
+              { backgroundColor: theme.colors.surfaceVariant },
+            ]}
+          >
+            <Text
+              style={[styles.settingsTitle, { color: theme.colors.onSurface }]}
+            >
+              {t('todayMedicines.reminderTimes')}
+            </Text>
+            <Text style={[styles.settingsHint, { color: muted }]}>
+              {t('todayMedicines.reminderHint')}
+            </Text>
+            <View style={styles.timeGrid}>
+              {MEDICINE_SLOTS.map(slot => (
+                <View
+                  key={slot}
                   style={[
-                    styles.dose,
-                    {
-                      backgroundColor: isTaken ? DONE_TINT : theme.colors.surfaceVariant,
-                      borderColor: isTaken ? DONE : 'transparent',
-                    },
+                    styles.timeCell,
+                    { backgroundColor: theme.colors.surface },
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.check,
-                      { borderColor: isTaken ? DONE : theme.colors.outline, backgroundColor: isTaken ? DONE : 'transparent' },
-                    ]}
-                  >
-                    {isTaken ? <Icon name="check" size={13} color="#FFFFFF" /> : null}
-                  </View>
-                  <View style={styles.doseBody}>
+                  <View style={styles.slotLabelRow}>
+                    <Icon
+                      name={SLOT_LOOK[slot].icon}
+                      size={14}
+                      color={SLOT_LOOK[slot].color}
+                    />
                     <Text
-                      numberOfLines={1}
                       style={[
-                        styles.doseName,
-                        { color: isTaken ? DONE : theme.colors.onSurface },
-                        isTaken ? styles.struck : null,
+                        styles.slotLabel,
+                        { color: theme.colors.onSurface },
                       ]}
                     >
-                      {item?.medicine}
+                      {t(`todayMedicines.slot.${slot}`)}
                     </Text>
-                    {item?.dosage || item?.formType ? (
-                      <Text style={[styles.doseMeta, { color: muted }]}>
-                        {[item?.dosage, item?.formType].filter(Boolean).join(' · ')}
+                  </View>
+                  <CustomDatePicker
+                    label=""
+                    mode="time"
+                    value={toDate(today.draftTimes?.[slot])}
+                    onChange={(date?: Date) => {
+                      if (date) today.setDraftTime(slot, toHHmm(date));
+                    }}
+                  />
+                  <Text style={[styles.activeTime, { color: muted }]}>
+                    {t('todayMedicines.active', {
+                      time: to12Hour(today.slotTimes?.[slot]),
+                    })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.settingsActions}>
+              <CustomButton
+                mode="outlined"
+                icon="refresh"
+                onPress={today.resetSchedule}
+                disabled={today.isScheduling}
+                style={styles.settingsButton}
+              >
+                {t('todayMedicines.resetDefaults')}
+              </CustomButton>
+              <CustomButton
+                mode="contained"
+                icon="check"
+                onPress={async () => {
+                  if (await today.saveSchedule()) setShowSettings(false);
+                }}
+                loading={today.isScheduling}
+                disabled={today.isScheduling}
+                style={styles.settingsButton}
+              >
+                {t('todayMedicines.saveSchedule')}
+              </CustomButton>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Slots */}
+        {today.groups.map(group => {
+          const look = SLOT_LOOK[group.slot];
+          const state = today.slotState(group.slot);
+          const slotDone = group.medicines.every(
+            item => today.log?.[doseKey(item?.prescriptionId, group.slot)],
+          );
+          return (
+            <View key={group.slot} style={styles.slot}>
+              <View style={[styles.slotHeader, { backgroundColor: look.tint }]}>
+                <Icon name={look.icon} size={16} color={look.color} />
+                <Text style={[styles.slotName, { color: look.color }]}>
+                  {t(`todayMedicines.slot.${group.slot}`)}
+                </Text>
+                <Text style={[styles.slotTime, { color: muted }]}>
+                  {to12Hour(today.slotTimes?.[group.slot])}
+                </Text>
+                {state === 'now' ? (
+                  <View
+                    style={[
+                      styles.stateTag,
+                      { backgroundColor: theme.colors.primary },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.stateTagText,
+                        { color: theme.colors.onPrimary },
+                      ]}
+                    >
+                      {t('todayMedicines.now')}
+                    </Text>
+                  </View>
+                ) : state === 'past' ? (
+                  <View
+                    style={[
+                      styles.stateTag,
+                      { backgroundColor: 'rgba(0,0,0,0.08)' },
+                    ]}
+                  >
+                    <Text style={[styles.stateTagText, { color: muted }]}>
+                      {t('todayMedicines.past')}
+                    </Text>
+                  </View>
+                ) : null}
+                {slotDone ? (
+                  <View style={styles.slotDone}>
+                    <Icon name="check" size={12} color={DONE} />
+                    <Text style={[styles.slotDoneText, { color: DONE }]}>
+                      {t('todayMedicines.slotAllTaken')}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {group.medicines.map(item => {
+                const key = doseKey(item?.prescriptionId, group.slot);
+                const isTaken = !!today.log?.[key];
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() =>
+                      today.toggleTaken(item?.prescriptionId, group.slot)
+                    }
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isTaken }}
+                    style={[
+                      styles.dose,
+                      {
+                        backgroundColor: isTaken
+                          ? DONE_TINT
+                          : theme.colors.surfaceVariant,
+                        borderColor: isTaken ? DONE : 'transparent',
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.check,
+                        {
+                          borderColor: isTaken ? DONE : theme.colors.outline,
+                          backgroundColor: isTaken ? DONE : 'transparent',
+                        },
+                      ]}
+                    >
+                      {isTaken ? (
+                        <Icon name="check" size={13} color="#FFFFFF" />
+                      ) : null}
+                    </View>
+                    <View style={styles.doseBody}>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.doseName,
+                          { color: isTaken ? DONE : theme.colors.onSurface },
+                          isTaken ? styles.struck : null,
+                        ]}
+                      >
+                        {item?.medicine}
+                      </Text>
+                      {item?.dosage || item?.formType ? (
+                        <Text style={[styles.doseMeta, { color: muted }]}>
+                          {[item?.dosage, item?.formType]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                      ) : null}
+                      {item?.instructions ? (
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.doseNote, { color: muted }]}
+                        >
+                          {item.instructions}
+                        </Text>
+                      ) : null}
+                      {item?.doctorName ? (
+                        <Text style={[styles.doseMeta, { color: muted }]}>
+                          {doctorTitle(item.doctorName)}
+                        </Text>
+                      ) : null}
+                      {!patientCode && item?.patientName ? (
+                        <View
+                          style={[
+                            styles.badge,
+                            styles.doseBadge,
+                            { backgroundColor: theme.colors.primaryContainer },
+                          ]}
+                        >
+                          <Icon
+                            name="account-outline"
+                            size={10}
+                            color={theme.colors.primary}
+                          />
+                          <Text
+                            style={[
+                              styles.badgeText,
+                              { color: theme.colors.primary },
+                            ]}
+                          >
+                            {item.patientName}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    {isTaken ? (
+                      <Text style={[styles.doneTag, { color: DONE }]}>
+                        {t('todayMedicines.done')}
                       </Text>
                     ) : null}
-                    {item?.instructions ? (
-                      <Text numberOfLines={1} style={[styles.doseNote, { color: muted }]}>{item.instructions}</Text>
-                    ) : null}
-                    {item?.doctorName ? (
-                      <Text style={[styles.doseMeta, { color: muted }]}>{doctorTitle(item.doctorName)}</Text>
-                    ) : null}
-                    {!patientCode && item?.patientName ? (
-                      <View style={[styles.badge, styles.doseBadge, { backgroundColor: theme.colors.primaryContainer }]}>
-                        <Icon name="account-outline" size={10} color={theme.colors.primary} />
-                        <Text style={[styles.badgeText, { color: theme.colors.primary }]}>{item.patientName}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  {isTaken ? <Text style={[styles.doneTag, { color: DONE }]}>{t('todayMedicines.done')}</Text> : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        );
-      })}
+                  </Pressable>
+                );
+              })}
+            </View>
+          );
+        })}
 
-      {lateNight ? (
-        <View style={styles.warning}>
-          <Icon name="alert-circle-outline" size={16} color="#B45309" />
-          <Text style={styles.warningText}>
-            {t('todayMedicines.lateNight', { count: total - taken })}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
-});
+        {lateNight ? (
+          <View style={styles.warning}>
+            <Icon name="alert-circle-outline" size={16} color="#B45309" />
+            <Text style={styles.warningText}>
+              {t('todayMedicines.lateNight', { count: total - taken })}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   card: {

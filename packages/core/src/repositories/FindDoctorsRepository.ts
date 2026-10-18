@@ -127,8 +127,6 @@ export const FindDoctorsRepository = {
       method: 'GET',
       baseUrl: API_URL,
       params: toSearchQuery(params),
-      isConsole: true,
-      isConsoleParams: true,
     };
     const response = await apiRequest<any>(api_params);
 

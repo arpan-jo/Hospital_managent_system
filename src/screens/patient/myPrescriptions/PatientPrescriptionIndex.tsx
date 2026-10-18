@@ -1,11 +1,21 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   FamilyMember,
@@ -18,7 +28,13 @@ import {
   useDownload,
   useStores,
 } from '@app/core';
-import { CustomAvatar, CustomButton, CustomChip, CustomDialog, fontFamilies } from '@app/ui';
+import {
+  CustomAvatar,
+  CustomButton,
+  CustomChip,
+  CustomDialog,
+  fontFamilies,
+} from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useMonthNames } from '../../../hooks/useMonthNames';
@@ -27,7 +43,10 @@ import PrescriptionCard from './PrescriptionCard';
 import PrescriptionFilterSheet from './PrescriptionFilterSheet';
 import UploadDocumentSheet from './UploadDocumentSheet';
 import TodayMedicinesPanel from './TodayMedicinesPanel';
-import { ALL_MEMBERS, useMyPrescriptionsViewModel } from './useMyPrescriptionsViewModel';
+import {
+  ALL_MEMBERS,
+  useMyPrescriptionsViewModel,
+} from './useMyPrescriptionsViewModel';
 import { VISIT_LABEL_KEY, prescriptionDay } from './prescriptionUi';
 
 /** My Prescriptions: every prescription on the account, each opened as its PDF. */
@@ -36,7 +55,8 @@ export const PatientPrescriptionIndex = observer(() => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { toastStore } = useStores();
-  const navigation = useNavigation<NativeStackNavigationProp<MyPrescriptionsStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<MyPrescriptionsStackParamList>>();
   const viewModel = useMyPrescriptionsViewModel();
   const monthNames = useMonthNames();
   const { download } = useDownload();
@@ -44,7 +64,8 @@ export const PatientPrescriptionIndex = observer(() => {
 
   /** Whose PDF is being saved — one at a time, as the button shows. */
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [attachmentToDelete, setAttachmentToDelete] = useState<PrescriptionAttachment | null>(null);
+  const [attachmentToDelete, setAttachmentToDelete] =
+    useState<PrescriptionAttachment | null>(null);
   /** The portal's "Today's Medicines" toggle — the panel opens above the list. */
   const [showToday, setShowToday] = useState(false);
 
@@ -55,13 +76,18 @@ export const PatientPrescriptionIndex = observer(() => {
       const day = prescriptionDay(prescription?.prescribedAt);
       navigation.navigate('FileViewer', {
         url: PatientPrescriptionRepository.getPdfUrl(prescription.id),
-        filename: PatientPrescriptionRepository.getPdfFileName(prescription?.code),
+        filename: PatientPrescriptionRepository.getPdfFileName(
+          prescription?.code,
+        ),
         title: t('myPrescriptions.preview'),
         subtitle: [
           prescription?.code,
           prescription?.patientName,
           day ? formatLongDate(day, monthNames) : '',
-          t(VISIT_LABEL_KEY[prescription?.visitType ?? 'opd'] ?? VISIT_LABEL_KEY.opd),
+          t(
+            VISIT_LABEL_KEY[prescription?.visitType ?? 'opd'] ??
+              VISIT_LABEL_KEY.opd,
+          ),
         ]
           .filter(Boolean)
           .join(' · '),
@@ -78,11 +104,15 @@ export const PatientPrescriptionIndex = observer(() => {
       setDownloadingId(prescription.id);
       const { filePath, serverMessage } = await download({
         url: PatientPrescriptionRepository.getPdfUrl(prescription.id),
-        filename: PatientPrescriptionRepository.getPdfFileName(prescription?.code),
+        filename: PatientPrescriptionRepository.getPdfFileName(
+          prescription?.code,
+        ),
       });
       setDownloadingId(null);
       toastStore.show(
-        filePath ? t('myPrescriptions.downloadSaved') : serverMessage || t('myPrescriptions.downloadFailed'),
+        filePath
+          ? t('myPrescriptions.downloadSaved')
+          : serverMessage || t('myPrescriptions.downloadFailed'),
         filePath ? 'success' : 'error',
       );
     },
@@ -108,9 +138,14 @@ export const PatientPrescriptionIndex = observer(() => {
     async (attachment: PrescriptionAttachment) => {
       const url = getFileUrl(attachment?.url);
       if (!url) return;
-      const { filePath, serverMessage } = await download({ url, filename: attachment?.name ?? '' });
+      const { filePath, serverMessage } = await download({
+        url,
+        filename: attachment?.name ?? '',
+      });
       toastStore.show(
-        filePath ? t('myPrescriptions.downloadSaved') : serverMessage || t('myPrescriptions.downloadFailed'),
+        filePath
+          ? t('myPrescriptions.downloadSaved')
+          : serverMessage || t('myPrescriptions.downloadFailed'),
         filePath ? 'success' : 'error',
       );
     },
@@ -126,9 +161,18 @@ export const PatientPrescriptionIndex = observer(() => {
   /** "14 records", plus the member's name once the list is narrowed to one. */
   const subtitle = useMemo(() => {
     if (viewModel.isLoading || !viewModel.totalCount) return undefined;
-    const records = t('myPrescriptions.recordCount', { count: viewModel.totalCount });
-    return viewModel.selectedMemberName ? `${records} — ${viewModel.selectedMemberName}` : records;
-  }, [t, viewModel.isLoading, viewModel.totalCount, viewModel.selectedMemberName]);
+    const records = t('myPrescriptions.recordCount', {
+      count: viewModel.totalCount,
+    });
+    return viewModel.selectedMemberName
+      ? `${records} — ${viewModel.selectedMemberName}`
+      : records;
+  }, [
+    t,
+    viewModel.isLoading,
+    viewModel.totalCount,
+    viewModel.selectedMemberName,
+  ]);
 
   const memberLabel = useCallback(
     (member: FamilyMember) =>
@@ -147,7 +191,11 @@ export const PatientPrescriptionIndex = observer(() => {
     [viewModel],
   );
 
-  const renderMemberChip = (patientCode: string, label: string, member?: FamilyMember) => {
+  const renderMemberChip = (
+    patientCode: string,
+    label: string,
+    member?: FamilyMember,
+  ) => {
     const selected = viewModel.selectedPatientCode === patientCode;
     const photo = member ? getFileUrl(member?.photoUrl) : '';
     return (
@@ -156,7 +204,11 @@ export const PatientPrescriptionIndex = observer(() => {
         compact
         selected={selected}
         showSelectedCheck={false}
-        onPress={() => (member ? selectMember(patientCode) : viewModel.setSelectedPatientCode(ALL_MEMBERS))}
+        onPress={() =>
+          member
+            ? selectMember(patientCode)
+            : viewModel.setSelectedPatientCode(ALL_MEMBERS)
+        }
         textColor={selected ? theme.colors.onPrimary : theme.colors.onSurface}
         avatar={
           member ? (
@@ -165,15 +217,23 @@ export const PatientPrescriptionIndex = observer(() => {
               value={photo || stripHonorific(member?.fullName)}
               fallback={stripHonorific(member?.fullName)}
               size={24}
-              style={{ backgroundColor: selected ? theme.colors.onPrimary : theme.colors.primaryContainer }}
+              style={{
+                backgroundColor: selected
+                  ? theme.colors.onPrimary
+                  : theme.colors.primaryContainer,
+              }}
             />
           ) : undefined
         }
         style={[
           styles.chip,
           {
-            backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
-            borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
+            backgroundColor: selected
+              ? theme.colors.primary
+              : theme.colors.surface,
+            borderColor: selected
+              ? theme.colors.primary
+              : theme.colors.outlineVariant,
           },
         ]}
         textStyle={styles.chipText}
@@ -214,7 +274,8 @@ export const PatientPrescriptionIndex = observer(() => {
     ],
   );
 
-  const isFiltered = viewModel.hasActiveFilters || viewModel.selectedPatientCode !== ALL_MEMBERS;
+  const isFiltered =
+    viewModel.hasActiveFilters || viewModel.selectedPatientCode !== ALL_MEMBERS;
   const muted = theme.colors.onSurfaceVariant;
 
   const emptyState = viewModel.isLoading ? (
@@ -223,30 +284,58 @@ export const PatientPrescriptionIndex = observer(() => {
     </View>
   ) : viewModel.error !== null ? (
     <View style={styles.state}>
-      <View style={[styles.stateIcon, { backgroundColor: theme.colors.errorContainer }]}>
-        <Icon name="alert-circle-outline" size={26} color={theme.colors.error} />
+      <View
+        style={[
+          styles.stateIcon,
+          { backgroundColor: theme.colors.errorContainer },
+        ]}
+      >
+        <Icon
+          name="alert-circle-outline"
+          size={26}
+          color={theme.colors.error}
+        />
       </View>
       <Text style={[styles.stateTitle, { color: theme.colors.onSurface }]}>
         {viewModel.error || t('myPrescriptions.loadFailed')}
       </Text>
-      <CustomButton mode="outlined" onPress={viewModel.retry} style={styles.stateButton}>
+      <CustomButton
+        mode="outlined"
+        onPress={viewModel.retry}
+        style={styles.stateButton}
+      >
         {t('myPrescriptions.tryAgain')}
       </CustomButton>
     </View>
   ) : (
     <View style={styles.state}>
-      <View style={[styles.stateIcon, { backgroundColor: theme.colors.primaryContainer }]}>
+      <View
+        style={[
+          styles.stateIcon,
+          { backgroundColor: theme.colors.primaryContainer },
+        ]}
+      >
         <Icon name="pill" size={26} color={theme.colors.primary} />
       </View>
       <Text style={[styles.stateTitle, { color: theme.colors.onSurface }]}>
-        {t(isFiltered ? 'myPrescriptions.noMatch' : 'myPrescriptions.noPrescriptions')}
+        {t(
+          isFiltered
+            ? 'myPrescriptions.noMatch'
+            : 'myPrescriptions.noPrescriptions',
+        )}
       </Text>
       {isFiltered ? (
-        <CustomButton mode="outlined" onPress={viewModel.clearFilters} style={styles.stateButton}>
+        <CustomButton
+          mode="outlined"
+          onPress={viewModel.clearFilters}
+          style={styles.stateButton}
+        >
           {t('myPrescriptions.clearFilters')}
         </CustomButton>
       ) : (
-        <Text style={[styles.stateHint, { color: muted }]}>{t('myPrescriptions.emptyHint')}</Text>
+        <Text style={[styles.stateHint, { color: muted }]}>
+          {t('myPrescriptions.emptyHint')}
+        </Text>
       )}
     </View>
   );
@@ -269,15 +358,23 @@ export const PatientPrescriptionIndex = observer(() => {
             style={[
               styles.filterButton,
               {
-                backgroundColor: viewModel.hasActiveFilters ? theme.colors.primary : theme.colors.surface,
-                borderColor: viewModel.hasActiveFilters ? theme.colors.primary : theme.colors.outlineVariant,
+                backgroundColor: viewModel.hasActiveFilters
+                  ? theme.colors.primary
+                  : theme.colors.surface,
+                borderColor: viewModel.hasActiveFilters
+                  ? theme.colors.primary
+                  : theme.colors.outlineVariant,
               },
             ]}
           >
             <Icon
               name="tune-variant"
               size={18}
-              color={viewModel.hasActiveFilters ? theme.colors.onPrimary : theme.colors.onSurface}
+              color={
+                viewModel.hasActiveFilters
+                  ? theme.colors.onPrimary
+                  : theme.colors.onSurface
+              }
             />
           </Pressable>
         }
@@ -285,8 +382,12 @@ export const PatientPrescriptionIndex = observer(() => {
 
       {/* The portal shows the member chips only when the account has more than one profile. */}
       {viewModel.members?.length > 1 ? (
-        <View style={[styles.memberCard, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.memberLabel, { color: muted }]}>{t('myPrescriptions.member')}</Text>
+        <View
+          style={[styles.memberCard, { backgroundColor: theme.colors.surface }]}
+        >
+          <Text style={[styles.memberLabel, { color: muted }]}>
+            {t('myPrescriptions.member')}
+          </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -295,7 +396,11 @@ export const PatientPrescriptionIndex = observer(() => {
           >
             {renderMemberChip(ALL_MEMBERS, t('myPrescriptions.allMembers'))}
             {viewModel.members.map(member =>
-              renderMemberChip(member?.patientCode ?? '', memberLabel(member), member),
+              renderMemberChip(
+                member?.patientCode ?? '',
+                memberLabel(member),
+                member,
+              ),
             )}
           </ScrollView>
         </View>
@@ -308,12 +413,31 @@ export const PatientPrescriptionIndex = observer(() => {
         style={[
           styles.todayToggle,
           showToday
-            ? { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
-            : { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+            ? {
+                backgroundColor: theme.colors.primary,
+                borderColor: theme.colors.primary,
+              }
+            : {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
+              },
         ]}
       >
-        <Icon name="pill" size={16} color={showToday ? theme.colors.onPrimary : theme.colors.primary} />
-        <Text style={[styles.todayText, { color: showToday ? theme.colors.onPrimary : theme.colors.onSurface }]}>
+        <Icon
+          name="pill"
+          size={16}
+          color={showToday ? theme.colors.onPrimary : theme.colors.primary}
+        />
+        <Text
+          style={[
+            styles.todayText,
+            {
+              color: showToday
+                ? theme.colors.onPrimary
+                : theme.colors.onSurface,
+            },
+          ]}
+        >
           {t('todayMedicines.title')}
         </Text>
         <Icon
@@ -326,9 +450,17 @@ export const PatientPrescriptionIndex = observer(() => {
       {isFiltered ? (
         <View style={styles.activeRow}>
           <Icon name="filter-variant" size={14} color={theme.colors.primary} />
-          <Text style={[styles.activeText, { color: muted }]}>{t('myPrescriptions.filtersOn')}</Text>
-          <Pressable onPress={viewModel.clearFilters} hitSlop={8} accessibilityRole="button">
-            <Text style={[styles.clear, { color: theme.colors.primary }]}>{t('myPrescriptions.clear')}</Text>
+          <Text style={[styles.activeText, { color: muted }]}>
+            {t('myPrescriptions.filtersOn')}
+          </Text>
+          <Pressable
+            onPress={viewModel.clearFilters}
+            hitSlop={8}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.clear, { color: theme.colors.primary }]}>
+              {t('myPrescriptions.clear')}
+            </Text>
           </Pressable>
         </View>
       ) : null}
@@ -346,7 +478,10 @@ export const PatientPrescriptionIndex = observer(() => {
             tintColor={theme.colors.primary}
           />
         }
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + 24 },
+        ]}
         ListHeaderComponent={
           showToday ? (
             <TodayMedicinesPanel

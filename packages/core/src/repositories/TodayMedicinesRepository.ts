@@ -9,7 +9,11 @@
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
-import { DEFAULT_SLOT_TIMES, MedicineSlot, MedicineSlotTimes } from '../utils/medicineSlots';
+import {
+  DEFAULT_SLOT_TIMES,
+  MedicineSlot,
+  MedicineSlotTimes,
+} from '../utils/medicineSlots';
 
 /** One medicine due today — `TodayMedicineDto`. */
 export interface TodayMedicine {
@@ -59,7 +63,9 @@ const toSlotTimes = (raw: any): MedicineSlotTimes => {
 
 export const TodayMedicinesRepository = {
   /** `GET /hms/prescriptions/today[?patientCode=]` — one family member's, or everyone's. */
-  getTodayMedicines: async (patientCode?: string | null): Promise<TodayMedicine[]> => {
+  getTodayMedicines: async (
+    patientCode?: string | null,
+  ): Promise<TodayMedicine[]> => {
     const api_params: ApiRequestOptions = {
       url: ENDPOINTS.todayMedicines,
       method: 'GET',
