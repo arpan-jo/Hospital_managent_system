@@ -29,7 +29,9 @@ const loadGoogleSignIn = (): typeof GoogleSignInModule | null => {
         require('@react-native-google-signin/google-signin') as typeof GoogleSignInModule;
       // The web client is the audience the API checks the ID token against;
       // without it Google hands back no ID token at all.
-      googleModule.GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
+      googleModule?.GoogleSignin?.configure?.({
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+      });
     } catch (error: any) {
       console.log('google sign-in unavailable ==>', error?.message);
       googleModule = null;
@@ -66,7 +68,7 @@ export const pickGoogleAccount = async (): Promise<GoogleAccount | null> => {
       throw new Error('Google returned no ID token');
     }
 
-    return { ...response.data, idToken };
+    return { ...response?.data, idToken };
   } catch (error: any) {
     if (
       lib.isErrorWithCode(error) &&

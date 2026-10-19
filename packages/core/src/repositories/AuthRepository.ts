@@ -16,7 +16,7 @@ export interface AuthContact {
  */
 const contactBody = (contact?: AuthContact) =>
   contact?.phone
-    ? { phone: toLocalBdMobile(contact.phone) }
+    ? { phone: toLocalBdMobile(contact?.phone) }
     : { email: contact?.email?.trim() ?? '' };
 
 export interface LoginResponse {
