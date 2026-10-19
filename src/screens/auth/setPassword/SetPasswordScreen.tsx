@@ -46,8 +46,6 @@ export const SetPasswordScreen = observer(() => {
       // sign in themselves.
       toastStore.show(t('setPassword.accountCreatedSignIn'), 'success');
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-    } else if (status === 'pending') {
-      toastStore.show(t('setPassword.phonePending'), 'info', 5000);
     } else if (status === 'created') {
       // Signed in already — the root navigator swaps to the app stack, so
       // there's no navigation to do here.

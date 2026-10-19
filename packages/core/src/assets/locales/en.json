@@ -2,12 +2,12 @@
   "login": {
     "title": "Welcome back",
     "subtitle": "You've been missed! Sign in to continue.",
-    "emailLabel": "Email",
-    "emailPlaceholder": "Enter your email",
+    "identifierLabel": "Email or mobile number",
+    "identifierPlaceholder": "Enter your email or mobile number",
     "passwordLabel": "Password",
     "passwordPlaceholder": "Enter your password",
     "button": "Sign in",
-    "invalidEmail": "Please enter a valid email address",
+    "invalidIdentifier": "Please enter a valid email address or mobile number",
     "invalidPassword": "Password must be at least 6 characters long",
     "roleNotSupported": "This account can only be used on the web portal. Please sign in there.",
     "errorTitle": "Authentication Failed",
@@ -90,8 +90,7 @@
     "accountCreatedSignIn": "Account created. Please sign in to continue.",
     "accountFailed": "Registration failed.",
     "errorTitle": "Couldn't Create Account",
-    "phoneLabel": "Mobile number",
-    "phonePending": "Signing up with a mobile number will be available soon."
+    "phoneLabel": "Mobile number"
   },
   "findDoctors": {
     "title": "Find Doctors",

@@ -1,6 +1,23 @@
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
+import { toLocalBdMobile } from '../utils/bdPhone';
+
+/** Who the auth calls are about: an email, or a BD mobile number. Exactly one. */
+export interface AuthContact {
+  email?: string;
+  /** Any usual way of writing it; it goes up as `01XXXXXXXXX`. */
+  phone?: string;
+}
+
+/**
+ * The API takes either key and goes by `phone` when both are there, so only
+ * one is sent. A phone gets its code by SMS, an email by mail.
+ */
+const contactBody = (contact?: AuthContact) =>
+  contact?.phone
+    ? { phone: toLocalBdMobile(contact.phone) }
+    : { email: contact?.email?.trim() ?? '' };
 
 export interface LoginResponse {
   userId: number;
@@ -31,8 +48,7 @@ export interface ForgotPasswordResponse {
   message: string;
 }
 
-export interface RegisterWithOtpPayload {
-  email: string;
+export interface RegisterWithOtpPayload extends AuthContact {
   /** The code `verifyOtp` just accepted; the API checks it once more. */
   code: string;
   password: string;
@@ -55,22 +71,22 @@ export interface RegisterResponse {
 }
 
 export const AuthRepository = {
-  sendOtp: async (email: string, role: string) => {
+  sendOtp: async (contact: AuthContact, role: string) => {
     const api_params: ApiRequestOptions = {
       url: ENDPOINTS.sendOtp,
       method: 'POST',
-      data: { email: email?.trim(), role: role?.toLowerCase() },
+      data: { ...contactBody(contact), role: role?.toLowerCase() },
       baseUrl: API_URL,
     };
 
     return apiRequest<SendOtpResponse>(api_params);
   },
 
-  verifyOtp: async (email: string, code: string) => {
+  verifyOtp: async (contact: AuthContact, code: string) => {
     const api_params: ApiRequestOptions = {
       url: ENDPOINTS.verifyOtp,
       method: 'POST',
-      data: { email: email?.trim(), code: code?.trim() },
+      data: { ...contactBody(contact), code: code?.trim() },
       baseUrl: API_URL,
     };
 
@@ -78,8 +94,8 @@ export const AuthRepository = {
   },
 
   registerWithOtp: async (payload: RegisterWithOtpPayload) => {
-    const data: RegisterWithOtpPayload = {
-      email: payload?.email?.trim() ?? '',
+    const data = {
+      ...contactBody(payload),
       code: payload?.code?.trim() ?? '',
       password: payload?.password || '',
       // The API takes the role in lower case only.
@@ -108,15 +124,15 @@ export const AuthRepository = {
   },
 
   /**
-   * Email and password only — the API has no mobile-number sign-in.
+   * An email or a mobile number, with the password.
    *
    * There is no matching logout call: the API keeps no session to close, so
    * signing out is just clearing the stores.
    */
-  login: async (email: string, password: string) => {
+  login: async (contact: AuthContact, password: string) => {
     const payload = {
-      // Trimmed, since a leading space alone turns a correct login into a 401.
-      email: email?.trim() ?? '',
+      // Trimmed, since a leading space alone turns a correct email login into a 401.
+      ...contactBody(contact),
       password: password || '',
     };
 

@@ -1,6 +1,11 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useStores, AuthRepository, PatientRepository } from '@app/core';
+import {
+  useStores,
+  AuthContact,
+  AuthRepository,
+  PatientRepository,
+} from '@app/core';
 
 /**
  * The one role this app is built for. Doctors, admins and assistants have
@@ -24,8 +29,8 @@ export const useSignIn = () => {
   const { t } = useTranslation();
 
   return useCallback(
-    async (email: string, password: string) => {
-      const result = await AuthRepository.login(email, password);
+    async (contact: AuthContact, password: string) => {
+      const result = await AuthRepository.login(contact, password);
 
       // Nothing to undo on the server: the token is just never stored.
       if (result?.role?.toLowerCase() !== APP_ROLE) {

@@ -1,11 +1,18 @@
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { pickGoogleAccount, serverMessageOf, useStores } from '@app/core';
+import {
+  AuthContact,
+  isBdMobile,
+  pickGoogleAccount,
+  serverMessageOf,
+  useStores,
+} from '@app/core';
 import { useSignIn } from '../../../hooks/useSignIn';
 
 export interface LoginForm {
-  email: string;
+  /** An email, or a mobile number — told apart by the `@`, as on the web. */
+  identifier: string;
   password: string;
 }
 
@@ -13,9 +20,15 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 /** The API's own floor, checked here so a password it would refuse never goes out. */
 const MIN_PASSWORD_LENGTH = 6;
 
+/** What was typed, as the login call takes it: an `@` makes it an email. */
+const toContact = (identifier?: string): AuthContact => {
+  const value = identifier?.trim() ?? '';
+  return value.includes('@') ? { email: value } : { phone: value };
+};
+
 /**
- * Sign-in form. Email and password only: the API has no mobile-number login,
- * and rejects anything that is not an email before it even checks the password.
+ * Sign-in form: an email or a mobile number, and the password. The API takes
+ * either, but refuses a mobile number sent as the email, so they go up apart.
  */
 export const useLoginViewModel = () => {
   const signIn = useSignIn();
@@ -24,7 +37,7 @@ export const useLoginViewModel = () => {
 
   const { control, handleSubmit } = useForm<LoginForm>({
     defaultValues: {
-      email: '',
+      identifier: '',
       password: '',
     },
     mode: 'onBlur',
@@ -35,9 +48,14 @@ export const useLoginViewModel = () => {
 
   const rules = useMemo(
     () => ({
-      email: {
-        validate: (value?: string) =>
-          EMAIL_PATTERN.test(value?.trim() ?? '') || t('login.invalidEmail'),
+      identifier: {
+        validate: (value?: string) => {
+          const contact = toContact(value);
+          const valid = contact.email
+            ? EMAIL_PATTERN.test(contact.email)
+            : isBdMobile(contact.phone);
+          return valid || t('login.invalidIdentifier');
+        },
       },
       password: {
         required: t('login.invalidPassword'),
@@ -66,7 +84,7 @@ export const useLoginViewModel = () => {
       setIsLoading(true);
 
       try {
-        await signIn(data?.email, data?.password);
+        await signIn(toContact(data?.identifier), data?.password);
         toastStore.show(t('login.welcome'), 'success');
       } catch (e: any) {
         // The server's words first; a refusal made here in the app (an

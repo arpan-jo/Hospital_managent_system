@@ -1,11 +1,12 @@
 import React, { useCallback, useMemo } from 'react';
-import { Image, StyleSheet, View, Pressable } from 'react-native';
+// Google sign-in is off for now (no backend API yet): `Image` comes back with it.
+import { /* Image, */ StyleSheet, View, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { images } from '../../../assets/images';
+// import { images } from '../../../assets/images';
 import { useErrorDialog } from '../../../hooks/useErrorDialog';
 import { AuthStackParamList } from '../../../navigation/AuthStackNavigator';
 import AuthScreenLayout from '../AuthScreenLayout';
@@ -18,11 +19,12 @@ import {
   fontFamilies,
 } from '@app/ui';
 
+// Google sign-in is off for now (no backend API yet).
 // A render function, not an image source: Paper tints image icons to the
 // label colour, and Google's "G" has to keep its own colours.
-const renderGoogleIcon = () => (
-  <Image source={images.google} style={styles.googleIcon} />
-);
+// const renderGoogleIcon = () => (
+//   <Image source={images.google} style={styles.googleIcon} />
+// );
 
 export const LoginScreen = observer(() => {
   const { t } = useTranslation();
@@ -39,12 +41,13 @@ export const LoginScreen = observer(() => {
     }
   }, [viewModel, errorDialog]);
 
-  const handleGoogleLogin = useCallback(async () => {
-    const error = await viewModel.submitGoogleLogin();
-    if (error) {
-      errorDialog.show(error);
-    }
-  }, [viewModel, errorDialog]);
+  // Google sign-in is off for now (no backend API yet).
+  // const handleGoogleLogin = useCallback(async () => {
+  //   const error = await viewModel.submitGoogleLogin();
+  //   if (error) {
+  //     errorDialog.show(error);
+  //   }
+  // }, [viewModel, errorDialog]);
 
   const goToForgotPassword = useCallback(
     () => navigation.navigate('ForgotPassword'),
@@ -70,13 +73,13 @@ export const LoginScreen = observer(() => {
     <>
       <AuthScreenLayout title={t('login.title')} subtitle={t('login.subtitle')}>
         <CustomFormInput
-          name="email"
+          name="identifier"
           control={viewModel.control}
-          label={t('login.emailLabel')}
-          placeholder={t('login.emailPlaceholder')}
+          label={t('login.identifierLabel')}
+          placeholder={t('login.identifierPlaceholder')}
           keyboardType="email-address"
-          leftIcon="email-outline"
-          rules={viewModel.rules?.email}
+          leftIcon="account-outline"
+          rules={viewModel.rules?.identifier}
         />
 
         <CustomFormInput
@@ -110,6 +113,7 @@ export const LoginScreen = observer(() => {
           {t('login.button')}
         </CustomButton>
 
+        {/* Google sign-in is off for now (no backend API yet).
         <CustomButton
           mode="outlined"
           onPress={handleGoogleLogin}
@@ -120,6 +124,7 @@ export const LoginScreen = observer(() => {
         >
           {t('login.googleButton')}
         </CustomButton>
+        */}
 
         <View style={styles.signupRow}>
           <Text style={mutedStyle}>{t('login.noAccount')}</Text>

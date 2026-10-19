@@ -15,8 +15,6 @@ export type SetPasswordStatus =
   /** Registered, but the follow-up login failed — send them to Login. */
   | 'createdNeedsLogin'
   | 'failed'
-  /** A mobile number: there is no API to register it with yet. */
-  | 'pending'
   | null;
 
 export interface SetPasswordResult {
@@ -50,18 +48,14 @@ export const useSetPasswordViewModel = (params: SetPasswordParams) => {
   const submit = async (): Promise<SetPasswordResult> => {
     let result: SetPasswordResult = { status: null };
 
-    await handleSubmit(async data => {
-      if (params?.phone) {
-        // Waiting on the backend: register with the phone number here, then
-        // sign in with it, as the email path below does.
-        result = { status: 'pending' };
-        return;
-      }
+    // Exactly one of these is set: the account is made with it and signed in with it.
+    const contact = { email: params?.email, phone: params?.phone };
 
+    await handleSubmit(async data => {
       setIsLoading(true);
       try {
         await AuthRepository.registerWithOtp({
-          email: params?.email ?? '',
+          ...contact,
           code: params?.code,
           password: data?.password,
           role: SIGNUP_ROLE,
@@ -70,7 +64,7 @@ export const useSetPasswordViewModel = (params: SetPasswordParams) => {
         // Registration succeeded, so the account exists even if this login
         // fails; report that separately rather than as a failed sign-up.
         try {
-          await signIn(params?.email ?? '', data?.password);
+          await signIn(contact, data?.password);
           result = { status: 'created' };
         } catch {
           result = { status: 'createdNeedsLogin' };

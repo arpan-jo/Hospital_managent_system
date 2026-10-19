@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
+  AuthContact,
   AuthRepository,
   isBdMobile,
   serverMessageOf,
@@ -42,12 +43,9 @@ export interface SignupSubmitResult {
 }
 
 /**
- * First sign-up step: an email or a mobile number, and the verification code
- * is sent from here, so the screen only moves on to VerifyEmail once the
- * address is actually bound server-side.
- *
- * The API signs up by email only so far; the mobile-number path is laid out
- * for its SMS code API, which the backend has yet to provide.
+ * First sign-up step: an email or a mobile number. The verification code is
+ * sent from here (by mail or SMS), so the screen only moves on to VerifyEmail
+ * once the address is actually bound server-side.
  */
 export const useSignupViewModel = () => {
   const { t } = useTranslation();
@@ -89,22 +87,20 @@ export const useSignupViewModel = () => {
     let result: SignupResult | null = null;
     let error: string | undefined;
 
+    // The same normalised contact goes to every later step of the flow.
+    const contact: AuthContact =
+      method === 'phone'
+        ? { phone: toLocalBdMobile(getValues('phone')) }
+        : { email: getValues('email')?.trim() ?? '' };
+
     setIsLoading(true);
     try {
-      if (method === 'phone') {
-        // Waiting on the backend: the SMS code is sent here. Until then the
-        // flow just moves on, so its screens can be walked through.
-        result = { phone: toLocalBdMobile(getValues('phone')) };
-      } else {
-        // The same trimmed address goes to every later step of the flow.
-        const email = getValues('email')?.trim() ?? '';
-        const res = await AuthRepository.sendOtp(email, SIGNUP_ROLE);
-        result = {
-          email,
-          expiresInSeconds: res?.expiresInSeconds,
-          message: res?.message,
-        };
-      }
+      const res = await AuthRepository.sendOtp(contact, SIGNUP_ROLE);
+      result = {
+        ...contact,
+        expiresInSeconds: res?.expiresInSeconds,
+        message: res?.message,
+      };
     } catch (e: any) {
       error = serverMessageOf(e) || t('signup.sendFailed');
     } finally {
