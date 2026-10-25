@@ -210,15 +210,19 @@ export const useFamilyProfilesViewModel = (options?: {
     [toastStore, t, loadProfiles],
   );
 
-  /** A card's photo, sent as the portal sends it: uploaded, then put on that profile. */
+  /** A card's photo: uploaded, then stored on that card's registration. */
   const uploadPhoto = useCallback(
     async (profile: PatientProfile, file: UploadFile): Promise<boolean> => {
       const code = profile?.patientCode ?? '';
-      if (!code) return false;
+      const registrationId = Number(profile?.registrationId ?? 0) || 0;
+      if (!code || !registrationId) {
+        toastStore.show(t('photoPicker.uploadFailed'), 'error');
+        return false;
+      }
 
       setPhotoUploadingCode(code);
       try {
-        await PatientRepository.updateFamilyPhoto(file, code);
+        await PatientRepository.updateFamilyPhoto(file, registrationId);
         toastStore.show(t('photoPicker.uploaded'), 'success');
         loadProfiles();
         if (profile?.relationship === 'self') onOwnProfileChanged?.();

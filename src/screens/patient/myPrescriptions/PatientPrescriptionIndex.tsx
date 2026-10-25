@@ -130,6 +130,7 @@ export const PatientPrescriptionIndex = observer(() => {
         url,
         filename: attachment?.name ?? '',
         title: attachment?.title ?? '',
+        notes: attachment?.notes ?? '',
         canDownload: true,
       });
     },

@@ -115,6 +115,12 @@
   },
   "findDoctors": {
     "title": "Find Doctors",
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "greetingWithName": "{{greeting}}, {{name}} 👋",
     "searchPlaceholder": "Search doctor, specialty…",
     "available": "Available",
     "notAvailable": "Not Available",
@@ -426,6 +432,7 @@
     "viewFile": "View file",
     "deleteFile": "Delete file",
     "noDocuments": "No reports or documents attached yet",
+    "uploadFirstDocument": "Upload first document",
     "noPrescriptions": "No prescriptions yet.",
     "filterTitle": "Filter Prescriptions",
     "reset": "Reset",
@@ -641,7 +648,8 @@
     "downloadFailed": "Download failed. Please try again.",
     "failedHint": "It may have been removed, or it isn't one of yours.",
     "unsupportedHint": "{{type}} files can't be shown in the app.",
-    "thisFile": "This"
+    "thisFile": "This",
+    "notes": "Notes: "
   },
   "reports": {
     "title": "My Reports & Documents",

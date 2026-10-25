@@ -561,15 +561,14 @@ export const PatientRepository = {
     await apiRequest<void>({ url: profilePath(patientCode), method: 'DELETE', baseUrl: API_URL });
   },
 
-  /** A family member's photo: uploaded, then stored on their profile. */
-  updateFamilyPhoto: async (file: UploadFile, patientCode: string): Promise<void> => {
+  /**
+   * A Family card's photo: uploaded, then stored on that card's registration,
+   * as the header photo is. The portal's `PUT /patient/profile/{code}` is not
+   * supported by the API (500), on the web as well.
+   */
+  updateFamilyPhoto: async (file: UploadFile, registrationId: number): Promise<void> => {
     const photoUrl = await FileRepository.upload(file);
-    await apiRequest<any>({
-      url: profilePath(patientCode),
-      method: 'PUT',
-      baseUrl: API_URL,
-      data: { photoUrl },
-    });
+    await updateRegistration(registrationId, { photoUrl });
   },
 
   getConditions: async (patientCode?: string): Promise<MedicalCondition[]> => {

@@ -115,6 +115,12 @@
   },
   "findDoctors": {
     "title": "ডাক্তার খুঁজুন",
+    "greeting": {
+      "morning": "সুপ্রভাত",
+      "afternoon": "শুভ অপরাহ্ন",
+      "evening": "শুভ সন্ধ্যা"
+    },
+    "greetingWithName": "{{greeting}}, {{name}} 👋",
     "searchPlaceholder": "ডাক্তার বা স্পেশালিটি খুঁজুন…",
     "available": "উপলব্ধ",
     "notAvailable": "অনুপলব্ধ",
@@ -426,6 +432,7 @@
     "viewFile": "ফাইল দেখুন",
     "deleteFile": "ফাইল মুছুন",
     "noDocuments": "এখনো কোনো রিপোর্ট বা ডকুমেন্ট যুক্ত করা হয়নি",
+    "uploadFirstDocument": "প্রথম ডকুমেন্ট আপলোড করুন",
     "noPrescriptions": "এখনো কোনো প্রেসক্রিপশন নেই।",
     "filterTitle": "প্রেসক্রিপশন ফিল্টার",
     "reset": "রিসেট",
@@ -641,7 +648,8 @@
     "downloadFailed": "ডাউনলোড হয়নি। আবার চেষ্টা করুন।",
     "failedHint": "এটি হয়তো মুছে ফেলা হয়েছে, অথবা এটি আপনার নয়।",
     "unsupportedHint": "{{type}} ফাইল অ্যাপে দেখানো যায় না।",
-    "thisFile": "এই"
+    "thisFile": "এই",
+    "notes": "নোট: "
   },
   "reports": {
     "title": "আমার রিপোর্ট ও ডকুমেন্ট",

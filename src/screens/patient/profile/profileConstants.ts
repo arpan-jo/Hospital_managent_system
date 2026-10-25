@@ -2,9 +2,10 @@ import { ViewStyle } from 'react-native';
 import { AllergySeverity, ConditionStatus } from '@app/core';
 
 /** Semantic accents the profile screens share. Everything else comes from the theme. */
+/** As on the web: an active condition reads as a warning, a resolved one as settled. */
 export const STATUS_COLOR: Record<ConditionStatus, string> = {
-  Active: '#1B9C5D',
-  Resolved: '#8A90A6',
+  Active: '#EF4444',
+  Resolved: '#059669',
 };
 
 export const SEVERITY_COLOR: Record<AllergySeverity, string> = {

@@ -6,6 +6,8 @@ import {
   stripHonorific,
   to12Hour,
   withDoctorTitle,
+  dayPeriod,
+  greetingName,
 } from './format';
 
 describe('groupThousands', () => {
@@ -74,12 +76,27 @@ describe('withDoctorTitle', () => {
     expect(withDoctorTitle('dr ahmed')).toBe('Dr. ahmed');
     expect(withDoctorTitle('Bijoy Saha')).toBe('Dr. Bijoy Saha');
     expect(withDoctorTitle('Drake Ramos')).toBe('Dr. Drake Ramos');
+    expect(withDoctorTitle('Andrew Dreyer')).toBe('Dr. Andrew Dreyer');
+  });
+
+  it('adds no second "Dr." when the title sits after a rank', () => {
+    expect(withDoctorTitle('Assoc. Prof. Dr. Md. Nabid Alam')).toBe('Assoc. Prof. Dr. Md. Nabid Alam');
+    expect(withDoctorTitle('ASSOC. PROF. DR. ANWARUL ANAM KIBRIA')).toBe('ASSOC. PROF. DR. ANWARUL ANAM KIBRIA');
+    expect(withDoctorTitle('Asstt. Prof Dr. Sumitra Das Gupta')).toBe('Asstt. Prof Dr. Sumitra Das Gupta');
+    expect(withDoctorTitle('Prof.Dr.Rahman')).toBe('Prof.Dr.Rahman');
+  });
+
+  it('puts no "Dr." in front of a rank', () => {
+    expect(withDoctorTitle('Prof. Rahman')).toBe('Prof. Rahman');
+    expect(withDoctorTitle('Asst. Prof. Karim')).toBe('Asst. Prof. Karim');
   });
 
   it('gives nothing for no name', () => {
     expect(withDoctorTitle('')).toBe('');
     expect(withDoctorTitle('   ')).toBe('');
+    expect(withDoctorTitle('Dr.')).toBe('');
     expect(withDoctorTitle(null)).toBe('');
+    expect(withDoctorTitle(undefined)).toBe('');
   });
 });
 
@@ -96,5 +113,32 @@ describe('stripHonorific', () => {
     expect(stripHonorific('Professor')).toBe('Professor');
     expect(stripHonorific('')).toBe('');
     expect(stripHonorific(null)).toBe('');
+  });
+});
+
+describe('dayPeriod', () => {
+  it('splits the day as the portal does', () => {
+    expect(dayPeriod(new Date(2026, 9, 25, 0, 0))).toBe('morning');
+    expect(dayPeriod(new Date(2026, 9, 25, 11, 59))).toBe('morning');
+    expect(dayPeriod(new Date(2026, 9, 25, 12, 0))).toBe('afternoon');
+    expect(dayPeriod(new Date(2026, 9, 25, 16, 59))).toBe('afternoon');
+    expect(dayPeriod(new Date(2026, 9, 25, 17, 0))).toBe('evening');
+  });
+});
+
+describe('greetingName', () => {
+  it('takes the first name after any title', () => {
+    expect(greetingName('Md. Jahed Hossain')).toBe('Jahed');
+    expect(greetingName('Al Amin')).toBe('Al');
+    expect(greetingName('Dr. Rahim')).toBe('Rahim');
+  });
+
+  it('gives nothing for no name, an email or a number', () => {
+    expect(greetingName('')).toBe('');
+    expect(greetingName(null)).toBe('');
+    expect(greetingName(undefined)).toBe('');
+    expect(greetingName('01822421743')).toBe('');
+    expect(greetingName('+880 1822-421743')).toBe('');
+    expect(greetingName('dev.alamin@ibos.io')).toBe('');
   });
 });

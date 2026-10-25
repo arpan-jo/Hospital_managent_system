@@ -90,6 +90,7 @@ export const PatientReportIndex = observer(() => {
         filename: document?.fileName ?? '',
         title: document?.title ?? '',
         subtitle: [document?.fileName, formatBytes(document?.sizeBytes)].filter(Boolean).join(' · '),
+        notes: document?.notes ?? '',
         canDownload: true,
       });
     },

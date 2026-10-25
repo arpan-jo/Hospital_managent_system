@@ -172,9 +172,22 @@ export const PrescriptionAttachments = memo<PrescriptionAttachmentsProps>(
             />
           ))
         ) : (
-          <Text style={[styles.empty, { color: theme.colors.onSurfaceVariant }]}>
-            {t('myPrescriptions.noDocuments')}
-          </Text>
+          <View style={styles.emptyBox}>
+            <Icon
+              name="file-document-outline"
+              size={28}
+              color={theme.colors.onSurfaceVariant}
+              style={styles.emptyIcon}
+            />
+            <Text style={[styles.empty, { color: theme.colors.onSurfaceVariant }]}>
+              {t('myPrescriptions.noDocuments')}
+            </Text>
+            <Pressable onPress={onAdd} hitSlop={8} accessibilityRole="button">
+              <Text style={[styles.add, { color: theme.colors.primary }]}>
+                {t('myPrescriptions.uploadFirstDocument')}
+              </Text>
+            </Pressable>
+          </View>
         )}
       </View>
     );
@@ -259,10 +272,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  emptyBox: {
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 14,
+  },
+  emptyIcon: {
+    opacity: 0.4,
+  },
   empty: {
     fontFamily: fontFamilies.regular,
     fontSize: 11,
-    paddingVertical: 8,
+    textAlign: 'center',
   },
 });
 

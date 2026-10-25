@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Pdf from 'react-native-pdf';
 import { fileExtensionLabel, getFileHeaders, useDownload, useStores } from '@app/core';
-import { fontFamilies } from '@app/ui';
+import { CustomButton, fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 
@@ -23,6 +23,8 @@ export interface FileViewerParams {
   subtitle?: string;
   /** Offer a download button in the header. */
   canDownload?: boolean;
+  /** The uploader's note on the file, shown under it as on the web. */
+  notes?: string;
   /** Read the file afresh each time — it is drawn on request and can change. */
   fresh?: boolean;
 }
@@ -58,8 +60,10 @@ export const FileViewerScreen = () => {
     title = '',
     subtitle = '',
     canDownload = false,
+    notes = '',
     fresh = false,
   }: Partial<FileViewerParams> = route.params ?? {};
+  const noteText = String(notes ?? '').trim();
   const { download, isDownloading } = useDownload();
   const { toastStore } = useStores();
   const [isLoading, setLoading] = useState(true);
@@ -165,9 +169,33 @@ export const FileViewerScreen = () => {
                     type: fileExtensionLabel(filename || url) || t('fileViewer.thisFile'),
                   })}
             </Text>
+
+            {/* A file the app can't draw (an SVG, a Word file) can still be saved. */}
+            {canDownload && url && !hasFailed ? (
+              <CustomButton
+                mode="outlined"
+                icon="download-outline"
+                onPress={handleDownload}
+                loading={isDownloading}
+                style={styles.fallbackButton}
+              >
+                {t('fileViewer.download')}
+              </CustomButton>
+            ) : null}
           </View>
         )}
       </View>
+
+      {noteText ? (
+        <View style={[styles.notes, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Text style={[styles.notesText, { color: theme.colors.onSurfaceVariant }]}>
+            <Text style={[styles.notesLabel, { color: theme.colors.onSurface }]}>
+              {t('fileViewer.notes')}
+            </Text>
+            {noteText}
+          </Text>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -224,6 +252,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'center',
+  },
+  fallbackButton: {
+    marginTop: 4,
+  },
+  notes: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  notesText: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  notesLabel: {
+    fontFamily: fontFamilies.semibold,
   },
 });
 

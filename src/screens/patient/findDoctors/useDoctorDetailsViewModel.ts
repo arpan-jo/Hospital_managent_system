@@ -15,6 +15,7 @@ import {
   to12Hour,
   toBookingFailure,
   useStores,
+  withDoctorTitle,
 } from '@app/core';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { dayAbbrOfDate, dayIndexOf, nextDateForDay } from './weekdays';
@@ -285,10 +286,10 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
   const bookingTime = subSlotTime || autoTime || selectedSlot?.startTime || '';
 
   const officeName = detail?.officeName || doctor?.location || '';
-  const displayName = useMemo(() => {
-    const name = doctor?.fullName ?? '';
-    return !name || name.startsWith('Dr.') ? name : `Dr. ${name}`;
-  }, [doctor?.fullName]);
+  const displayName = useMemo(
+    () => withDoctorTitle(doctor?.fullName),
+    [doctor?.fullName],
+  );
 
   /** "Wednesday" for the chosen date, from the `dayNames` locale block. */
   const dayName = useMemo(() => {

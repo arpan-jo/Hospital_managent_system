@@ -123,17 +123,49 @@ export const stripHonorific = (name: string | undefined | null): string =>
     .replace(/^\s*(dr|prof|mr|mrs|ms|md|mohammad)(\.\s*|\s+)/i, '')
     .trim();
 
+/** The part of the day the portal greets by: morning before 12, afternoon before 17. */
+export const dayPeriod = (
+  date: Date = new Date(),
+): 'morning' | 'afternoon' | 'evening' => {
+  const hour = date?.getHours?.() ?? 0;
+  if (hour < 12) return 'morning';
+  return hour < 17 ? 'afternoon' : 'evening';
+};
+
+/**
+ * The name a greeting uses: the first word after any title, "Md. Jahed
+ * Hossain" -> "Jahed". '' for no name, or when the "name" is really the
+ * email or mobile number an account was opened with.
+ */
+export const greetingName = (name: string | undefined | null): string => {
+  const text = stripHonorific(name);
+  if (!text || text.includes('@') || /^\+?\d[\d\s-]*$/.test(text)) return '';
+  return text.split(/\s+/)[0] ?? '';
+};
+
+/** A leading "Dr" however it was typed: "Dr. ", "Dr.", "dr ". */
+const LEADING_DR = /^dr(\.\s*|\s+)/i;
+/** A "Dr" title anywhere: "Assoc. Prof. Dr. X", "ASSOC. PROF. DR. X". */
+const DR_ANYWHERE = /(^|[\s.])dr(\.|\s|$)/i;
+/** An academic rank written in front of the name instead of "Dr.". */
+const LEADING_RANK = /^(prof|professor|assoc|associate|asst|asstt|assistant)\b/i;
+
 /**
  * A doctor's name as the portal shows it: "Dr." in front, once.
- * "Md. Emdad Karim" -> "Dr. Md. Emdad Karim", "Dr.Ahmed" -> "Dr. Ahmed".
+ * "Md. Emdad Karim" -> "Dr. Md. Emdad Karim", "Dr.Ahmed" -> "Dr. Ahmed",
+ * "Assoc. Prof. Dr. Nabid Alam" and "Prof. Rahman" stay as they are.
  *
- * Only a "Dr" title already in the stored name is replaced. "Md." and
- * "Mohammad" are part of a Bangladeshi name, not a title to drop —
+ * "Md." and "Mohammad" are part of a Bangladeshi name, not a title to drop —
  * `stripHonorific` drops them because it only feeds initials.
  */
 export const withDoctorTitle = (name: string | undefined | null): string => {
-  const bare = (name ?? '').replace(/^\s*dr(\.\s*|\s+)/i, '').trim();
-  return bare ? `Dr. ${bare}` : '';
+  const text = String(name ?? '').trim();
+  if (!text) return '';
+  if (LEADING_DR.test(text)) {
+    const bare = text.replace(LEADING_DR, '').trim();
+    return bare ? `Dr. ${bare}` : '';
+  }
+  return DR_ANYWHERE.test(text) || LEADING_RANK.test(text) ? text : `Dr. ${text}`;
 };
 
 const FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB'];

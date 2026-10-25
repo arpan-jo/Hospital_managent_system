@@ -97,7 +97,7 @@ export function UploadFileSheet<T extends string>({
     }
   }, [visible, defaultCategory]);
 
-  /** "PDF, JPG, PNG, GIF, WEBP, SVG" — aliases of a listed type are left out. */
+  /** "PDF, JPG, PNG, GIF, WEBP" — aliases of a listed type are left out. */
   const typeLabel = useMemo(
     () =>
       allowedExtensions
@@ -107,7 +107,7 @@ export function UploadFileSheet<T extends string>({
     [allowedExtensions],
   );
 
-  /** "PDF, JPG, PNG, GIF, WEBP, SVG — max 5 MB". */
+  /** "PDF, JPG, PNG, GIF, WEBP — max 5 MB". */
   const fileHint = useMemo(
     () => t('uploadFile.fileHint', { types: typeLabel, size: formatFileSize(maxBytes) }),
     [typeLabel, maxBytes, t],

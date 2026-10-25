@@ -28,8 +28,11 @@ export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
 /** The ceiling the upload endpoint enforces per file, checked before sending as on the web. */
 export const REPORT_MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-/** What the web's forms accept: images and PDF. */
-export const REPORT_ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+/**
+ * Images and PDF. The web also takes SVG, but the app cannot draw one, so it
+ * is not offered here; an SVG uploaded on the web can still be downloaded.
+ */
+export const REPORT_ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'];
 
 /** One row of `GET /hms/patient/documents` — `PatientDocumentDto`. */
 export interface PatientDocument {

@@ -11,7 +11,13 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { getFileUrl, PortalDoctor, useStores } from '@app/core';
+import {
+  dayPeriod,
+  getFileUrl,
+  greetingName,
+  PortalDoctor,
+  useStores,
+} from '@app/core';
 import {
   CustomAvatar,
   CustomButton,
@@ -53,6 +59,15 @@ export const PatientFindDoctorIndex = observer(() => {
     authStore.user?.fullName?.trim() ||
     t('common.na');
   const photoUrl = getFileUrl(profileStore?.patientProfileData?.photoUrl ?? '');
+  // "Good morning, Jahed 👋" as the portal's header greets; the name is left
+  // out while the account has only its email or number to go by.
+  const greeting = t(`findDoctors.greeting.${dayPeriod()}`);
+  const firstName = greetingName(
+    profileStore?.patientProfileData?.fullName || authStore.user?.fullName,
+  );
+  const headerGreeting = firstName
+    ? t('findDoctors.greetingWithName', { greeting, name: firstName })
+    : greeting;
 
   const handleProfile = useCallback(
     () =>
@@ -130,6 +145,7 @@ export const PatientFindDoctorIndex = observer(() => {
     >
       <ScreenHeader
         title={t('findDoctors.title')}
+        subtitle={headerGreeting}
         leading="menu"
         right={
           <View style={styles.headerActions}>
