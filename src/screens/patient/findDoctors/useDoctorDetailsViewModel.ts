@@ -403,15 +403,24 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
       const suggested = failure?.suggestedSlot;
       setIsConfirming(false);
 
+      // The server always words these itself but leaves the suggested time out
+      // of its sentence, so the suggestion goes on a line of its own below it.
       if (failure?.code === 'SLOT_FULL' && suggested) {
+        const params = {
+          date: formatLongDate(suggested?.date ?? '', monthNames),
+          time: to12Hour(suggested?.time || suggested?.startTime || ''),
+        };
+        const next =
+          params.date && params.time
+            ? t('doctorProfile.nextOpening', params)
+            : '';
         return {
           ok: false,
-          message:
-            failure?.message ||
-            t('doctorProfile.slotFull', {
-              date: formatLongDate(suggested?.date ?? '', monthNames),
-              time: to12Hour(suggested?.time || suggested?.startTime || ''),
-            }),
+          message: failure?.message
+            ? [failure.message, next].filter(Boolean).join('\n')
+            : next
+              ? t('doctorProfile.slotFull', params)
+              : t('doctorProfile.bookingFailed'),
         };
       }
 
@@ -420,13 +429,16 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
         setSubSlotTime('');
         setIsSubSlotsOpen(true);
         fetchSlots();
+        const next = suggested?.time
+          ? t('doctorProfile.nextFreeTime', { time: to12Hour(suggested.time) })
+          : '';
         return {
           ok: false,
-          message:
-            failure?.message ||
-            (suggested?.time
+          message: failure?.message
+            ? [failure.message, next].filter(Boolean).join('\n')
+            : suggested?.time
               ? t('doctorProfile.timeTakenNext', { time: to12Hour(suggested.time) })
-              : t('doctorProfile.timeTaken')),
+              : t('doctorProfile.timeTaken'),
         };
       }
 

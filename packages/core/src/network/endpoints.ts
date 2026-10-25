@@ -10,6 +10,9 @@ export const ENDPOINTS = {
   verifyOtp: '/hms/auth/otp/verify',
   registerWithOtp: '/hms/auth/otp/register',
   forgotPassword: '/hms/auth/forgot-password',
+  /** Forgot password by mobile: a reset code by SMS, then the reset with it. */
+  sendResetOtp: '/hms/auth/otp/reset/send',
+  resetWithOtp: '/hms/auth/otp/reset',
   fileUpload: '/hms/FileUpload/upload',
   /** Serves a stored blob. Anonymous, so the url needs no token. */
   fileDownload: '/hms/FileUpload/download',

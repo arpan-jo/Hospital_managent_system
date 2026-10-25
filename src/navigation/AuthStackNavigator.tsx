@@ -5,6 +5,7 @@ import ForgotPasswordScreen from '../screens/auth/forgotPassword/ForgotPasswordS
 import SignupScreen from '../screens/auth/signup/SignupScreen';
 import VerifyEmailScreen from '../screens/auth/verifyEmail/VerifyEmailScreen';
 import SetPasswordScreen from '../screens/auth/setPassword/SetPasswordScreen';
+import ResetPasswordScreen from '../screens/auth/resetPassword/ResetPasswordScreen';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -22,6 +23,8 @@ export type AuthStackParamList = {
     /** Verified OTP, required to register. */
     code: string;
   };
+  /** Forgot password by mobile: the number the reset code went to, `01XXXXXXXXX`. */
+  ResetPassword: { phone: string };
 };
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -34,6 +37,7 @@ export const AuthStackNavigator = () => {
       <Stack.Screen name="Signup" component={SignupScreen} />
       <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
       <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </Stack.Navigator>
   );
 };

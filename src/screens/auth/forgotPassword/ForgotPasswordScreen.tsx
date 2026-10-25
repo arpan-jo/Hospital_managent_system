@@ -4,6 +4,7 @@ import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   CustomFormInput,
@@ -11,19 +12,23 @@ import {
   CustomDialog,
   fontFamilies,
 } from '@app/ui';
+import { useStores } from '@app/core';
 import { useErrorDialog } from '../../../hooks/useErrorDialog';
+import { AuthStackParamList } from '../../../navigation/AuthStackNavigator';
 import AuthScreenLayout from '../AuthScreenLayout';
 import { useForgotPasswordViewModel } from './useForgotPasswordViewModel';
 
 export const ForgotPasswordScreen = observer(() => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+  const { toastStore } = useStores();
   const viewModel = useForgotPasswordViewModel();
   const errorDialog = useErrorDialog();
 
-  // Address the link went to, and the flag for the confirmation panel. The
-  // reset itself happens on the web, so this screen has nowhere to navigate.
+  // Address the link went to, and the flag for the confirmation panel. A
+  // link's reset happens on the web; a code's on the ResetPassword screen.
   const [sentTo, setSentTo] = useState<string | null>(null);
   /** The server's own confirmation; '' when it sent none. */
   const [sentMessage, setSentMessage] = useState('');
@@ -42,9 +47,17 @@ export const ForgotPasswordScreen = observer(() => {
       }
       return;
     }
+    if (data?.phone) {
+      toastStore.show(
+        data?.message?.trim() || t('forgotPassword.codeSent'),
+        'success',
+      );
+      navigation.navigate('ResetPassword', { phone: data.phone });
+      return;
+    }
     setSentMessage(data?.message?.trim() ?? '');
     setSentTo(data?.email?.trim() ?? '');
-  }, [viewModel, errorDialog]);
+  }, [viewModel, errorDialog, toastStore, navigation, t]);
 
   const handleTryAgain = useCallback(() => setSentTo(null), []);
 
@@ -122,19 +135,13 @@ export const ForgotPasswordScreen = observer(() => {
         ) : (
           <>
             <CustomFormInput
-              name="email"
+              name="identifier"
               control={viewModel.control}
-              label={t('forgotPassword.emailLabel')}
-              placeholder={t('forgotPassword.emailPlaceholder')}
+              label={t('forgotPassword.identifierLabel')}
+              placeholder={t('forgotPassword.identifierPlaceholder')}
               keyboardType="email-address"
-              leftIcon="email-outline"
-              rules={{
-                required: t('forgotPassword.invalidEmail'),
-                pattern: {
-                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: t('forgotPassword.invalidEmail'),
-                },
-              }}
+              leftIcon="account-outline"
+              rules={viewModel.rules?.identifier}
               returnKeyType="done"
               onSubmitEditing={handleSend}
             />

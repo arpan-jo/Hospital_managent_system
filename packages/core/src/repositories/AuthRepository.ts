@@ -48,6 +48,11 @@ export interface ForgotPasswordResponse {
   message: string;
 }
 
+/** "Password has been reset. You can sign in now." */
+export interface ResetWithOtpResponse {
+  message: string;
+}
+
 export interface RegisterWithOtpPayload extends AuthContact {
   /** The code `verifyOtp` just accepted; the API checks it once more. */
   code: string;
@@ -121,6 +126,41 @@ export const AuthRepository = {
     };
 
     return apiRequest<ForgotPasswordResponse>(api_params);
+  },
+
+  /**
+   * Forgot password by mobile, step one: a reset code by SMS. The answer is
+   * the same whether or not the number has an account (none gets no SMS).
+   */
+  sendResetOtp: async (phone: string) => {
+    const api_params: ApiRequestOptions = {
+      url: ENDPOINTS.sendResetOtp,
+      method: 'POST',
+      data: { phone: toLocalBdMobile(phone) },
+      baseUrl: API_URL,
+    };
+
+    return apiRequest<SendOtpResponse>(api_params);
+  },
+
+  /** Step two: the code and the new password. There is no separate verify call. */
+  resetPasswordWithOtp: async (
+    phone: string,
+    code: string,
+    newPassword: string,
+  ) => {
+    const api_params: ApiRequestOptions = {
+      url: ENDPOINTS.resetWithOtp,
+      method: 'POST',
+      data: {
+        phone: toLocalBdMobile(phone),
+        code: code?.trim() ?? '',
+        newPassword: newPassword || '',
+      },
+      baseUrl: API_URL,
+    };
+
+    return apiRequest<ResetWithOtpResponse>(api_params);
   },
 
   /**
