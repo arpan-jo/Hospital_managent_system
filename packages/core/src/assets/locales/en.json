@@ -767,9 +767,8 @@
   },
   "settings": {
     "title": "Settings",
-    "themeSection": "Theme Settings",
-    "themeDark": "Dark Theme",
-    "languageSection": "Language Settings"
+    "themeSection": "Appearance",
+    "languageSection": "Language"
   },
   "common": {
     "confirm": "Confirm",

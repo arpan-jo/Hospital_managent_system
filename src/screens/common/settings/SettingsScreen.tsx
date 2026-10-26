@@ -1,46 +1,72 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Switch, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useStores } from '@app/core';
-import { CustomLanguageToggler, fontFamilies } from '@app/ui';
+import { fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 
-interface SettingsRowProps {
-  icon: string;
+type AppLanguage = 'en' | 'bn';
+
+/**
+ * Each language is named and described in itself, never translated, so a
+ * patient who can't read the current one still finds their own.
+ */
+const LANGUAGES: { value: AppLanguage; badge: string; label: string; description: string }[] = [
+  { value: 'en', badge: 'EN', label: 'English', description: 'Use the app in English' },
+  { value: 'bn', badge: 'বা', label: 'বাংলা', description: 'অ্যাপটি বাংলায় দেখুন' },
+];
+
+interface ChoiceRowProps {
+  /** A MaterialCommunityIcons name, or `badge` text in its place. */
+  icon?: string;
+  badge?: string;
   label: string;
   description?: string;
-  /** Rendered at the far right — a switch, a value, etc. */
-  control?: React.ReactNode;
-  /** Makes the whole row tappable, with a chevron standing in for the control. */
-  onPress?: () => void;
+  selected: boolean;
   isLast?: boolean;
+  onPress: () => void;
 }
 
-/** One icon-badge + label row of a settings card, matching the card rows used elsewhere. */
-const SettingsRow = memo<SettingsRowProps>(function SettingsRow({
+/** One option of a pick-one settings card: leading tile, label, and a tick when chosen. */
+const ChoiceRow = memo<ChoiceRowProps>(function ChoiceRow({
   icon,
+  badge,
   label,
   description,
-  control,
-  onPress,
+  selected,
   isLast = false,
+  onPress,
 }) {
   const theme = useTheme();
+  const tileInk = selected ? theme.colors.onPrimary : theme.colors.primary;
 
-  const rowStyle = [
-    styles.row,
-    !isLast && [styles.rowDivider, { borderBottomColor: theme.colors.outlineVariant }],
-  ];
-
-  const content = (
-    <>
-      <View style={[styles.rowIcon, { backgroundColor: theme.colors.primaryContainer }]}>
-        <Icon name={icon} size={17} color={theme.colors.primary} />
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={label}
+      style={[
+        styles.row,
+        !isLast && [styles.rowDivider, { borderBottomColor: theme.colors.outlineVariant }],
+      ]}
+    >
+      <View
+        style={[
+          styles.rowTile,
+          { backgroundColor: selected ? theme.colors.primary : theme.colors.primaryContainer },
+        ]}
+      >
+        {icon ? (
+          <Icon name={icon} size={17} color={tileInk} />
+        ) : (
+          <Text style={[styles.badgeText, { color: tileInk }]}>{badge}</Text>
+        )}
       </View>
 
       <View style={styles.rowInfo}>
@@ -52,36 +78,21 @@ const SettingsRow = memo<SettingsRowProps>(function SettingsRow({
         ) : null}
       </View>
 
-      {onPress ? (
-        <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
-      ) : (
-        control
-      )}
-    </>
+      <Icon
+        name={selected ? 'check-circle' : 'circle-outline'}
+        size={22}
+        color={selected ? theme.colors.primary : theme.colors.onSurfaceVariant}
+      />
+    </Pressable>
   );
-
-  if (onPress) {
-    return (
-      <Pressable onPress={onPress} style={rowStyle} accessibilityRole="button">
-        {content}
-      </Pressable>
-    );
-  }
-
-  return <View style={rowStyle}>{content}</View>;
 });
 
 export const SettingsScreen = observer(() => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { themeStore } = useStores();
+  const { themeStore, languageStore } = useStores();
   // Light background — needs dark icons so the status bar stays legible.
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
-
-  const handleThemeChange = useCallback(
-    (val: boolean) => themeStore.setDarkMode(val),
-    [themeStore],
-  );
 
   return (
     <SafeAreaView
@@ -98,13 +109,18 @@ export const SettingsScreen = observer(() => {
           {t('settings.themeSection').toUpperCase()}
         </Text>
         <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <SettingsRow
-            icon={themeStore.isDarkMode ? 'weather-night' : 'weather-sunny'}
-            label={t('settings.themeDark')}
+          <ChoiceRow
+            icon="weather-sunny"
+            label={t('common.light')}
+            selected={!themeStore.isDarkMode}
+            onPress={() => themeStore.setDarkMode(false)}
+          />
+          <ChoiceRow
+            icon="weather-night"
+            label={t('common.dark')}
+            selected={themeStore.isDarkMode}
             isLast
-            control={
-              <Switch value={themeStore.isDarkMode} onValueChange={handleThemeChange} />
-            }
+            onPress={() => themeStore.setDarkMode(true)}
           />
         </View>
 
@@ -112,10 +128,17 @@ export const SettingsScreen = observer(() => {
           {t('settings.languageSection').toUpperCase()}
         </Text>
         <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <SettingsRow icon="translate" label={t('common.language')} isLast />
-          <View style={styles.togglerWrap}>
-            <CustomLanguageToggler />
-          </View>
+          {LANGUAGES.map((option, index) => (
+            <ChoiceRow
+              key={option.value}
+              badge={option.badge}
+              label={option.label}
+              description={option.description}
+              selected={languageStore.language === option.value}
+              isLast={index === LANGUAGES.length - 1}
+              onPress={() => languageStore.setLanguage(option.value)}
+            />
+          ))}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -157,12 +180,16 @@ const styles = StyleSheet.create({
   rowDivider: {
     borderBottomWidth: 1,
   },
-  rowIcon: {
-    width: 32,
-    height: 32,
+  rowTile: {
+    width: 34,
+    height: 34,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  badgeText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 12.5,
   },
   rowInfo: {
     flex: 1,
@@ -175,10 +202,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.regular,
     fontSize: 11,
     marginTop: 1,
-  },
-  togglerWrap: {
-    paddingHorizontal: 14,
-    paddingBottom: 14,
   },
 });
 

@@ -767,9 +767,8 @@
   },
   "settings": {
     "title": "সেটিংস",
-    "themeSection": "থিম সেটিংস",
-    "themeDark": "ডার্ক থিম",
-    "languageSection": "ভাষা সেটিংস"
+    "themeSection": "থিম",
+    "languageSection": "ভাষা"
   },
   "common": {
     "confirm": "নিশ্চিত করুন",
