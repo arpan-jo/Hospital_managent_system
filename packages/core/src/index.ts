@@ -20,6 +20,7 @@ export * from './utils/downloader';
 export * from './hooks/useDownload';
 export * from './utils/format';
 export * from './utils/fileUrl';
+export * from './utils/fileType';
 export * from './utils/bdPhone';
 export * from './repositories/AuthRepository';
 export * from './repositories/FindDoctorsRepository';

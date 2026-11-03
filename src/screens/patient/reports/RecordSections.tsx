@@ -96,6 +96,8 @@ const LabTestsSection = ({ type, months, bottomPadding }: SectionProps & { type:
         canDownload: true,
         // Drawn on request — the sheet carries the time it was printed.
         fresh: true,
+        // A File Upload result is the uploaded file itself, often an image.
+        typeFromServer: true,
       });
     },
     [navigation, toastStore, t, months],

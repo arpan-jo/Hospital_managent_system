@@ -1,6 +1,7 @@
 import { Platform, Share } from 'react-native';
 import RNBlobUtil from 'react-native-blob-util';
 import { getFileHeaders } from './fileUrl';
+import { mediaTypeOf } from './fileType';
 
 export type DownloadDestination = 'documents' | 'cache';
 
@@ -18,6 +19,8 @@ export interface DownloadResult {
    * `content://` uri rather than a filesystem path — `openFile` takes either.
    */
   filePath: string;
+  /** The media type the server named (`image/jpeg`); '' when it named none. */
+  contentType: string;
 }
 
 export interface ActiveDownload {
@@ -165,7 +168,13 @@ export const startDownload = ({
       );
     }
 
-    if (!savesToCollection) return { filePath: fetchedPath };
+    // Header names come back as the server cased them.
+    const answerHeaders = (response.info()?.headers ?? {}) as Record<string, unknown>;
+    const contentType = mediaTypeOf(
+      String(Object.entries(answerHeaders).find(([name]) => name.toLowerCase() === 'content-type')?.[1] ?? ''),
+    );
+
+    if (!savesToCollection) return { filePath: fetchedPath, contentType };
 
     // The collection copy is the one the user keeps; the cache copy has served
     // its purpose either way, so a failed cleanup must not fail the download.
@@ -176,7 +185,7 @@ export const startDownload = ({
     );
     await RNBlobUtil.fs.unlink(fetchedPath).catch(() => {});
 
-    return { filePath: contentUri };
+    return { filePath: contentUri, contentType };
   });
 
   return {

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +6,15 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Pdf from 'react-native-pdf';
-import { fileExtensionLabel, getFileHeaders, useDownload, useStores } from '@app/core';
+import {
+  fileExtensionLabel,
+  fileKindOfType,
+  fileNameForType,
+  getFileHeaders,
+  startDownload,
+  useDownload,
+  useStores,
+} from '@app/core';
 import { CustomButton, fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
@@ -27,6 +35,18 @@ export interface FileViewerParams {
   notes?: string;
   /** Read the file afresh each time — it is drawn on request and can change. */
   fresh?: boolean;
+  /**
+   * The server, not the name, says what the file is: a test report from its
+   * ".../pdf" route can be an uploaded image. The file is fetched once, then
+   * drawn — and named for download — by the type it came with.
+   */
+  typeFromServer?: boolean;
+}
+
+/** A fetched copy, and the type the server sent it as. */
+interface ServedFile {
+  path: string;
+  contentType: string;
 }
 
 type FileViewerRoute = RouteProp<{ FileViewer: FileViewerParams }, 'FileViewer'>;
@@ -62,20 +82,15 @@ export const FileViewerScreen = () => {
     canDownload = false,
     notes = '',
     fresh = false,
+    typeFromServer = false,
   }: Partial<FileViewerParams> = route.params ?? {};
   const noteText = String(notes ?? '').trim();
   const { download, isDownloading } = useDownload();
   const { toastStore } = useStores();
   const [isLoading, setLoading] = useState(true);
   const [hasFailed, setFailed] = useState(false);
+  const [served, setServed] = useState<ServedFile | null>(null);
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
-
-  // The name carries the extension; the URL is the fallback for rows sent
-  // without one, since the blob name keeps it too.
-  const kind = useMemo(() => {
-    const byName = toFileKind(filename);
-    return byName === 'other' ? toFileKind(url) : byName;
-  }, [filename, url]);
 
   const handleLoaded = useCallback(() => setLoading(false), []);
 
@@ -84,16 +99,63 @@ export const FileViewerScreen = () => {
     setFailed(true);
   }, []);
 
-  const canRender = Boolean(url) && kind !== 'other' && !hasFailed;
+  // Fetched into the cache, where the viewer reads it — always afresh, so a
+  // re-drawn report is never an old copy.
+  useEffect(() => {
+    if (!typeFromServer || !url) return undefined;
+    let isActive = true;
+    const task = startDownload({ url, filename: filename || 'file', destination: 'cache' });
+    task.promise
+      .then(result => {
+        if (isActive) {
+          setServed({ path: result?.filePath ?? '', contentType: result?.contentType ?? '' });
+        }
+      })
+      .catch((error: any) => {
+        if (!isActive) return;
+        console.log('file viewer fetch error ==>', error?.message);
+        handleFailed();
+      });
+    return () => {
+      isActive = false;
+      task.cancel();
+    };
+  }, [typeFromServer, url, filename, handleFailed]);
+
+  const isFetching = typeFromServer && !served && !hasFailed;
+
+  // A type the server named decides; otherwise the name carries the
+  // extension, and the URL is the fallback for rows sent without one, since
+  // the blob name keeps it too.
+  const kind = useMemo(() => {
+    const byType = typeFromServer ? fileKindOfType(served?.contentType) : null;
+    if (byType) return byType;
+    const byName = toFileKind(filename);
+    return byName === 'other' ? toFileKind(url) : byName;
+  }, [typeFromServer, served, filename, url]);
+
+  // Saved under what it really is — an image report as `.jpg`, not `.pdf`.
+  const saveName = typeFromServer ? fileNameForType(filename || 'file', served?.contentType) : filename;
+
+  const source = useMemo(() => {
+    if (!typeFromServer) return { uri: url, headers: getFileHeaders(url) };
+    const path = served?.path ?? '';
+    if (!path) return null;
+    return { uri: /^[a-z]+:\/\//i.test(path) ? path : `file://${path}` };
+  }, [typeFromServer, served, url]);
+
+  const canRender = Boolean(url) && Boolean(source) && kind !== 'other' && !hasFailed;
+  // A file that would not load would not download either.
+  const canSave = canDownload && Boolean(url) && !hasFailed && !isFetching;
 
   const handleDownload = useCallback(async () => {
     if (!url || isDownloading) return;
-    const { filePath, serverMessage } = await download({ url, filename: filename || 'file' });
+    const { filePath, serverMessage } = await download({ url, filename: saveName || 'file' });
     toastStore.show(
       filePath ? t('fileViewer.downloaded') : serverMessage || t('fileViewer.downloadFailed'),
       filePath ? 'success' : 'error',
     );
-  }, [url, filename, isDownloading, download, toastStore, t]);
+  }, [url, saveName, isDownloading, download, toastStore, t]);
 
   return (
     <SafeAreaView
@@ -105,8 +167,7 @@ export const FileViewerScreen = () => {
         subtitle={subtitle || undefined}
         leading="back"
         right={
-          // A file that would not load would not download either.
-          canDownload && url && !hasFailed ? (
+          canSave ? (
             <Pressable
               onPress={handleDownload}
               disabled={isDownloading}
@@ -126,12 +187,16 @@ export const FileViewerScreen = () => {
       />
 
       <View style={[styles.stage, { backgroundColor: theme.colors.surfaceVariant }]}>
-        {canRender ? (
+        {isFetching ? (
+          <View style={styles.overlay} pointerEvents="none">
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          </View>
+        ) : canRender && source ? (
           <>
             {kind === 'pdf' ? (
               <Pdf
                 // Stored files are authenticated — see `getFileHeaders`.
-                source={{ uri: url, cache: !fresh, headers: getFileHeaders(url) }}
+                source={{ ...source, cache: !fresh }}
                 trustAllCerts={false}
                 style={styles.viewer}
                 onLoadComplete={handleLoaded}
@@ -139,7 +204,7 @@ export const FileViewerScreen = () => {
               />
             ) : (
               <Image
-                source={{ uri: url, headers: getFileHeaders(url) }}
+                source={source}
                 resizeMode="contain"
                 style={styles.viewer}
                 onLoadEnd={handleLoaded}
@@ -166,12 +231,12 @@ export const FileViewerScreen = () => {
               {hasFailed
                 ? t('fileViewer.failedHint')
                 : t('fileViewer.unsupportedHint', {
-                    type: fileExtensionLabel(filename || url) || t('fileViewer.thisFile'),
+                    type: fileExtensionLabel(saveName || url) || t('fileViewer.thisFile'),
                   })}
             </Text>
 
             {/* A file the app can't draw (an SVG, a Word file) can still be saved. */}
-            {canDownload && url && !hasFailed ? (
+            {canSave ? (
               <CustomButton
                 mode="outlined"
                 icon="download-outline"

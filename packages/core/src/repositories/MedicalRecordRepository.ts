@@ -197,7 +197,10 @@ export const MedicalRecordRepository = {
   getLabReportPdfUrl: (billRowId: number): string =>
     `${API_URL}${ENDPOINTS.portalLabReportPdf}/${toNumber(billRowId)}/pdf?tz=${-new Date().getTimezoneOffset()}`,
 
-  /** The name a saved report gets, as the portal names it: `Report_CBC_BILL-2611-0084.pdf`. */
+  /**
+   * The name a saved report gets, as the portal names it: `Report_CBC_BILL-2611-0084.pdf`.
+   * The viewer swaps the extension when the report turns out to be an uploaded image.
+   */
   getLabReportFileName: (test?: Partial<LabTest> | null): string => {
     const name = [toFileNamePart(test?.itemName), toFileNamePart(test?.billCode)]
       .filter(Boolean)

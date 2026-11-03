@@ -22,13 +22,16 @@ import { useUploadsViewModel } from './useUploadsViewModel';
 
 type Section = 'uploads' | 'pathology' | 'radiology' | 'prescriptions';
 
-/** The portal's four sections, in its order: the patient's own files, then what the hospital issued. */
+/**
+ * The portal's four sections, in its order: what the hospital issued, then the
+ * patient's own files. The first is the one the page opens on.
+ */
 const SECTIONS: { key: Section; labelKey: string; subtitleKey: string; icon: string }[] = [
   {
-    key: 'uploads',
-    labelKey: 'reports.sectionUploads',
-    subtitleKey: 'reports.subtitleUploads',
-    icon: 'folder-open-outline',
+    key: 'prescriptions',
+    labelKey: 'reports.sectionPrescriptions',
+    subtitleKey: 'reports.subtitlePrescriptions',
+    icon: 'pill',
   },
   {
     key: 'pathology',
@@ -43,10 +46,10 @@ const SECTIONS: { key: Section; labelKey: string; subtitleKey: string; icon: str
     icon: 'radiology-box-outline',
   },
   {
-    key: 'prescriptions',
-    labelKey: 'reports.sectionPrescriptions',
-    subtitleKey: 'reports.subtitlePrescriptions',
-    icon: 'pill',
+    key: 'uploads',
+    labelKey: 'reports.sectionUploads',
+    subtitleKey: 'reports.subtitleUploads',
+    icon: 'folder-open-outline',
   },
 ];
 
@@ -62,9 +65,9 @@ export const PatientReportIndex = observer(() => {
   const uploads = useUploadsViewModel();
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
-  const [section, setSection] = useState<Section>('uploads');
+  const [section, setSection] = useState<Section>(SECTIONS[0].key);
   /** A section is read when first opened and kept after, so going back to it is instant. */
-  const [opened, setOpened] = useState<Section[]>(['uploads']);
+  const [opened, setOpened] = useState<Section[]>([SECTIONS[0].key]);
   const [isUploadVisible, setUploadVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PatientDocument | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
