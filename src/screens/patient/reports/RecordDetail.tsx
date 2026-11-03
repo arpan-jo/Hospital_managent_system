@@ -164,28 +164,6 @@ export const DetailFacts = ({ facts }: { facts: { label: string; value?: string 
   );
 };
 
-/** Free text kept with its line breaks — nothing at all when blank. */
-export const DetailProse = ({ text }: { text?: string | null }) => {
-  const theme = useTheme();
-  if (!(text ?? '').trim()) return null;
-  return (
-    <Text selectable style={[styles.prose, { color: theme.colors.onSurface }]}>
-      {text}
-    </Text>
-  );
-};
-
-/** A titled block of free text — heading and all left out when the text is blank. */
-export const DetailTextSection = ({ title, text }: { title: string; text?: string | null }) => {
-  if (!(text ?? '').trim()) return null;
-  return (
-    <DetailCard>
-      <DetailHeading>{title}</DetailHeading>
-      <DetailProse text={text} />
-    </DetailCard>
-  );
-};
-
 /** A muted line for a record with nothing in it. */
 export const DetailNote = ({ icon, children }: { icon: string; children: ReactNode }) => {
   const theme = useTheme();
@@ -248,11 +226,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.semibold,
     fontSize: 13,
     marginTop: 2,
-  },
-  prose: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13.5,
-    lineHeight: 20,
   },
   note: {
     flexDirection: 'row',

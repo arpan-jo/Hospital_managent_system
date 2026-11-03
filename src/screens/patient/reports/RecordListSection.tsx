@@ -36,7 +36,7 @@ interface RecordListSectionProps<T extends RecordPatient> {
 /**
  * A hospital-issued list on the Reports page, as the portal draws each one:
  * family chips when the records span more than one person, a search, and a
- * card per record that opens it in full.
+ * card per record that opens it.
  */
 export function RecordListSection<T extends RecordPatient>({
   kind,

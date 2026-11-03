@@ -11,8 +11,8 @@ export interface RecordPatientOption {
 }
 
 /**
- * One of the hospital-issued lists on the Reports page — lab reports, imaging
- * reports or visit prescriptions — as the portal runs them: the whole list
+ * One of the hospital-issued lists on the Reports page — lab tests, imaging
+ * tests or visit prescriptions — as the portal runs them: the whole list
  * read once, then narrowed on the phone by family member and by a search over
  * `searchFields`.
  */

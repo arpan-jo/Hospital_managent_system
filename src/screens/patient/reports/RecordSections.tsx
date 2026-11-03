@@ -3,15 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
+  LabTest,
+  LabTestType,
   MedicalRecordRepository,
-  PathologyReportSummary,
   PatientPrescriptionRepository,
   PortalPrescription,
-  RadiologyReportSummary,
+  useStores,
 } from '@app/core';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
 import { VISIT_LABEL_KEY, doctorTitle } from '../myPrescriptions/prescriptionUi';
-import RecordListSection, { RecordBadge } from './RecordListSection';
+import RecordListSection, { BadgeTone, RecordBadge } from './RecordListSection';
 import { formatRecordDate } from './reportsUi';
 import { useRecordList } from './useRecordList';
 
@@ -22,96 +23,107 @@ interface SectionProps {
 
 type ReportsNavigation = NativeStackNavigationProp<ReportsStackParamList>;
 
-const pathologySearch = (item: PathologyReportSummary) => [
-  item?.itemName,
-  item?.department,
-  item?.reportId,
-  item?.billCode,
-];
+const labTestSearch = (item: LabTest) => [item?.itemName, item?.department, item?.billCode];
 
-/** Pathology — lab reports the hospital has delivered. */
-export const PathologySection = ({ months, bottomPadding }: SectionProps) => {
+/** The portal's colour for each stage: grey while waiting, amber once results are in, brand when ready. */
+const STATUS_TONE: Record<LabTest['status'], BadgeTone> = {
+  pending: 'muted',
+  collected: 'muted',
+  received: 'muted',
+  result_pending: 'warn',
+  final: 'brand',
+};
+
+/** What differs between the lab and the imaging list — the words only. */
+const LAB_TEST_TEXT: Record<
+  LabTestType,
+  { search: string; emptyTitle: string; emptyHint: string; noMatch: string; fallbackTitle: string }
+> = {
+  pathology: {
+    search: 'reports.searchLab',
+    emptyTitle: 'reports.labEmptyTitle',
+    emptyHint: 'reports.labEmptyHint',
+    noMatch: 'reports.labNoMatch',
+    fallbackTitle: 'reports.labTest',
+  },
+  radiology: {
+    search: 'reports.searchImaging',
+    emptyTitle: 'reports.imagingEmptyTitle',
+    emptyHint: 'reports.imagingEmptyHint',
+    noMatch: 'reports.imagingNoMatch',
+    fallbackTitle: 'reports.imagingTest',
+  },
+};
+
+/**
+ * Every lab or imaging test billed to the account, at whatever stage it has
+ * reached, as the portal lists them. A final one opens its report — the
+ * printed sheet, as a PDF; any other says it is not ready yet.
+ */
+const LabTestsSection = ({ type, months, bottomPadding }: SectionProps & { type: LabTestType }) => {
   const { t } = useTranslation();
   const navigation = useNavigation<ReportsNavigation>();
-  const viewModel = useRecordList(MedicalRecordRepository.getPathologyReports, pathologySearch);
+  const { toastStore } = useStores();
+  const text = LAB_TEST_TEXT[type] ?? LAB_TEST_TEXT.pathology;
+  const fetchTests = useCallback(() => MedicalRecordRepository.getLabTests(type), [type]);
+  const viewModel = useRecordList(fetchTests, labTestSearch);
 
   const badgesOf = useCallback(
-    (item: PathologyReportSummary): RecordBadge[] => [
+    (item: LabTest): RecordBadge[] => [
       ...(viewModel.showPatients ? [{ label: item?.patientName ?? '', tone: 'brand' as const }] : []),
-      { label: item?.billCode ?? '', tone: 'muted' },
+      {
+        label: t(`reports.labStatus.${item?.status ?? 'pending'}`),
+        tone: STATUS_TONE[item?.status] ?? 'muted',
+      },
     ],
-    [viewModel.showPatients],
+    [viewModel.showPatients, t],
+  );
+
+  const openTest = useCallback(
+    (item: LabTest) => {
+      if (!item?.billRowId) return;
+      if (!item?.isReportReady) {
+        toastStore.show(t('reports.reportNotReady'), 'info');
+        return;
+      }
+      navigation.navigate('FileViewer', {
+        url: MedicalRecordRepository.getLabReportPdfUrl(item.billRowId),
+        filename: MedicalRecordRepository.getLabReportFileName(item),
+        title: t('reports.reportPreview'),
+        subtitle: [item?.itemName, item?.patientName, formatRecordDate(item?.billDate, months), item?.billCode]
+          .filter(Boolean)
+          .join(' · '),
+        canDownload: true,
+        // Drawn on request — the sheet carries the time it was printed.
+        fresh: true,
+      });
+    },
+    [navigation, toastStore, t, months],
   );
 
   return (
-    <RecordListSection<PathologyReportSummary>
-      kind="pathology"
+    <RecordListSection<LabTest>
+      kind={type}
       viewModel={viewModel}
       bottomPadding={bottomPadding}
-      searchPlaceholder={t('reports.searchLab')}
-      emptyTitle={t('reports.labEmptyTitle')}
-      emptyHint={t('reports.labEmptyHint')}
-      noMatchTitle={t('reports.labNoMatch')}
+      searchPlaceholder={t(text.search)}
+      emptyTitle={t(text.emptyTitle)}
+      emptyHint={t(text.emptyHint)}
+      noMatchTitle={t(text.noMatch)}
       keyOf={item => String(item?.billRowId)}
-      titleOf={item => item?.itemName || t('reports.labReport')}
-      metaOf={item => [
-        formatRecordDate(item?.deliveredAt || item?.billDate, months),
-        item?.department,
-        item?.reportId,
-      ]}
+      titleOf={item => item?.itemName || t(text.fallbackTitle)}
+      metaOf={item => [formatRecordDate(item?.billDate, months), item?.department, item?.billCode]}
       badgesOf={badgesOf}
-      onOpen={item =>
-        navigation.navigate('PathologyReport', { billRowId: item?.billRowId, title: item?.itemName })
-      }
+      onOpen={openTest}
     />
   );
 };
 
-const radiologySearch = (item: RadiologyReportSummary) => [
-  item?.itemName,
-  item?.department,
-  item?.reportId,
-  item?.accessionNo,
-];
+/** Pathology — lab tests and, once final, their reports. */
+export const PathologySection = (props: SectionProps) => <LabTestsSection type="pathology" {...props} />;
 
-/** Radiology — X-rays, scans and other imaging reports the hospital has delivered. */
-export const RadiologySection = ({ months, bottomPadding }: SectionProps) => {
-  const { t } = useTranslation();
-  const navigation = useNavigation<ReportsNavigation>();
-  const viewModel = useRecordList(MedicalRecordRepository.getRadiologyReports, radiologySearch);
-
-  const badgesOf = useCallback(
-    (item: RadiologyReportSummary): RecordBadge[] => [
-      ...(viewModel.showPatients ? [{ label: item?.patientName ?? '', tone: 'brand' as const }] : []),
-      { label: item?.accessionNo ?? '', tone: 'muted' },
-    ],
-    [viewModel.showPatients],
-  );
-
-  return (
-    <RecordListSection<RadiologyReportSummary>
-      kind="radiology"
-      viewModel={viewModel}
-      bottomPadding={bottomPadding}
-      searchPlaceholder={t('reports.searchImaging')}
-      emptyTitle={t('reports.imagingEmptyTitle')}
-      emptyHint={t('reports.imagingEmptyHint')}
-      noMatchTitle={t('reports.imagingNoMatch')}
-      keyOf={item => String(item?.billRowId)}
-      titleOf={item => item?.itemName || t('reports.imagingReport')}
-      metaOf={item => [
-        // The day the study was done, though the list is ordered by delivery — as on the portal.
-        formatRecordDate(item?.appointmentDate || item?.deliveredAt || item?.billDate, months),
-        item?.department,
-        item?.reportId,
-      ]}
-      badgesOf={badgesOf}
-      onOpen={item =>
-        navigation.navigate('RadiologyReport', { billRowId: item?.billRowId, title: item?.itemName })
-      }
-    />
-  );
-};
+/** Radiology — X-rays, scans and other imaging tests and, once final, their reports. */
+export const RadiologySection = (props: SectionProps) => <LabTestsSection type="radiology" {...props} />;
 
 const prescriptionSearch = (item: PortalPrescription) => [
   item?.code,

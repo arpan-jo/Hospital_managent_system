@@ -1,7 +1,28 @@
 /**
- * Where a notification's portal link leads in the app. Kept apart from the
- * repository so it can be tested without the network layer.
+ * Where a notification's portal link leads in the app, and when it was sent.
+ * Kept apart from the repository so it can be tested without the network layer.
  */
+
+/** Bangladesh Standard Time — the hospital's zone; no daylight saving. */
+const HOSPITAL_UTC_OFFSET = '+06:00';
+
+/**
+ * A notification's `createdAt` with its offset spelled out, so `Date` reads
+ * the same instant on any phone. Since 2026-11-02 the API stores and returns
+ * Bangladesh wall-clock time without an offset ("2026-10-28T12:06:01.1263996"
+ * is 12:06 in Dhaka), so such a value gets +06:00; one that already carries Z
+ * or an offset is kept as sent. Seconds can carry up to seven decimals; they
+ * are cut to milliseconds, the precision `Date` is specified to read.
+ */
+export const toNotificationTimestamp = (value: unknown): string => {
+  const text = String(value ?? '')
+    .trim()
+    .replace(/(\.\d{3})\d+/, '$1');
+  if (!text) return '';
+  const hasOffset = /(?:z|[+-]\d{2}:?\d{2})$/i.test(text);
+  const hasTime = /T\d{2}:\d{2}/.test(text);
+  return hasOffset || !hasTime ? text : `${text}${HOSPITAL_UTC_OFFSET}`;
+};
 
 /** An app screen a notification can open. */
 export type NotificationTarget =

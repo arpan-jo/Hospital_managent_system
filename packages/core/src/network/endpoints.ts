@@ -37,11 +37,10 @@ export const ENDPOINTS = {
   portalPrescriptionPdf: '/hms/portal/medical-records/GetPrescriptionPdf',
   /** One prescription in full — the Reports page's structured view. */
   portalPrescriptionDetail: '/hms/portal/medical-records/GetPrescription',
-  /** Lab and imaging reports the hospital has delivered, and one of each in full. */
-  portalPathologyReports: '/hms/portal/medical-records/GetMyPathologyReports',
-  portalPathologyReport: '/hms/portal/medical-records/GetPathologyReport',
-  portalRadiologyReports: '/hms/portal/medical-records/GetMyRadiologyReports',
-  portalRadiologyReport: '/hms/portal/medical-records/GetRadiologyReport',
+  /** Every lab or imaging test billed to the account, at any stage. */
+  portalLabTests: '/hms/portal/medical-records/GetMyLabTests',
+  /** `/{billRowId}/pdf` — one final test report as the printed sheet (outside the API's encryption). */
+  portalLabReportPdf: '/hms/portal/medical-records/lab-reports',
   /** Today's Medicines, as the portal binds it (both 404 on dev as of 2026-10-14). */
   todayMedicines: '/hms/prescriptions/today',
   medicineSchedule: '/hms/medicine-schedule',

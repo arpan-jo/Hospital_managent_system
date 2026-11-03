@@ -108,36 +108,3 @@ export type RecordKind = keyof typeof RECORD_TONE;
 
 export const recordTone = (kind: RecordKind, isDark?: boolean): Tone =>
   isDark ? RECORD_TONE[kind].dark : RECORD_TONE[kind].light;
-
-/** Age from a birth date, "12Y 3M 4D" — the portal's report sheet; '-' when unknown. */
-export const formatAge = (dob?: string | null, today: Date = new Date()): string => {
-  const text = String(dob ?? '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return '-';
-  const birth = fromISODate(text);
-  if (birth.getTime() > today.getTime()) return '-';
-
-  let years = today.getFullYear() - birth.getFullYear();
-  let months = today.getMonth() - birth.getMonth();
-  let days = today.getDate() - birth.getDate();
-  if (days < 0) {
-    months -= 1;
-    // Borrow the length of the month before this one.
-    days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-  }
-  if (months < 0) {
-    years -= 1;
-    months += 12;
-  }
-  return `${years}Y ${months}M ${days}D`;
-};
-
-/** "06/08/26 03:40 PM" — the report sheet's date and time; '-' when unknown. */
-export const formatSheetDateTime = (value: string | Date | null | undefined, yearDigits: 2 | 4 = 2): string => {
-  const date = value instanceof Date ? value : new Date(String(value ?? ''));
-  if (!value || Number.isNaN(date.getTime())) return '-';
-  const year = String(date.getFullYear());
-  const hours = date.getHours() % 12 === 0 ? 12 : date.getHours() % 12;
-  return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${
-    yearDigits === 4 ? year : year.slice(-2)
-  } ${pad2(hours)}:${pad2(date.getMinutes())} ${date.getHours() < 12 ? 'AM' : 'PM'}`;
-};

@@ -6,6 +6,7 @@
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
+import { toNotificationTimestamp } from '../utils/notifications';
 
 export const NOTIFICATION_TYPES = [
   'appointment_new',
@@ -26,7 +27,7 @@ export interface AppNotification {
   /** The portal path it points at, e.g. "/appointments/3295" — '' when none. */
   link: string;
   isRead: boolean;
-  /** ISO timestamp, UTC. */
+  /** ISO timestamp with its offset — see `toNotificationTimestamp`. */
   createdAt: string;
 }
 
@@ -55,18 +56,6 @@ const toType = (value: any): NotificationType => {
     : 'general';
 };
 
-/**
- * The API stores `createdAt` in UTC. A value without an offset must still be
- * read as UTC, not as the phone's local time. Its seconds carry up to seven
- * decimals ("08.1707369Z"); they are cut to milliseconds, the precision
- * `Date` is specified to read.
- */
-const toUtcTimestamp = (value: any): string => {
-  const text = toText(value).replace(/(\.\d{3})\d+/, '$1');
-  if (!text) return '';
-  return /(?:z|[+-]\d{2}:?\d{2})$/i.test(text) ? text : `${text}Z`;
-};
-
 const toNotification = (raw: any): AppNotification => ({
   id: toNumber(raw?.notificationId),
   type: toType(raw?.type),
@@ -74,7 +63,7 @@ const toNotification = (raw: any): AppNotification => ({
   message: toText(raw?.message),
   link: toText(raw?.link),
   isRead: raw?.isRead === true,
-  createdAt: toUtcTimestamp(raw?.createdAt),
+  createdAt: toNotificationTimestamp(raw?.createdAt),
 });
 
 export const NotificationRepository = {

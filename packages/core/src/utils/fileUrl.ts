@@ -5,8 +5,9 @@ import { rootStore } from '../store';
 /** The one path whose files are ours — anything else is somebody's public url. */
 const FILE_PREFIX = `${API_URL}${ENDPOINTS.fileDownload}`;
 
-/** Prescription PDFs the server draws — they need the patient's login. */
+/** Prescription PDFs and test report PDFs the server draws — they need the patient's login. */
 const PRESCRIPTION_PDF_PREFIX = `${API_URL}${ENDPOINTS.portalPrescriptionPdf}`;
+const LAB_REPORT_PDF_PREFIX = `${API_URL}${ENDPOINTS.portalLabReportPdf}/`;
 
 /**
  * Where a stored blob is served — the same url the web portal builds. The
@@ -27,14 +28,17 @@ export const getFileUrl = (blobName?: string | null): string => {
  * The bearer header for one of our file urls, and nothing for any other host.
  *
  * Stored files do not ask for it today (it is sent so a download made through
- * `react-native-blob-util` keeps working if they ever do); a prescription PDF
- * does — it is the patient's own.
+ * `react-native-blob-util` keeps working if they ever do); a prescription or
+ * test report PDF does — it is the patient's own.
  */
 export const getFileHeaders = (
   url?: string | null,
 ): Record<string, string> | undefined => {
   const text = String(url ?? '');
-  if (!text.startsWith(FILE_PREFIX) && !text.startsWith(PRESCRIPTION_PDF_PREFIX)) {
+  const isOurs = [FILE_PREFIX, PRESCRIPTION_PDF_PREFIX, LAB_REPORT_PDF_PREFIX].some(prefix =>
+    text.startsWith(prefix),
+  );
+  if (!isOurs) {
     return undefined;
   }
 

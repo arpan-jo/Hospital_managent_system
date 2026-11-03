@@ -1,4 +1,28 @@
-import { notificationTarget } from './notifications';
+import { notificationTarget, toNotificationTimestamp } from './notifications';
+
+describe('toNotificationTimestamp', () => {
+  it('reads an offset-less stamp as Bangladesh time', () => {
+    // As devmgm sent it on 2026-11-03: 12:06 in Dhaka, which is 06:06 UTC.
+    const stamp = toNotificationTimestamp('2026-10-28T12:06:01.1263996');
+    expect(stamp).toBe('2026-10-28T12:06:01.126+06:00');
+    expect(new Date(stamp).toISOString()).toBe('2026-10-28T06:06:01.126Z');
+  });
+
+  it('keeps a stamp that already names its zone', () => {
+    expect(toNotificationTimestamp('2026-10-28T06:06:01.1263996Z')).toBe('2026-10-28T06:06:01.126Z');
+    expect(toNotificationTimestamp('2026-10-28T12:06:01+06:00')).toBe('2026-10-28T12:06:01+06:00');
+    expect(new Date(toNotificationTimestamp('2026-10-28T06:06:01Z')).toISOString()).toBe(
+      '2026-10-28T06:06:01.000Z',
+    );
+  });
+
+  it('leaves a bare date and an empty value alone', () => {
+    expect(toNotificationTimestamp('2026-10-28')).toBe('2026-10-28');
+    expect(toNotificationTimestamp('')).toBe('');
+    expect(toNotificationTimestamp(null)).toBe('');
+    expect(toNotificationTimestamp(undefined)).toBe('');
+  });
+});
 
 describe('notificationTarget', () => {
   it("opens an appointment's own page", () => {

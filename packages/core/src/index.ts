@@ -38,8 +38,6 @@ export * from './utils/googleSignIn';
 export * from './repositories/PatientFollowUpRepository';
 export * from './repositories/PatientReportRepository';
 export * from './repositories/MedicalRecordRepository';
-export * from './utils/reportHtml';
-export * from './utils/code128';
 export * from './repositories/PatientPrescriptionRepository';
 export * from './repositories/NotificationRepository';
 
