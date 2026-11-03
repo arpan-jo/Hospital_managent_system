@@ -871,7 +871,7 @@
   "appUpdate": {
     "title": "Update available",
     "message": "A new version of the app is on the Play Store. Update to get the latest features and fixes.",
-    "update": "Update",
+    "update": "Update now",
     "later": "Later"
   }
 }
