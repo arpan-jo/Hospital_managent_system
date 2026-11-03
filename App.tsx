@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { observer } from "mobx-react-lite";
 import { StoreProvider, useStores } from "@app/core";
 import AppNavigator from "./src/navigation/AppNavigator";
+import AppUpdateDialog from "./src/components/AppUpdateDialog";
 import { AppLightTheme, AppDarkTheme, CustomToast } from "@app/ui";
 
 const AppContent = observer(() => {
@@ -21,6 +22,7 @@ const AppContent = observer(() => {
       />
       <AppNavigator />
       <CustomToast />
+      <AppUpdateDialog />
     </PaperProvider>
   );
 });

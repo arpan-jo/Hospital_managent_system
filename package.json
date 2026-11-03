@@ -42,6 +42,7 @@
     "react-i18next": "^15.0.2",
     "react-native": "0.85.1",
     "react-native-blob-util": "^0.21.2",
+    "react-native-device-info": "10.3.0",
     "react-native-gesture-handler": "^3.0.1",
     "react-native-image-picker": "^8.2.1",
     "react-native-mmkv": "^4.3.1",
@@ -52,8 +53,10 @@
     "react-native-reanimated": "^4.4.1",
     "react-native-safe-area-context": "^5.8.0",
     "react-native-screens": "^4.25.2",
+    "react-native-siren": "^0.0.7",
     "react-native-vector-icons": "^10.3.0",
-    "react-native-worklets": "^0.9.2"
+    "react-native-worklets": "^0.9.2",
+    "sp-react-native-in-app-updates": "^2.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
