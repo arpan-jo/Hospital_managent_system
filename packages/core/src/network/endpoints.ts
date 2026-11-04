@@ -41,6 +41,8 @@ export const ENDPOINTS = {
   portalLabTests: '/hms/portal/medical-records/GetMyLabTests',
   /** `/{billRowId}/pdf` — one final test report as the printed sheet (outside the API's encryption). */
   portalLabReportPdf: '/hms/portal/medical-records/lab-reports',
+  /** One final radiology test's own images, as a link to the PACS viewer. */
+  portalRadiologyImages: '/hms/portal/medical-records/GetRadiologyImages',
   /** Today's Medicines, as the portal binds it (both 404 on dev as of 2026-10-14). */
   todayMedicines: '/hms/prescriptions/today',
   medicineSchedule: '/hms/medicine-schedule',

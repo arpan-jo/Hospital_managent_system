@@ -1,8 +1,9 @@
 /**
  * What the hospital issued to the patient, as the portal's Reports page reads
  * it from `/hms/portal/medical-records`: every lab and imaging test with the
- * stage it has reached (its report is the printed sheet, as a PDF, once final),
- * and visit prescriptions in full. Every list is the account's — the patient's
+ * stage it has reached (its report is the printed sheet, as a PDF, once final;
+ * a radiology test's images are a link to the PACS viewer), and visit
+ * prescriptions in full. Every list is the account's — the patient's
  * own and their family members' — newest first, unpaged; each row names its
  * patient so the screen can narrow by person.
  *
@@ -50,6 +51,19 @@ export interface LabTest extends RecordPatient {
   status: LabTestStatus;
   /** The report PDF can be opened. */
   isReportReady: boolean;
+}
+
+/**
+ * A radiology test's own images. They are not kept with the report: the PACS
+ * holds them, and its viewer is a web page of its own.
+ */
+export interface RadiologyImages {
+  /** The PACS holds images for the test. */
+  found: boolean;
+  /** The viewer page, with a short-lived token in it; '' when not found. */
+  viewerUrl: string;
+  /** Why not, when not found — the server's own words. */
+  message: string;
 }
 
 export interface PrescriptionDose {
@@ -122,6 +136,12 @@ const toLabTest = (raw: any): LabTest => {
     isReportReady: status === 'final' && raw?.isReportReady !== false,
   };
 };
+
+const toRadiologyImages = (raw: any): RadiologyImages => ({
+  found: Boolean(raw?.found),
+  viewerUrl: toText(raw?.viewerUrl),
+  message: toText(raw?.message),
+});
 
 /** One part of a saved report's name: letters, digits, '-' and '_' only. */
 const toFileNamePart = (value?: string | null): string =>
@@ -207,6 +227,15 @@ export const MedicalRecordRepository = {
       .join('_');
     return `Report_${name || toNumber(test?.billRowId)}.pdf`;
   },
+
+  /**
+   * `GET GetRadiologyImages?billRowId=` — the PACS viewer link for one final
+   * radiology test, under the same rule as its report: a bare 404 until it is
+   * final, or when the test is not the account's. `found: false` with a message
+   * when the PACS holds no images for it.
+   */
+  getRadiologyImages: (billRowId: number) =>
+    getOne(ENDPOINTS.portalRadiologyImages, { billRowId: toNumber(billRowId) }, toRadiologyImages),
 
   /** The list is the one My Prescriptions shows; this is one of them in full. */
   getPrescription: (prescriptionId: number) =>

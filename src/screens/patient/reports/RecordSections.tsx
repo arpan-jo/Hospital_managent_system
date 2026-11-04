@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import { Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,11 +9,12 @@ import {
   MedicalRecordRepository,
   PatientPrescriptionRepository,
   PortalPrescription,
+  serverMessageOf,
   useStores,
 } from '@app/core';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
 import { VISIT_LABEL_KEY, doctorTitle } from '../myPrescriptions/prescriptionUi';
-import RecordListSection, { BadgeTone, RecordBadge } from './RecordListSection';
+import RecordListSection, { BadgeTone, RecordAction, RecordBadge } from './RecordListSection';
 import { formatRecordDate } from './reportsUi';
 import { useRecordList } from './useRecordList';
 
@@ -55,10 +57,14 @@ const LAB_TEST_TEXT: Record<
   },
 };
 
+/** Only a web page is handed to the browser — never another app's link. */
+const isWebLink = (url?: string | null): boolean => /^https?:\/\//i.test(String(url ?? '').trim());
+
 /**
  * Every lab or imaging test billed to the account, at whatever stage it has
  * reached, as the portal lists them. A final one opens its report — the
- * printed sheet, as a PDF; any other says it is not ready yet.
+ * printed sheet, as a PDF; any other says it is not ready yet. A final
+ * radiology test also offers its images, as the portal does.
  */
 const LabTestsSection = ({ type, months, bottomPadding }: SectionProps & { type: LabTestType }) => {
   const { t } = useTranslation();
@@ -67,6 +73,9 @@ const LabTestsSection = ({ type, months, bottomPadding }: SectionProps & { type:
   const text = LAB_TEST_TEXT[type] ?? LAB_TEST_TEXT.pathology;
   const fetchTests = useCallback(() => MedicalRecordRepository.getLabTests(type), [type]);
   const viewModel = useRecordList(fetchTests, labTestSearch);
+  /** The test whose images are being looked up; the ref stops a second tap at once. */
+  const [imagesBusyId, setImagesBusyId] = useState<number | null>(null);
+  const imagesBusyRef = useRef(false);
 
   const badgesOf = useCallback(
     (item: LabTest): RecordBadge[] => [
@@ -103,6 +112,50 @@ const LabTestsSection = ({ type, months, bottomPadding }: SectionProps & { type:
     [navigation, toastStore, t, months],
   );
 
+  /**
+   * The images live in the PACS, whose viewer is a web page of its own: it
+   * opens in the phone's browser, as the portal opens it in a new tab. The link
+   * is asked for on each tap — its token only lasts a short while.
+   */
+  const openImages = useCallback(
+    async (item: LabTest) => {
+      const billRowId = item?.billRowId;
+      if (!billRowId || imagesBusyRef.current) return;
+      imagesBusyRef.current = true;
+      setImagesBusyId(billRowId);
+      try {
+        const images = await MedicalRecordRepository.getRadiologyImages(billRowId);
+        if (!images?.found) {
+          toastStore.show(images?.message || t('reports.noImages'), 'info');
+          return;
+        }
+        const viewerUrl = images?.viewerUrl?.trim() ?? '';
+        if (!isWebLink(viewerUrl)) throw new Error('Unexpected images link');
+        await Linking.openURL(viewerUrl);
+      } catch (error: any) {
+        console.log('radiology images error ==>', error?.message);
+        toastStore.show(serverMessageOf(error) || t('reports.imagesFailed'), 'error');
+      } finally {
+        imagesBusyRef.current = false;
+        setImagesBusyId(null);
+      }
+    },
+    [toastStore, t],
+  );
+
+  const actionOf = useCallback(
+    (item: LabTest): RecordAction | null =>
+      type === 'radiology' && item?.isReportReady
+        ? {
+            icon: 'image-multiple-outline',
+            label: t('reports.viewImages'),
+            isBusy: imagesBusyId !== null && imagesBusyId === item?.billRowId,
+            onPress: () => openImages(item),
+          }
+        : null,
+    [type, imagesBusyId, openImages, t],
+  );
+
   return (
     <RecordListSection<LabTest>
       kind={type}
@@ -117,6 +170,7 @@ const LabTestsSection = ({ type, months, bottomPadding }: SectionProps & { type:
       metaOf={item => [formatRecordDate(item?.billDate, months), item?.department, item?.billCode]}
       badgesOf={badgesOf}
       onOpen={openTest}
+      actionOf={actionOf}
     />
   );
 };

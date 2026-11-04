@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RecordPatient } from '@app/core';
@@ -17,6 +17,16 @@ export interface RecordBadge {
   tone: BadgeTone;
 }
 
+/** A second thing a card can do beside opening — a radiology test's images. */
+export interface RecordAction {
+  icon: string;
+  /** Read out by the screen reader; the button shows only its icon. */
+  label: string;
+  /** Shows a spinner in place of the icon; presses are ignored by the caller. */
+  isBusy?: boolean;
+  onPress: () => void;
+}
+
 interface RecordListSectionProps<T extends RecordPatient> {
   kind: RecordKind;
   viewModel: RecordListViewModel<T>;
@@ -31,6 +41,8 @@ interface RecordListSectionProps<T extends RecordPatient> {
   metaOf: (item: T) => (string | null | undefined)[];
   badgesOf: (item: T) => RecordBadge[];
   onOpen: (item: T) => void;
+  /** A button beside the chevron, for the records that have one; null for the rest. */
+  actionOf?: (item: T) => RecordAction | null;
 }
 
 /**
@@ -51,6 +63,7 @@ export function RecordListSection<T extends RecordPatient>({
   metaOf,
   badgesOf,
   onOpen,
+  actionOf,
 }: RecordListSectionProps<T>) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -82,6 +95,7 @@ export function RecordListSection<T extends RecordPatient>({
         .filter(Boolean)
         .join(' · ');
       const badges = badgesOf(item).filter(badge => badge.label);
+      const action = actionOf?.(item) ?? null;
       return (
         <Pressable
           onPress={() => onOpen(item)}
@@ -121,11 +135,32 @@ export function RecordListSection<T extends RecordPatient>({
               </View>
             ) : null}
           </View>
+          {action ? (
+            // Not `disabled` while busy: a disabled button lets the press
+            // through to the card, which would open the report instead.
+            <Pressable
+              onPress={() => action?.onPress?.()}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={action?.label ?? ''}
+              accessibilityState={{ busy: !!action?.isBusy }}
+              style={({ pressed }) => [
+                styles.action,
+                { backgroundColor: tone.tint, opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              {action?.isBusy ? (
+                <ActivityIndicator size={16} color={tone.color} />
+              ) : (
+                <Icon name={action?.icon || 'image-outline'} size={19} color={tone.color} />
+              )}
+            </Pressable>
+          ) : null}
           <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
         </Pressable>
       );
     },
-    [theme, tone, kind, badgeColors, metaOf, badgesOf, titleOf, onOpen],
+    [theme, tone, kind, badgeColors, metaOf, badgesOf, titleOf, onOpen, actionOf],
   );
 
   const hasFilter = !!viewModel.patientCode || viewModel.search.trim() !== '';
@@ -227,6 +262,14 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     marginHorizontal: 12,
+  },
+  action: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
   title: {
     fontFamily: fontFamilies.bold,
