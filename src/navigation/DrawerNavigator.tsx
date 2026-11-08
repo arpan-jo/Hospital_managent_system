@@ -13,6 +13,8 @@ import { useSignOut } from '../hooks/useSignOut';
 import MyPrescriptionsStackNavigator, {
   MyPrescriptionsStackParamList,
 } from './MyPrescriptionsStackNavigator';
+import BillsStackNavigator, { BillsStackParamList } from './BillsStackNavigator';
+import PatientVitalsIndex from '../screens/patient/vitals/PatientVitalsIndex';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
@@ -34,6 +36,8 @@ export type DrawerParamList = {
   Prescriptions:
     | NavigatorScreenParams<MyPrescriptionsStackParamList>
     | undefined;
+  Vitals: undefined;
+  Bills: NavigatorScreenParams<BillsStackParamList> | undefined;
 };
 
 type MenuItem = {
@@ -80,6 +84,16 @@ const MENU_ITEMS: MenuItem[] = [
     labelKey: 'drawer.reports',
     icon: 'file-chart-outline',
     tab: 'ReportsTab',
+  },
+  {
+    name: 'Vitals',
+    labelKey: 'drawer.vitals',
+    icon: 'heart-pulse',
+  },
+  {
+    name: 'Bills',
+    labelKey: 'drawer.bills',
+    icon: 'cash-multiple',
   },
   {
     name: 'MainTabs',
@@ -399,6 +413,8 @@ export const DrawerNavigator = () => {
         name="Prescriptions"
         component={MyPrescriptionsStackNavigator}
       />
+      <Drawer.Screen name="Vitals" component={PatientVitalsIndex} />
+      <Drawer.Screen name="Bills" component={BillsStackNavigator} />
     </Drawer.Navigator>
   );
 };

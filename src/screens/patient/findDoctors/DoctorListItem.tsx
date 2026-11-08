@@ -12,6 +12,7 @@ import {
 import { CustomAvatar, CustomButton, fontFamilies } from '@app/ui';
 import { withAlpha } from '../../../components/ai/aiPalette';
 import { DAY_ORDER, dayIndexOf, todayAbbr } from './weekdays';
+import RatingChip from './reviews/RatingChip';
 
 /** The green of "this doctor can be booked" — a status colour, the same in both themes. */
 export const AVAILABLE_COLOR = '#1B9C5D';
@@ -176,12 +177,17 @@ export const DoctorListItem = memo<DoctorListItemProps>(
             >
               {doctor?.specialty || t('findDoctors.specialtyNotListed')}
             </Text>
-            {experienceYears > 0 ? (
-              <View style={[styles.expPill, { backgroundColor: withAlpha(theme.colors.primary, 0.08) }]}>
-                <Icon name="briefcase-outline" size={11} color={theme.colors.primary} />
-                <Text style={[styles.expText, { color: theme.colors.primary }]}>
-                  {t('findDoctors.yearsExp', { count: experienceYears })}
-                </Text>
+            {experienceYears > 0 || doctor?.reviewCount ? (
+              <View style={styles.pillRow}>
+                {experienceYears > 0 ? (
+                  <View style={[styles.expPill, { backgroundColor: withAlpha(theme.colors.primary, 0.08) }]}>
+                    <Icon name="briefcase-outline" size={11} color={theme.colors.primary} />
+                    <Text style={[styles.expText, { color: theme.colors.primary }]}>
+                      {t('findDoctors.yearsExp', { count: experienceYears })}
+                    </Text>
+                  </View>
+                ) : null}
+                <RatingChip average={doctor?.averageRating} count={doctor?.reviewCount} />
               </View>
             ) : null}
           </View>
@@ -286,6 +292,13 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     marginTop: 2,
   },
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
   expPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -294,7 +307,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    marginTop: 6,
   },
   expText: {
     fontFamily: fontFamilies.semibold,

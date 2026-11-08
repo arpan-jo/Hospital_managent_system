@@ -69,6 +69,18 @@ export const useAppointmentDetailsViewModel = (appointmentId: number) => {
   const canCancel =
     (detail?.status === 'pending' || detail?.status === 'confirmed') && !detail?.hasConsultation;
 
+  /** Only a pending booking can move, as at the desk — a confirmed one is already in the queue. */
+  const canReschedule = detail?.status === 'pending' && !detail?.hasConsultation;
+
+  /** Shows the moved appointment as the server answered it; reads it again when the answer had none. */
+  const applyRescheduled = useCallback(
+    (updated: AppointmentDetail | null) => {
+      if (updated) setDetail(updated);
+      else load(true);
+    },
+    [load],
+  );
+
   /**
    * Cancels and shows the appointment as the server answered it — the patient
    * stays on it, as on the portal. Reads it again only when the answer had none.
@@ -101,6 +113,8 @@ export const useAppointmentDetailsViewModel = (appointmentId: number) => {
     canCancel,
     cancel,
     isCancelling,
+    canReschedule,
+    applyRescheduled,
   };
 };
 

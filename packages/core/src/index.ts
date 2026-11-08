@@ -42,6 +42,10 @@ export * from './utils/dicomPixels';
 export * from './repositories/PatientFollowUpRepository';
 export * from './repositories/PatientReportRepository';
 export * from './repositories/MedicalRecordRepository';
+export * from './repositories/BillsRepository';
+export * from './repositories/UploadedLabReportRepository';
+export * from './repositories/DoctorReviewRepository';
+export * from './repositories/VitalsRepository';
 export * from './repositories/PatientPrescriptionRepository';
 export * from './repositories/NotificationRepository';
 

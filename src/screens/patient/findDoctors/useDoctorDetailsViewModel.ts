@@ -196,6 +196,19 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
     load();
   }, [load]);
 
+  /**
+   * Reads the doctor again without touching the page — a new rating changes
+   * the stars on it. A failure keeps what is shown.
+   */
+  const refreshDoctor = useCallback(async () => {
+    try {
+      const row = await FindDoctorsRepository.getDoctorById(employeeId);
+      if (row) setDoctor(row);
+    } catch (error: any) {
+      console.log('getDoctorById (refresh) error ==>', error?.message);
+    }
+  }, [employeeId]);
+
   const patientRegistrationId = patient?.registrationId ?? 0;
 
   // ── Slots of the chosen date ────────────────────────────────────────────────
@@ -479,6 +492,7 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
     isNotFound,
     reload: load,
     reloadDetail,
+    refreshDoctor,
     displayName,
     officeName,
     activeTab,

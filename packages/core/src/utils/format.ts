@@ -12,6 +12,16 @@ export const groupThousands = (value: number): string => {
   return `${negative ? '-' : ''}${grouped}${fraction ? `.${fraction}` : ''}`;
 };
 
+/**
+ * Taka as the portal shows it: "৳1,200", "৳1,200.5" — at most two decimals,
+ * none forced, so a float's tail (0.1 + 0.2) never shows.
+ */
+export const formatTaka = (value?: number | null): string => {
+  const amount = Number(value);
+  const safe = Number.isFinite(amount) ? Math.round(amount * 100) / 100 : 0;
+  return `৳${groupThousands(safe)}`;
+};
+
 /** Fixed 2-decimal money string with thousands separators: 1000 -> "1,000.00". */
 export const formatMoney = (value: number): string => {
   const safe = Number.isFinite(value) ? value : 0;

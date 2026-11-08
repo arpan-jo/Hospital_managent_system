@@ -1,5 +1,9 @@
 import { useCallback, useEffect } from 'react';
+import { AppState } from 'react-native';
 import { INotificationStore, NotificationRepository, useStores } from '@app/core';
+
+/** How often the badge is re-read while the app is open — as often as the portal's bell. */
+export const UNREAD_POLL_MS = 30_000;
 
 /** Bumped on sign-out, so a read that left before it does not land on the next account's badge. */
 let session = 0;
@@ -38,7 +42,7 @@ export const endUnreadSession = (store: INotificationStore): void => {
 
 /**
  * Re-reads the unread count behind the bell's badge — called when the bell's
- * screen comes into view, not on a timer.
+ * screen comes into view; `useUnreadNotificationsSync` also calls it on a timer.
  */
 export const useRefreshUnreadNotifications = () => {
   const { notificationStore } = useStores();
@@ -46,8 +50,11 @@ export const useRefreshUnreadNotifications = () => {
 };
 
 /**
- * Reads the badge once on sign-in. Mount it once, under the signed-in
- * navigator — leaving it (signing out) clears the count.
+ * Reads the badge on sign-in, then keeps it fresh as the portal's bell does:
+ * every 30 s while the app is open, and at once on coming back to it — never in
+ * the background, where it would only spend the battery. Mount it once, under
+ * the signed-in navigator — leaving it (signing out) stops the timer and clears
+ * the count.
  */
 export const useUnreadNotificationsSync = () => {
   const { notificationStore } = useStores();
@@ -57,4 +64,33 @@ export const useUnreadNotificationsSync = () => {
     refresh();
     return () => endUnreadSession(notificationStore);
   }, [refresh, notificationStore]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(() => {
+        refresh();
+      }, UNREAD_POLL_MS);
+    };
+    const stop = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+    };
+
+    if (AppState?.currentState === 'active') start();
+    const subscription = AppState?.addEventListener?.('change', state => {
+      if (state === 'active') {
+        refresh();
+        start();
+      } else {
+        stop();
+      }
+    });
+
+    return () => {
+      stop();
+      subscription?.remove?.();
+    };
+  }, [refresh]);
 };

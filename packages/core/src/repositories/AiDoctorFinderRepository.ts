@@ -80,6 +80,9 @@ const toSuggestedDoctor = (raw: any): PortalDoctor => {
     accountId: 0,
     branchId: 0,
     officeId: 0,
+    // pepobot carries no ratings; the doctor's own page reads them.
+    reviewCount: 0,
+    averageRating: null,
   };
 };
 

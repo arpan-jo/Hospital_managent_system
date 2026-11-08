@@ -151,3 +151,20 @@ describe('MedicalRecordRepository.getRadiologyStudy', () => {
     expect(get).not.toHaveBeenCalled();
   });
 });
+
+describe('MedicalRecordRepository.getLabTests', () => {
+  beforeEach(() => request.mockReset());
+
+  it("keeps when the hospital expects a pending test's report", async () => {
+    request.mockResolvedValueOnce([
+      { billRowId: 1, status: 'collected', isReportReady: false, expectedDeliveryAt: '2026-11-09T17:00:00' },
+      { billRowId: 2, status: 'final', isReportReady: true, expectedDeliveryAt: null },
+      { billRowId: 3, status: 'pending' },
+    ]);
+
+    const tests = await MedicalRecordRepository.getLabTests('pathology');
+
+    expect(tests.map(test => test.expectedDeliveryAt)).toEqual(['2026-11-09T17:00:00', '', '']);
+    expect(tests.map(test => test.isReportReady)).toEqual([false, true, false]);
+  });
+});

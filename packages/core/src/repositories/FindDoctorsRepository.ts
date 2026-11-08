@@ -6,6 +6,7 @@
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
+import { toAverageRating } from './DoctorReviewRepository';
 
 /** One doctor as the portal lists them — `PortalDoctorDto` on the API. */
 export interface PortalDoctor {
@@ -28,6 +29,9 @@ export interface PortalDoctor {
   accountId: number;
   branchId: number;
   officeId: number;
+  /** Patients' ratings — 0 and null until someone rates, and on an older backend. */
+  reviewCount: number;
+  averageRating: number | null;
 }
 
 export interface PortalDoctorPage {
@@ -95,6 +99,8 @@ export const toPortalDoctor = (raw: any): PortalDoctor => ({
   accountId: toNumber(raw?.accountId),
   branchId: toNumber(raw?.branchId),
   officeId: toNumber(raw?.officeId),
+  reviewCount: toNumber(raw?.reviewCount),
+  averageRating: toAverageRating(raw?.averageRating),
 });
 
 /**

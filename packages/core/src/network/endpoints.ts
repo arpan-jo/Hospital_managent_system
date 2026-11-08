@@ -27,6 +27,8 @@ export const ENDPOINTS = {
   portalDoctorsSearch: '/hms/portal/doctors/SearchDoctors',
   portalDoctorById: '/hms/portal/doctors/GetDoctorById',
   portalDoctorFilterOptions: '/hms/portal/doctors/GetFilterOptions',
+  portalDoctorReviews: '/hms/portal/doctors/GetReviews',
+  portalDoctorAddReview: '/hms/portal/doctors/AddReview',
   // ── Find Doctors: booking with a doctor ────────────────────────────────────
   consultationDetail:
     '/hms/AppointmentConsultation/GetAppointmentConsultationDetail',
@@ -39,6 +41,9 @@ export const ENDPOINTS = {
   portalAppointmentDetail: '/hms/portal/appointments/GetAppointmentDetail',
   /** The patient cancels one of their own pending or confirmed appointments. */
   portalAppointmentCancel: '/hms/portal/appointments/CancelAppointment',
+  /** Today's appointments and where each doctor's queue stands — the Queue Monitor's rule. */
+  portalTodayQueue: '/hms/portal/appointments/GetTodayQueue',
+  portalRescheduleAppointment: '/hms/portal/appointments/RescheduleAppointment',
   /** The patient's prescriptions, and one drawn as a PDF (outside the API's encryption). */
   portalPrescriptions: '/hms/portal/medical-records/GetMyPrescriptions',
   portalPrescriptionPdf: '/hms/portal/medical-records/GetPrescriptionPdf',
@@ -48,12 +53,20 @@ export const ENDPOINTS = {
   portalLabTests: '/hms/portal/medical-records/GetMyLabTests',
   /** `/{billRowId}/pdf` — one final test report as the printed sheet (outside the API's encryption). */
   portalLabReportPdf: '/hms/portal/medical-records/lab-reports',
+  /** Every bill raised at the hospital for the account, with items and payments. */
+  portalBills: '/hms/portal/medical-records/GetMyBills',
+  /** Every vitals reading for the account's patients, newest first. */
+  portalVitals: '/hms/portal/medical-records/GetMyVitals',
   /** One final radiology test's own images, as a link to the PACS viewer. */
   portalRadiologyImages: '/hms/portal/medical-records/GetRadiologyImages',
   /** Today's Medicines, as the portal binds it (both 404 on dev as of 2026-10-14). */
   todayMedicines: '/hms/prescriptions/today',
   medicineSchedule: '/hms/medicine-schedule',
   patientDocuments: '/hms/patient/documents',
+  /** Lab reports the patient uploaded and confirmed after the AI read them. */
+  patientUploadedLabReports: '/hms/patient/documents/lab-reports',
+  /** Prescriptions the patient uploaded — DELETE `/{prescriptionId}` removes one. */
+  patientUploadedPrescriptions: '/hms/patient/documents/prescriptions',
   /** The patient's follow-ups. */
   portalFollowUps: '/hms/portal/followups/GetMyFollowUps',
   /**

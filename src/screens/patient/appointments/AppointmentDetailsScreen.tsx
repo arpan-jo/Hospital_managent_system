@@ -20,6 +20,9 @@ import ScreenHeader from '../../../components/ScreenHeader';
 import { AppointmentsStackParamList } from '../../../navigation/AppointmentsStackNavigator';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
+import { useKeyboardHeight } from '../../../hooks/useKeyboardHeight';
+import DoctorReviewsPanel from '../findDoctors/reviews/DoctorReviewsPanel';
+import RescheduleSheet from './RescheduleSheet';
 import { useAppointmentDetailsViewModel } from './useAppointmentDetailsViewModel';
 import {
   STATUS_LABEL_KEY,
@@ -203,6 +206,8 @@ export const AppointmentDetailsScreen = observer(() => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<AppointmentsStackParamList, 'AppointmentDetails'>>();
   const insets = useSafeAreaInsets();
+  // The rating's comment box sits low on the page: the page makes room above the keyboard.
+  const keyboardHeight = useKeyboardHeight();
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
   const appointmentId = Number(route?.params?.appointmentId ?? 0);
@@ -214,6 +219,7 @@ export const AppointmentDetailsScreen = observer(() => {
   // starts on its Overview, not on the tab the last one was left on.
   useEffect(() => setTab('overview'), [appointmentId]);
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  const [isRescheduling, setIsRescheduling] = useState(false);
   const months = useMemo(() => Array.from({ length: 12 }, (_, index) => t(`months.${index}`)), [t]);
 
   const goBack = useCallback(() => {
@@ -294,7 +300,11 @@ export const AppointmentDetailsScreen = observer(() => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: keyboardHeight ? keyboardHeight + 24 : insets.bottom + TAB_BAR_CLEARANCE },
+        ]}
       >
         {/* Doctor */}
         <Card>
@@ -421,8 +431,31 @@ export const AppointmentDetailsScreen = observer(() => {
           />
         )}
 
+        {/* Rate the doctor once the visit has happened, as on the portal. */}
+        {status === 'completed' && detail?.doctorEmployeeId ? (
+          <View style={styles.reviewBlock}>
+            <DoctorReviewsPanel
+              employeeId={detail.doctorEmployeeId}
+              appointmentId={detail?.id || appointmentId}
+              patientRegistrationId={detail?.patientRegistrationId}
+              compact
+            />
+          </View>
+        ) : null}
+
         {viewModel.canCancel ? (
           <View style={styles.cancelBlock}>
+            {viewModel.canReschedule ? (
+              <CustomButton
+                mode="outlined"
+                icon="calendar-clock"
+                onPress={() => setIsRescheduling(true)}
+                disabled={viewModel.isCancelling}
+                style={styles.rescheduleButton}
+              >
+                {t('reschedule.button')}
+              </CustomButton>
+            ) : null}
             <CustomButton
               mode="outlined"
               icon="close-circle-outline"
@@ -440,6 +473,13 @@ export const AppointmentDetailsScreen = observer(() => {
           </View>
         ) : null}
       </ScrollView>
+
+      <RescheduleSheet
+        visible={isRescheduling}
+        detail={detail}
+        onClose={() => setIsRescheduling(false)}
+        onRescheduled={viewModel.applyRescheduled}
+      />
 
       <CustomDialog
         visible={isConfirmingCancel}
@@ -777,9 +817,17 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 20,
   },
+  reviewBlock: {
+    marginTop: 4,
+    marginBottom: 12,
+  },
   cancelBlock: {
     marginTop: 4,
     alignItems: 'center',
+  },
+  rescheduleButton: {
+    alignSelf: 'stretch',
+    marginBottom: 10,
   },
   cancelButton: {
     alignSelf: 'stretch',

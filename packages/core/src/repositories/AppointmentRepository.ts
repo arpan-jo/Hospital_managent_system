@@ -40,6 +40,31 @@ export interface AppointmentSummary {
   fee: number;
 }
 
+/**
+ * One of the patient's appointments today and where the doctor's queue stands —
+ * `PortalQueueStatusDto`, by the hospital Queue Monitor's own rule.
+ */
+export interface TodayQueueEntry {
+  appointmentId: number;
+  /** Lower-case: pending, confirmed, completed, cancelled, no_show. */
+  status: string;
+  /** 'HH:mm', or as sent when it is not. */
+  time: string;
+  /** The patient's own token; null when none was issued. */
+  tokenNumber: number | null;
+  doctorEmployeeId: number;
+  doctorName: string;
+  roomNumber: string;
+  /** The token the doctor is seeing now; null while nobody has been called. */
+  nowServingToken: number | null;
+  /** Confirmed patients with a smaller token still waiting ahead. */
+  aheadCount: number;
+  /** This patient has been called in. */
+  isCalled: boolean;
+  patientName: string;
+  patientRegistrationId: number;
+}
+
 /** One appointment in full — `PortalAppointmentDetailDto`. */
 export interface AppointmentDetail extends AppointmentSummary {
   reason: string;
@@ -60,6 +85,19 @@ export interface AppointmentDetail extends AppointmentSummary {
   patientBloodType: string;
   locationName: string;
   locationAddress: string;
+  /** The doctor's hospital — the slot lookup a reschedule makes needs them. */
+  accountId: number;
+  branchId: number;
+}
+
+/** Where a pending appointment moves to — the portal's reschedule body. */
+export interface RescheduleInput {
+  appointmentId: number;
+  /** "YYYY-MM-DD". */
+  appointmentDate: string;
+  slotId: number;
+  /** "HH:mm" inside the window; '' leaves it to the server — the next free time. */
+  time?: string;
 }
 
 const NOT_FOUND = 404;
@@ -100,6 +138,36 @@ const toSummary = (raw: any): AppointmentSummary => ({
   fee: toNumber(raw?.paymentAmount),
 });
 
+/** A token is a positive whole number; anything else is "none". */
+const toToken = (value: any): number | null => {
+  const token = Number(value);
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(token) && token > 0
+    ? token
+    : null;
+};
+
+/** '09:30:00' → '09:30', so `to12Hour` reads it; anything else is kept as sent. */
+const toClockTime = (value: any): string => {
+  const text = toText(value);
+  const match = /^(\d{1,2}:\d{2})(:\d{2})?$/.exec(text);
+  return match ? match[1] : text;
+};
+
+const toQueueEntry = (raw: any): TodayQueueEntry => ({
+  appointmentId: toNumber(raw?.appointmentId),
+  status: toText(raw?.status)?.toLowerCase() ?? '',
+  time: toClockTime(raw?.time),
+  tokenNumber: toToken(raw?.tokenNumber),
+  doctorEmployeeId: toNumber(raw?.doctorEmployeeId),
+  doctorName: toText(raw?.doctorName),
+  roomNumber: toText(raw?.roomNumber),
+  nowServingToken: toToken(raw?.nowServingToken),
+  aheadCount: Math.max(0, toNumber(raw?.aheadCount)),
+  isCalled: Boolean(raw?.isCalled),
+  patientName: toText(raw?.patientName),
+  patientRegistrationId: toNumber(raw?.patientRegistrationId),
+});
+
 const toDetail = (raw: any): AppointmentDetail => ({
   ...toSummary(raw),
   reason: toText(raw?.reason),
@@ -119,6 +187,8 @@ const toDetail = (raw: any): AppointmentDetail => ({
   patientBloodType: toText(raw?.patientBloodType),
   locationName: toText(raw?.locationName),
   locationAddress: toText(raw?.locationAddress),
+  accountId: toNumber(raw?.accountId),
+  branchId: toNumber(raw?.branchId),
 });
 
 export const AppointmentRepository = {
@@ -171,6 +241,48 @@ export const AppointmentRepository = {
       params: { appointmentId: toNumber(appointmentId) },
     };
     const response = await apiRequest<any>(api_params);
+    return toNumber(response?.appointmentId) ? toDetail(response) : null;
+  },
+
+  /**
+   * `GET /hms/portal/appointments/GetTodayQueue` — each of the account's
+   * appointments today: its token, the token being seen now, how many are ahead.
+   * Every stage comes back; the screen picks the ones still waiting.
+   */
+  getTodayQueue: async (): Promise<TodayQueueEntry[]> => {
+    const api_params: ApiRequestOptions = {
+      url: ENDPOINTS.portalTodayQueue,
+      method: 'GET',
+      baseUrl: API_URL,
+    };
+    const response = await apiRequest<any>(api_params);
+
+    return Array.isArray(response)
+      ? response.map(toQueueEntry).filter(entry => entry.appointmentId > 0)
+      : [];
+  },
+
+  /**
+   * `PATCH /hms/portal/appointments/RescheduleAppointment` — moves one of the
+   * patient's own pending appointments, as the portal does. 404 when it is not
+   * theirs; 400 and 409 carry the desk's words (closed day, slot full, not
+   * pending). Answers with the appointment as it now stands.
+   */
+  rescheduleAppointment: async (input: RescheduleInput): Promise<AppointmentDetail | null> => {
+    const time = toText(input?.time);
+    const api_params: ApiRequestOptions = {
+      url: ENDPOINTS.portalRescheduleAppointment,
+      method: 'PATCH',
+      baseUrl: API_URL,
+      data: {
+        appointmentId: toNumber(input?.appointmentId),
+        appointmentDate: toText(input?.appointmentDate),
+        slotId: toNumber(input?.slotId) || null,
+        time: time || null,
+      },
+    };
+    const response = await apiRequest<any>(api_params);
+
     return toNumber(response?.appointmentId) ? toDetail(response) : null;
   },
 };

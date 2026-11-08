@@ -82,6 +82,8 @@ export const useRecordList = <T extends RecordPatient>(
 
   return {
     items: visible,
+    /** Every record read, before the family chip or the search narrows them — for totals. */
+    allItems: items,
     hasRecords: (items?.length ?? 0) > 0,
     /** A family chip row is offered only when the records span two people or more. */
     patients,

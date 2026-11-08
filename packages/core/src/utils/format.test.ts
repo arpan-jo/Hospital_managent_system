@@ -1,6 +1,7 @@
 import {
   groupThousands,
   formatMoney,
+  formatTaka,
   formatShortDate,
   formatDayMonthYear,
   stripHonorific,
@@ -9,6 +10,21 @@ import {
   dayPeriod,
   greetingName,
 } from './format';
+
+describe('formatTaka', () => {
+  it('shows taka as the portal does — grouped, up to two decimals', () => {
+    expect(formatTaka(1350)).toBe('৳1,350');
+    expect(formatTaka(1234.5)).toBe('৳1,234.5');
+    expect(formatTaka(99.999)).toBe('৳100');
+    expect(formatTaka(0)).toBe('৳0');
+  });
+
+  it('survives junk input', () => {
+    expect(formatTaka(null)).toBe('৳0');
+    expect(formatTaka(undefined)).toBe('৳0');
+    expect(formatTaka(NaN)).toBe('৳0');
+  });
+});
 
 describe('groupThousands', () => {
   it('groups digits in threes', () => {

@@ -53,6 +53,12 @@ export interface LabTest extends RecordPatient {
   status: LabTestStatus;
   /** The report PDF can be opened. */
   isReportReady: boolean;
+  /**
+   * When the hospital expects to hand the report over — from the item's normal
+   * or urgent delivery schedule, Bangladesh wall-clock with no zone. '' when the
+   * test has no schedule, or the backend is older than the field.
+   */
+  expectedDeliveryAt: string;
 }
 
 /**
@@ -154,7 +160,8 @@ const toText = (value: any): string => String(value ?? '').trim();
 const toNumber = (value: any): number => Number(value ?? 0) || 0;
 const toArray = (value: any): any[] => (Array.isArray(value) ? value : []);
 
-const toPatient = (raw: any): RecordPatient => ({
+/** Who a record belongs to — every portal list row carries the same three fields. */
+export const toRecordPatient = (raw: any): RecordPatient => ({
   patientRegistrationId: toNumber(raw?.patientRegistrationId),
   patientName: toText(raw?.patientName),
   patientCode: toText(raw?.patientCode),
@@ -169,7 +176,7 @@ const toLabTestStatus = (raw: any): LabTestStatus => {
 const toLabTest = (raw: any): LabTest => {
   const status = toLabTestStatus(raw?.status);
   return {
-    ...toPatient(raw),
+    ...toRecordPatient(raw),
     billRowId: toNumber(raw?.billRowId),
     billCode: toText(raw?.billCode),
     billDate: toText(raw?.billDate).slice(0, 10),
@@ -178,6 +185,7 @@ const toLabTest = (raw: any): LabTest => {
     status,
     // Both must agree: the PDF route answers 404 until the stage is final.
     isReportReady: status === 'final' && raw?.isReportReady !== false,
+    expectedDeliveryAt: toText(raw?.expectedDeliveryAt),
   };
 };
 

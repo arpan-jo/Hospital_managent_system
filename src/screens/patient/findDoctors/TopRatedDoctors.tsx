@@ -8,6 +8,7 @@ import { CustomAvatar, fontFamilies } from '@app/ui';
 import { withAlpha } from '../../../components/ai/aiPalette';
 import { AVAILABLE_COLOR } from './DoctorListItem';
 import { todayAbbr } from './weekdays';
+import RatingChip from './reviews/RatingChip';
 
 interface TopRatedDoctorsProps {
   doctors: PortalDoctor[];
@@ -94,18 +95,25 @@ export const TopRatedDoctors = memo<TopRatedDoctorsProps>(function TopRatedDocto
               >
                 {doctor?.specialty || t('findDoctors.specialtyNotListed')}
               </Text>
-              <View style={[styles.statusPill, { backgroundColor: withAlpha(statusColor, 0.12) }]}>
-                {sitsToday ? (
-                  <View style={[styles.statusDot, { backgroundColor: AVAILABLE_COLOR }]} />
-                ) : null}
-                <Text numberOfLines={1} style={[styles.status, { color: statusColor }]}>
-                  {sitsToday
-                    ? t('findDoctors.availableToday')
-                    : experienceYears > 0
-                    ? t('findDoctors.yearsExperience', { count: experienceYears })
-                    : doctor?.departmentName || t('findDoctors.viewProfile')}
-                </Text>
-              </View>
+              {/* As on the portal: today's availability first, then the stars, then the years. */}
+              {!sitsToday && doctor?.reviewCount && doctor?.averageRating !== null ? (
+                <View style={styles.ratingSlot}>
+                  <RatingChip average={doctor?.averageRating} count={doctor?.reviewCount} />
+                </View>
+              ) : (
+                <View style={[styles.statusPill, { backgroundColor: withAlpha(statusColor, 0.12) }]}>
+                  {sitsToday ? (
+                    <View style={[styles.statusDot, { backgroundColor: AVAILABLE_COLOR }]} />
+                  ) : null}
+                  <Text numberOfLines={1} style={[styles.status, { color: statusColor }]}>
+                    {sitsToday
+                      ? t('findDoctors.availableToday')
+                      : experienceYears > 0
+                      ? t('findDoctors.yearsExperience', { count: experienceYears })
+                      : doctor?.departmentName || t('findDoctors.viewProfile')}
+                  </Text>
+                </View>
+              )}
             </Pressable>
           );
         })}
@@ -164,6 +172,9 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     marginTop: 2,
     maxWidth: '100%',
+  },
+  ratingSlot: {
+    marginTop: 10,
   },
   statusPill: {
     flexDirection: 'row',

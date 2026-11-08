@@ -21,6 +21,8 @@ import {
   useAppointmentsViewModel,
 } from './useAppointmentsViewModel';
 import AppointmentCard from './AppointmentCard';
+import TodayQueueCard from './TodayQueueCard';
+import { useTodayQueue } from './useTodayQueue';
 
 const TAB_LABEL_KEY: Record<AppointmentTab, string> = {
   upcoming: 'appointments.tabUpcoming',
@@ -48,7 +50,16 @@ export const PatientAppointmentIndex = observer(() => {
   const navigation = useNavigation<NativeStackNavigationProp<AppointmentsStackParamList>>();
   const insets = useSafeAreaInsets();
   const viewModel = useAppointmentsViewModel();
+  const queue = useTodayQueue();
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
+
+  // A pull reads the queue too, so its numbers are as fresh as the list.
+  const { refresh: refreshAppointments } = viewModel;
+  const { refresh: refreshQueue } = queue;
+  const handleRefresh = useCallback(() => {
+    refreshAppointments?.();
+    refreshQueue?.();
+  }, [refreshAppointments, refreshQueue]);
 
   const months = useMemo(() => Array.from({ length: 12 }, (_, index) => t(`months.${index}`)), [t]);
 
@@ -161,12 +172,14 @@ export const PatientAppointmentIndex = observer(() => {
         refreshControl={
           <RefreshControl
             refreshing={viewModel.isRefreshing}
-            onRefresh={viewModel.refresh}
+            onRefresh={handleRefresh}
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
           />
         }
       >
+        {/* Today's tokens, above every tab — as the portal shows them over its list. */}
+        <TodayQueueCard entries={queue.entries} />
         {viewModel.isLoading ? (
           <View style={styles.state}>
             <ActivityIndicator size="small" color={theme.colors.primary} />

@@ -102,6 +102,16 @@ export const RECORD_TONE = {
     light: { color: '#1B8A4B', tint: '#E6F6EC' },
     dark: { color: '#6FD3A0', tint: '#173126' },
   },
+  bills: {
+    icon: 'cash-multiple',
+    light: { color: '#0F7B6C', tint: '#E3F5F2' },
+    dark: { color: '#5FD3C2', tint: '#16302C' },
+  },
+  vitals: {
+    icon: 'heart-pulse',
+    light: { color: '#D6336C', tint: '#FDEBF2' },
+    dark: { color: '#F59BBE', tint: '#3A1C28' },
+  },
 } as const;
 
 export type RecordKind = keyof typeof RECORD_TONE;

@@ -1,4 +1,5 @@
-import { toPortalPrescription } from './PatientPrescriptionRepository';
+import apiRequest from '../network/apiRequest';
+import { PatientPrescriptionRepository, toPortalPrescription } from './PatientPrescriptionRepository';
 
 jest.mock('../network/apiRequest', () => ({ __esModule: true, default: jest.fn() }));
 
@@ -39,5 +40,26 @@ describe('toPortalPrescription', () => {
     expect(toPortalPrescription({ prescriptionId: 1 }).isUploaded).toBe(false);
     expect(toPortalPrescription(null).isUploaded).toBe(false);
     expect(toPortalPrescription({ source: 'patientupload' }).isUploaded).toBe(true);
+  });
+});
+
+describe('PatientPrescriptionRepository.removeUploadedPrescription', () => {
+  const request = apiRequest as jest.MockedFunction<typeof apiRequest>;
+  beforeEach(() => request.mockReset());
+
+  it('deletes the upload by its prescription id', async () => {
+    request.mockResolvedValueOnce(undefined);
+
+    await PatientPrescriptionRepository.removeUploadedPrescription(812);
+
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/hms/patient/documents/prescriptions/812', method: 'DELETE' }),
+    );
+  });
+
+  it('passes a failure on to the caller', async () => {
+    request.mockRejectedValueOnce(new Error('Request failed with status code 404'));
+
+    await expect(PatientPrescriptionRepository.removeUploadedPrescription(9)).rejects.toThrow('404');
   });
 });

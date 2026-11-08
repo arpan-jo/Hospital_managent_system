@@ -33,6 +33,8 @@ import DoctorAboutPanel from './DoctorAboutPanel';
 import { taka } from './DoctorListItem';
 import DoctorSchedulePanel from './DoctorSchedulePanel';
 import { DoctorTab, useDoctorDetailsViewModel } from './useDoctorDetailsViewModel';
+import DoctorReviewsPanel from './reviews/DoctorReviewsPanel';
+import RatingChip from './reviews/RatingChip';
 
 const TABS: { key: DoctorTab; labelKey: string }[] = [
   { key: 'schedule', labelKey: 'doctorProfile.tabSchedule' },
@@ -208,6 +210,16 @@ export const DoctorDetails = observer(() => {
                   {detail?.doctorSpecialty || doctor?.specialty}
                 </Text>
               ) : null}
+              {doctor?.reviewCount ? (
+                <Pressable
+                  onPress={() => viewModel.setActiveTab('reviews')}
+                  accessibilityRole="button"
+                  hitSlop={6}
+                  style={styles.rating}
+                >
+                  <RatingChip average={doctor?.averageRating} count={doctor?.reviewCount} />
+                </Pressable>
+              ) : null}
               {detail?.experience ? (
                 <View style={styles.inline}>
                   <Icon name="star" size={13} color="#F5A524" />
@@ -291,15 +303,7 @@ export const DoctorDetails = observer(() => {
         ) : null}
 
         {activeTab === 'reviews' ? (
-          <View style={styles.reviews}>
-            <Icon name="star-outline" size={36} color={muted} />
-            <Text style={[styles.reviewsTitle, { color: theme.colors.onSurface }]}>
-              {t('doctorProfile.reviewsSoonTitle')}
-            </Text>
-            <Text style={[styles.caption, styles.centeredText, { color: muted }]}>
-              {t('doctorProfile.reviewsSoonBody')}
-            </Text>
-          </View>
+          <DoctorReviewsPanel employeeId={employeeId} onReviewed={viewModel.refreshDoctor} />
         ) : null}
       </ScrollView>
 
@@ -490,14 +494,9 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
   },
-  reviews: {
-    alignItems: 'center',
-    paddingVertical: 36,
-    gap: 6,
-  },
-  reviewsTitle: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 15,
+  rating: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
   },
   footer: {
     borderTopWidth: 1,

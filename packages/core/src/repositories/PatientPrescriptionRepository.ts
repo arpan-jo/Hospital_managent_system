@@ -165,6 +165,20 @@ export const PatientPrescriptionRepository = {
   },
 
   /**
+   * `DELETE /hms/patient/documents/prescriptions/{id}` — removes one of the
+   * patient's own uploaded prescriptions; a doctor's never can be. The file
+   * stays in My Uploads. 204 when removed, 404 when it is not theirs.
+   */
+  removeUploadedPrescription: async (prescriptionId: number): Promise<void> => {
+    const api_params: ApiRequestOptions = {
+      url: `${ENDPOINTS.patientUploadedPrescriptions}/${Number(prescriptionId ?? 0) || 0}`,
+      method: 'DELETE',
+      baseUrl: API_URL,
+    };
+    await apiRequest<any>(api_params);
+  },
+
+  /**
    * Where one prescription's PDF is served. The route is outside the API's
    * encryption, so the id goes in plain; it needs the patient's login, which
    * `getFileHeaders` adds.
