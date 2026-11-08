@@ -7,6 +7,7 @@ import {
   serverMessageOf,
   useStores,
 } from '@app/core';
+import { emitDoctorRated } from './doctorRatedEvents';
 
 /**
  * One doctor's reviews and the way to rate them, as the portal runs it. From
@@ -91,6 +92,8 @@ export const useDoctorReviews = (
         });
         // The backend answers with the saved review and no words of its own.
         toastStore.show(t('reviews.thanks'), 'success');
+        // The doctor lists show the stars too: they read again, as the portal's does.
+        emitDoctorRated(doctorId);
         await load(true);
         return true;
       } catch (e: any) {

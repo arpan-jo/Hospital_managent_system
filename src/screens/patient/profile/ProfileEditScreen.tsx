@@ -83,7 +83,8 @@ export const ProfileEditScreen = observer(() => {
 
   const { control, handleSubmit, reset, watch, setValue } = useForm<ProfileFormValues>({
     defaultValues: toFormValues(toPatientProfileForm(null)),
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
 
   const profile = viewModel.profile;

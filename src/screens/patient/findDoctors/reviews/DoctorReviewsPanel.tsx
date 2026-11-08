@@ -89,6 +89,8 @@ export const DoctorReviewsPanel = memo<DoctorReviewsPanelProps>(function DoctorR
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [editing, setEditing] = useState(false);
+  /** A compact panel opens to every review on request — the portal lists them all. */
+  const [showAll, setShowAll] = useState(false);
   const muted = theme.colors.onSurfaceVariant;
 
   const reviews = useMemo(() => summary?.reviews ?? [], [summary]);
@@ -141,7 +143,7 @@ export const DoctorReviewsPanel = memo<DoctorReviewsPanelProps>(function DoctorR
   }
 
   const showForm = viewModel.canReview && (editing || !mine);
-  const shown = compact ? reviews.slice(0, COMPACT_LIMIT) : reviews;
+  const shown = compact && !showAll ? reviews.slice(0, COMPACT_LIMIT) : reviews;
   const maxSpread = Math.max(...spread.slice(1), 1);
   // Null until someone has rated — and never a value that is not a number.
   const average =
@@ -258,9 +260,17 @@ export const DoctorReviewsPanel = memo<DoctorReviewsPanelProps>(function DoctorR
           </View>
         )}
         {compact && reviews.length > shown.length ? (
-          <Text style={[styles.more, { color: muted }]}>
-            {t('reviews.more', { count: reviews.length - shown.length })}
-          </Text>
+          <Pressable
+            onPress={() => setShowAll(true)}
+            accessibilityRole="button"
+            hitSlop={6}
+            style={({ pressed }) => [styles.moreButton, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.moreText, { color: theme.colors.primary }]}>
+              {t('reviews.showAll', { count: reviews.length })}
+            </Text>
+            <Icon name="chevron-down" size={16} color={theme.colors.primary} />
+          </Pressable>
         ) : null}
       </View>
     </View>
@@ -436,11 +446,16 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.semibold,
     fontSize: 14,
   },
-  more: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 6,
+  moreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingTop: 10,
+  },
+  moreText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
   },
 });
 

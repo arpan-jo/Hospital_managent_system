@@ -38,7 +38,8 @@ export const AddAllergySheet = memo<AddAllergySheetProps>(function AddAllergyShe
 
   const { control, handleSubmit, reset } = useForm<AllergyForm>({
     defaultValues: EMPTY_FORM,
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
 
   const [isSaving, setIsSaving] = useState(false);

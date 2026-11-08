@@ -54,7 +54,8 @@ export const useSignupViewModel = () => {
 
   const { control, trigger, getValues, clearErrors } = useForm<SignupForm>({
     defaultValues: { email: '', phone: '' },
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
 
   const rules = useMemo(

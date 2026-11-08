@@ -38,7 +38,8 @@ export const AlarmSheet = memo<AlarmSheetProps>(function AlarmSheet({
 
   const { control, handleSubmit, reset } = useForm<AlarmForm>({
     defaultValues: { message: '' },
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
   const [time, setTime] = useState<Date>(defaultAlarmTime);
 

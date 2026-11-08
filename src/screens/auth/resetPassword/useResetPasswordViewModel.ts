@@ -35,7 +35,8 @@ export const useResetPasswordViewModel = (phone: string) => {
 
   const { control, handleSubmit, getValues } = useForm<ResetPasswordForm>({
     defaultValues: { password: '', confirmPassword: '' },
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
 
   const setDigit = useCallback((index: number, value: string) => {

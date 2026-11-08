@@ -40,7 +40,8 @@ export const useLoginViewModel = () => {
       identifier: '',
       password: '',
     },
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
 
   const [isLoading, setIsLoading] = useState(false);

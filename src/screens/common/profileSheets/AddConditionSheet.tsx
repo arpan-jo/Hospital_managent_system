@@ -50,7 +50,8 @@ export const AddConditionSheet = memo<AddConditionSheetProps>(function AddCondit
 
   const { control, handleSubmit, reset } = useForm<ConditionForm>({
     defaultValues: EMPTY_FORM,
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
 
   // Clear the form each time the sheet opens so a previous draft never leaks in.

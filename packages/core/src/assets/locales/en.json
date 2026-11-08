@@ -997,14 +997,14 @@
     "you": "You",
     "patient": "Patient",
     "loadFailed": "Reviews couldn't be loaded.",
-    "more": "+{{count}} more on the doctor’s page",
     "starLabel": "{{count}} star",
     "starLabel_plural": "{{count}} stars",
     "word1": "Poor",
     "word2": "Fair",
     "word3": "Good",
     "word4": "Very good",
-    "word5": "Excellent"
+    "word5": "Excellent",
+    "showAll": "See all {{count}} reviews"
   },
   "reschedule": {
     "button": "Reschedule",

@@ -997,14 +997,14 @@
     "you": "আপনি",
     "patient": "রোগী",
     "loadFailed": "রিভিউ লোড করা যায়নি।",
-    "more": "ডাক্তারের পেজে আরও {{count}}টি",
     "starLabel": "{{count}} স্টার",
     "starLabel_plural": "{{count}} স্টার",
     "word1": "খারাপ",
     "word2": "মোটামুটি",
     "word3": "ভালো",
     "word4": "খুব ভালো",
-    "word5": "চমৎকার"
+    "word5": "চমৎকার",
+    "showAll": "সব {{count}}টি রিভিউ দেখুন"
   },
   "reschedule": {
     "button": "সময় পরিবর্তন",

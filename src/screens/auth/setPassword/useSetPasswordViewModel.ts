@@ -40,7 +40,8 @@ export const useSetPasswordViewModel = (params: SetPasswordParams) => {
   const signIn = useSignIn();
   const { control, handleSubmit, getValues } = useForm<SetPasswordForm>({
     defaultValues: { password: '', confirmPassword: '' },
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
 
   const [isLoading, setIsLoading] = useState(false);

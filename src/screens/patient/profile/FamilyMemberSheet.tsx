@@ -86,7 +86,8 @@ export const FamilyMemberSheet = memo<FamilyMemberSheetProps>(function FamilyMem
 
   const { control, handleSubmit, reset, watch } = useForm<FamilyFormValues>({
     defaultValues: EMPTY_FORM,
-    mode: 'onBlur',
+    // First checked on leaving a field, then on every change — a fixed value clears its error at once.
+    mode: 'onTouched',
   });
 
   // Each opening starts from the profile being edited, or from blank.

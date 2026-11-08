@@ -7,6 +7,7 @@ import {
   serverMessageOf,
 } from '@app/core';
 import { todayAbbr } from './weekdays';
+import { onDoctorRated } from './reviews/doctorRatedEvents';
 
 export interface RequestState<T> {
   isLoading: boolean;
@@ -210,6 +211,17 @@ export const useFindDoctorsViewModel = () => {
     fetchFilterOptions();
     fetchTopRated();
   }, [fetchFilterOptions, fetchTopRated]);
+
+  // A rating was saved somewhere in the app: the list and the strip read again,
+  // so their stars are current — the portal reloads its doctor list the same way.
+  useEffect(
+    () =>
+      onDoctorRated(() => {
+        fetchFirstPage();
+        fetchTopRated();
+      }),
+    [fetchFirstPage, fetchTopRated],
+  );
 
   /** Read off what is typed, not the debounced text: the strip steps aside at the first key. */
   const hasActiveFilters = Boolean(

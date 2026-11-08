@@ -41,11 +41,12 @@ export const prescriptionKindKey = (rx?: PrescriptionLike): string =>
     : VISIT_LABEL_KEY[rx?.visitType ?? 'opd'] ?? VISIT_LABEL_KEY.opd;
 
 /**
- * When it was written. An upload carries the date on its sheet; its
- * `prescribedAt` is only when it was saved here.
+ * The date a prescription goes by — `prescribedAt`, as the portal shows it
+ * everywhere, an upload included (there it is when it was saved). The same date
+ * the From/To filter tests and the server sorts by, so what a card shows and
+ * where it falls never disagree.
  */
-export const prescribedOn = (rx?: PrescriptionLike): string =>
-  (rx?.isUploaded && rx?.sourceDate) || rx?.prescribedAt || '';
+export const prescribedOn = (rx?: PrescriptionLike): string => rx?.prescribedAt || '';
 
 /**
  * Its name in a list: the doctor, else its code, else — for an upload, which has
