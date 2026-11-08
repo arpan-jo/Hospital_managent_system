@@ -1033,7 +1033,6 @@
     "bookAppointment": "Book Appointment",
     "bookHint": "Find a doctor and pick a time",
     "doctor": "Doctor",
-    "token": "Token {{token}}",
     "overview": "Overview",
     "reportsPending": "Reports pending",
     "reportsReady": "Reports ready",
@@ -1047,7 +1046,11 @@
     "todayMedicines": "Today's medicines",
     "loadFailed": "Couldn't load your dashboard. Check your connection.",
     "orderLabTest": "Order lab test",
-    "orderLabTestHint": "Sample collected at your home"
+    "orderLabTestHint": "Sample collected at your home",
+    "noUpcomingHint": "Find a doctor and book a visit.",
+    "date": "Date",
+    "time": "Time",
+    "tokenLabel": "Token"
   },
   "messages": {
     "title": "Messages",

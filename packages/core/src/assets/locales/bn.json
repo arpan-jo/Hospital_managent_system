@@ -1033,7 +1033,6 @@
     "bookAppointment": "অ্যাপয়েন্টমেন্ট বুক করুন",
     "bookHint": "ডাক্তার খুঁজে সময় বেছে নিন",
     "doctor": "ডাক্তার",
-    "token": "টোকেন {{token}}",
     "overview": "এক নজরে",
     "reportsPending": "রিপোর্ট বাকি",
     "reportsReady": "রিপোর্ট প্রস্তুত",
@@ -1047,7 +1046,11 @@
     "todayMedicines": "আজকের ওষুধ",
     "loadFailed": "ড্যাশবোর্ড লোড করা যায়নি। ইন্টারনেট সংযোগ দেখুন।",
     "orderLabTest": "টেস্ট অর্ডার (হোম কালেকশন)",
-    "orderLabTestHint": "বাসা থেকে স্যাম্পল নেওয়া হবে"
+    "orderLabTestHint": "বাসা থেকে স্যাম্পল নেওয়া হবে",
+    "noUpcomingHint": "ডাক্তার খুঁজে একটি ভিজিট বুক করুন।",
+    "date": "তারিখ",
+    "time": "সময়",
+    "tokenLabel": "টোকেন"
   },
   "messages": {
     "title": "মেসেজ",
