@@ -39,6 +39,11 @@ describe('notificationTarget', () => {
     });
   });
 
+  it("opens Home Collection for an order's news", () => {
+    // PortalLabOrderController links every status change this way.
+    expect(notificationTarget('/lab-orders')).toEqual({ screen: 'homeCollection' });
+  });
+
   it('opens the conversations when the reply names no thread', () => {
     expect(notificationTarget('/messages')).toEqual({ screen: 'messages' });
     expect(notificationTarget('/messages?doctor=7')).toEqual({ screen: 'messages' });

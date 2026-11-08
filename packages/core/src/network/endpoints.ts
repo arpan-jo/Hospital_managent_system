@@ -52,6 +52,14 @@ export const ENDPOINTS = {
   /** One thread in full — reading it marks the doctor's messages as read. */
   portalMessageThread: '/hms/portal/messages/GetThread',
   portalMessageSend: '/hms/portal/messages/Send',
+  // ── Home Collection: lab tests ordered from the portal ─────────────────────
+  /** The home-collection charge an order for this registration will carry. */
+  portalLabOrderInfo: '/hms/portal/lab-orders/GetInfo',
+  /** The hospital's tests the registration can order — 50 at most, by name. */
+  portalLabTestItems: '/hms/portal/lab-orders/GetTestItems',
+  portalLabOrderCreate: '/hms/portal/lab-orders/Create',
+  portalLabOrders: '/hms/portal/lab-orders/GetMyOrders',
+  portalLabOrderCancel: '/hms/portal/lab-orders/Cancel',
   /** The patient's prescriptions, and one drawn as a PDF (outside the API's encryption). */
   portalPrescriptions: '/hms/portal/medical-records/GetMyPrescriptions',
   portalPrescriptionPdf: '/hms/portal/medical-records/GetPrescriptionPdf',

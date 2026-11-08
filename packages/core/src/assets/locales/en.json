@@ -828,7 +828,8 @@
     "vitals": "Vitals",
     "bills": "Bills",
     "dashboard": "Dashboard",
-    "messages": "Messages"
+    "messages": "Messages",
+    "homeCollection": "Home Collection"
   },
   "settings": {
     "title": "Settings",
@@ -957,7 +958,9 @@
     "vitals": "Vitals",
     "reports": "Reports",
     "todayMedicines": "Today's medicines",
-    "loadFailed": "Couldn't load your dashboard. Check your connection."
+    "loadFailed": "Couldn't load your dashboard. Check your connection.",
+    "orderLabTest": "Order lab test",
+    "orderLabTestHint": "Sample collected at your home"
   },
   "messages": {
     "title": "Messages",
@@ -984,6 +987,97 @@
     "threadEmptyHint": "Write your question below. The doctor's reply will appear here.",
     "typeMessage": "Type your message…",
     "send": "Send"
+  },
+  "homeCollection": {
+    "title": "Home Collection",
+    "subtitle": "Order lab tests — the sample is collected at home",
+    "heroTitle": "Tests at your home",
+    "heroHint": "Order lab tests online — we collect the sample at your home",
+    "book": "Book home collection",
+    "how": {
+      "pickTitle": "Pick your tests",
+      "pickHint": "Search the hospital's test list and add what you need.",
+      "whereTitle": "Tell us where & when",
+      "whereHint": "Your address, a day and a time slot that suits you.",
+      "comeTitle": "We come to you",
+      "comeHint": "A collector visits, and the report appears under Reports."
+    },
+    "loadFailed": "Couldn't load your orders",
+    "emptyTitle": "No orders yet",
+    "emptyHint": "Book your first home collection above — it takes a minute.",
+    "activeOrders": "Active orders",
+    "pastOrders": "Past orders",
+    "orderNumber": "Order #{{id}}",
+    "status": {
+      "requested": "Requested",
+      "confirmed": "Confirmed",
+      "collected": "Collected",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "slot": {
+      "morning": "Morning",
+      "morningHint": "8–11 AM",
+      "afternoon": "Afternoon",
+      "afternoonHint": "12–3 PM",
+      "evening": "Evening",
+      "eveningHint": "4–7 PM"
+    },
+    "event": {
+      "created": "Order placed",
+      "assigned": "Collector assigned",
+      "bill": "Bill created"
+    },
+    "kind": {
+      "pathology": "Pathology",
+      "radiology": "Radiology",
+      "instrument": "Instrument"
+    },
+    "kindHint": {
+      "pathology": "Blood / sample test",
+      "radiology": "Imaging — done at the hospital"
+    },
+    "total": "Total",
+    "hospitalNote": "Hospital note",
+    "collector": "Collector",
+    "whereWhen": "Where & when",
+    "address": "Address",
+    "phone": "Phone",
+    "preferredDate": "Preferred date",
+    "preferredTime": "Preferred time",
+    "note": "Note",
+    "tests": "Tests",
+    "charge": "Home collection charge",
+    "billLine": "Bill #{{id}} — see Bills",
+    "timeline": "Timeline",
+    "cancelOrder": "Cancel order",
+    "cancelTitle": "Cancel this order?",
+    "cancelMessage": "The hospital will not come to collect the sample. You can book again anytime.",
+    "cancelled": "Order cancelled",
+    "openFailed": "Couldn't open this order",
+    "stepPick": "Pick tests",
+    "stepWhere": "Where & when",
+    "stepOf": "Step {{step}} of 2 · {{label}}",
+    "searchTests": "Search tests, e.g. CBC, lipid, HbA1c…",
+    "remove": "Remove",
+    "testsFailed": "Couldn't load the tests",
+    "noTestsMatch": "No tests match. Try another name.",
+    "instruments": "Instruments",
+    "selectedTests": "Selected test ({{count}})",
+    "selectedTests_plural": "Selected tests ({{count}})",
+    "addressPlaceholder": "House, road, area — where should we collect the sample?",
+    "tomorrow": "Tomorrow",
+    "dayAfter": "Day after",
+    "otherDate": "Another date",
+    "optional": "optional",
+    "notePlaceholder": "e.g. fasting since 10 pm, 3rd floor, call before coming",
+    "testCount": "{{count}} test",
+    "testCount_plural": "{{count}} tests",
+    "inclInstruments": "incl. instruments {{amount}}",
+    "inclCharge": "incl. home collection charge {{amount}}",
+    "continue": "Continue",
+    "placeOrder": "Place order",
+    "placed": "Order placed. The hospital will confirm shortly."
   },
   "common": {
     "sessionEnded": "Your session has ended. Please sign in again.",

@@ -32,6 +32,7 @@ export type NotificationTarget =
   | {
       screen:
         | 'messages'
+        | 'homeCollection'
         | 'appointments'
         | 'followUps'
         | 'prescriptions'
@@ -63,6 +64,8 @@ export const notificationTarget = (
   }
 
   if (path === '/appointments') return { screen: 'appointments' };
+  // A home-collection order moved on (confirmed, a collector assigned, collected…).
+  if (path === '/lab-orders') return { screen: 'homeCollection' };
   if (path === '/messages') {
     // "/messages?doctor=23248&patient=2313" — the reply's own conversation.
     const query = String(link ?? '').split('?')[1]?.split('#')[0] ?? '';

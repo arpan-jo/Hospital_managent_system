@@ -83,35 +83,43 @@ export interface QuickActionItem {
 }
 
 /**
- * The portal's quick actions: booking leads as a wide row — it is what the app
- * is for — and the rest sit under it as round shortcuts.
+ * The portal's quick actions: the two things one books — a visit and a home
+ * collection — lead as wide cards side by side, and the rest sit under them
+ * as round shortcuts.
  */
-export const QuickActions = memo<{ primary: QuickActionItem & { hint: string }; items: QuickActionItem[] }>(
-  function QuickActions({ primary, items }) {
+export const QuickActions = memo<{ primaries: (QuickActionItem & { hint: string })[]; items: QuickActionItem[] }>(
+  function QuickActions({ primaries, items }) {
     const theme = useTheme();
 
     return (
       <View style={[styles.actionsCard, { backgroundColor: theme.colors.surface }]}>
-        <Pressable
-          onPress={() => primary?.onPress?.()}
-          accessibilityRole="button"
-          accessibilityLabel={primary?.label}
-          style={({ pressed }) => [
-            styles.primary,
-            { backgroundColor: theme.colors.primaryContainer, opacity: pressed ? 0.88 : 1 },
-          ]}
-        >
-          <View style={[styles.primaryIcon, { backgroundColor: theme.colors.primary }]}>
-            <Icon name={primary?.icon || 'stethoscope'} size={20} color={theme.colors.onPrimary} />
-          </View>
-          <View style={styles.flex}>
-            <Text style={[styles.primaryLabel, { color: theme.colors.onPrimaryContainer }]}>{primary?.label ?? ''}</Text>
-            <Text numberOfLines={1} style={[styles.primaryHint, { color: theme.colors.onSurfaceVariant }]}>
-              {primary?.hint ?? ''}
-            </Text>
-          </View>
-          <Icon name="arrow-right" size={20} color={theme.colors.primary} />
-        </Pressable>
+        <View style={styles.primaries}>
+          {(primaries ?? []).map(primary => (
+            <Pressable
+              key={primary?.key}
+              onPress={() => primary?.onPress?.()}
+              accessibilityRole="button"
+              accessibilityLabel={primary?.label}
+              style={({ pressed }) => [
+                styles.primary,
+                { backgroundColor: theme.colors.primaryContainer, opacity: pressed ? 0.88 : 1 },
+              ]}
+            >
+              <View style={styles.primaryTop}>
+                <View style={[styles.primaryIcon, { backgroundColor: theme.colors.primary }]}>
+                  <Icon name={primary?.icon || 'stethoscope'} size={20} color={theme.colors.onPrimary} />
+                </View>
+                <Icon name="arrow-right" size={18} color={theme.colors.primary} />
+              </View>
+              <Text numberOfLines={2} style={[styles.primaryLabel, { color: theme.colors.onPrimaryContainer }]}>
+                {primary?.label ?? ''}
+              </Text>
+              <Text numberOfLines={2} style={[styles.primaryHint, { color: theme.colors.onSurfaceVariant }]}>
+                {primary?.hint ?? ''}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
         <View style={styles.shortcuts}>
           {(items ?? []).map(item => (
@@ -177,12 +185,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 12,
   },
-  primary: {
+  primaries: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    gap: 10,
+  },
+  primary: {
+    flex: 1,
     borderRadius: 14,
     padding: 12,
+  },
+  primaryTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   primaryIcon: {
     width: 40,
@@ -193,7 +209,7 @@ const styles = StyleSheet.create({
   },
   primaryLabel: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 14.5,
+    fontSize: 14,
   },
   primaryHint: {
     fontFamily: fontFamilies.regular,

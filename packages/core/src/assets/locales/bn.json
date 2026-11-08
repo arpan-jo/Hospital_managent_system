@@ -828,7 +828,8 @@
     "vitals": "ভাইটালস",
     "bills": "বিল",
     "dashboard": "ড্যাশবোর্ড",
-    "messages": "মেসেজ"
+    "messages": "মেসেজ",
+    "homeCollection": "হোম কালেকশন"
   },
   "settings": {
     "title": "সেটিংস",
@@ -957,7 +958,9 @@
     "vitals": "ভাইটালস",
     "reports": "রিপোর্ট",
     "todayMedicines": "আজকের ওষুধ",
-    "loadFailed": "ড্যাশবোর্ড লোড করা যায়নি। ইন্টারনেট সংযোগ দেখুন।"
+    "loadFailed": "ড্যাশবোর্ড লোড করা যায়নি। ইন্টারনেট সংযোগ দেখুন।",
+    "orderLabTest": "টেস্ট অর্ডার (হোম কালেকশন)",
+    "orderLabTestHint": "বাসা থেকে স্যাম্পল নেওয়া হবে"
   },
   "messages": {
     "title": "মেসেজ",
@@ -985,6 +988,97 @@
     "typeMessage": "আপনার মেসেজ লিখুন…",
     "send": "পাঠান"
   },
+  "homeCollection": {
+    "title": "হোম কালেকশন",
+    "subtitle": "টেস্ট অর্ডার করুন — স্যাম্পল নেওয়া হবে বাসা থেকে",
+    "heroTitle": "বাসায় বসেই টেস্ট",
+    "heroHint": "অনলাইনে টেস্ট অর্ডার করুন — আমরা বাসা থেকে স্যাম্পল নিয়ে আসব",
+    "book": "হোম কালেকশন বুক করুন",
+    "how": {
+      "pickTitle": "টেস্ট বেছে নিন",
+      "pickHint": "হাসপাতালের টেস্ট তালিকা থেকে যা দরকার যোগ করুন।",
+      "whereTitle": "কোথায় ও কখন জানান",
+      "whereHint": "আপনার ঠিকানা, সুবিধামতো দিন ও সময়।",
+      "comeTitle": "আমরা আপনার কাছে আসব",
+      "comeHint": "কালেক্টর বাসায় আসবে, রিপোর্ট পাবেন Reports-এ।"
+    },
+    "loadFailed": "অর্ডার লোড করা যায়নি",
+    "emptyTitle": "এখনো কোনো অর্ডার নেই",
+    "emptyHint": "উপরে থেকে প্রথম হোম কালেকশন বুক করুন — এক মিনিট লাগে।",
+    "activeOrders": "চলমান অর্ডার",
+    "pastOrders": "আগের অর্ডার",
+    "orderNumber": "অর্ডার #{{id}}",
+    "status": {
+      "requested": "অনুরোধ করা",
+      "confirmed": "নিশ্চিত",
+      "collected": "সংগৃহীত",
+      "completed": "সম্পন্ন",
+      "cancelled": "বাতিল"
+    },
+    "slot": {
+      "morning": "সকাল",
+      "morningHint": "৮–১১টা",
+      "afternoon": "দুপুর",
+      "afternoonHint": "১২–৩টা",
+      "evening": "বিকাল",
+      "eveningHint": "৪–৭টা"
+    },
+    "event": {
+      "created": "অর্ডার দেওয়া হয়েছে",
+      "assigned": "কালেক্টর নির্ধারিত",
+      "bill": "বিল তৈরি হয়েছে"
+    },
+    "kind": {
+      "pathology": "প্যাথলজি",
+      "radiology": "রেডিওলজি",
+      "instrument": "ইনস্ট্রুমেন্ট"
+    },
+    "kindHint": {
+      "pathology": "রক্ত / স্যাম্পল টেস্ট",
+      "radiology": "ইমেজিং — হাসপাতালে করতে হবে"
+    },
+    "total": "মোট",
+    "hospitalNote": "হাসপাতালের নোট",
+    "collector": "কালেক্টর",
+    "whereWhen": "কোথায় ও কখন",
+    "address": "ঠিকানা",
+    "phone": "ফোন",
+    "preferredDate": "পছন্দের তারিখ",
+    "preferredTime": "পছন্দের সময়",
+    "note": "নোট",
+    "tests": "টেস্ট",
+    "charge": "হোম কালেকশন চার্জ",
+    "billLine": "বিল #{{id}} — Bills পেজে দেখুন",
+    "timeline": "টাইমলাইন",
+    "cancelOrder": "অর্ডার বাতিল",
+    "cancelTitle": "অর্ডারটি বাতিল করবেন?",
+    "cancelMessage": "হাসপাতাল আর স্যাম্পল নিতে আসবে না। চাইলে আবার বুক করতে পারবেন।",
+    "cancelled": "অর্ডার বাতিল হয়েছে",
+    "openFailed": "অর্ডারটি খোলা যায়নি",
+    "stepPick": "টেস্ট বাছাই",
+    "stepWhere": "কোথায় ও কখন",
+    "stepOf": "ধাপ {{step}}/২ · {{label}}",
+    "searchTests": "টেস্ট খুঁজুন, যেমন CBC, lipid, HbA1c…",
+    "remove": "সরান",
+    "testsFailed": "টেস্টের তালিকা লোড করা যায়নি",
+    "noTestsMatch": "কোনো টেস্ট মেলেনি। অন্য নাম লিখুন।",
+    "instruments": "ইনস্ট্রুমেন্ট",
+    "selectedTests": "নির্বাচিত টেস্ট ({{count}})",
+    "selectedTests_plural": "নির্বাচিত টেস্ট ({{count}})",
+    "addressPlaceholder": "বাসা, রোড, এলাকা — কোথা থেকে স্যাম্পল নেব?",
+    "tomorrow": "আগামীকাল",
+    "dayAfter": "পরশু",
+    "otherDate": "অন্য তারিখ",
+    "optional": "ঐচ্ছিক",
+    "notePlaceholder": "যেমন: রাত ১০টা থেকে খালি পেটে, ৩ তলা, আসার আগে ফোন দিন",
+    "testCount": "{{count}}টি টেস্ট",
+    "testCount_plural": "{{count}}টি টেস্ট",
+    "inclInstruments": "ইনস্ট্রুমেন্টসহ {{amount}}",
+    "inclCharge": "হোম কালেকশন চার্জসহ {{amount}}",
+    "continue": "পরের ধাপ",
+    "placeOrder": "অর্ডার দিন",
+    "placed": "অর্ডার হয়েছে। হাসপাতাল শীঘ্রই নিশ্চিত করবে।"
+  },
   "common": {
     "sessionEnded": "আপনার সেশন শেষ হয়েছে। আবার সাইন ইন করুন।",
     "tooManyAttempts": "অনেকবার চেষ্টা করা হয়েছে। এক মিনিট পর আবার চেষ্টা করুন।",
@@ -1003,7 +1097,7 @@
     "retry": "আবার চেষ্টা করুন",
     "close": "বন্ধ",
     "somethingWentWrong": "কিছু একটা সমস্যা হয়েছে",
-    "back": "পেছনে"
+    "back": "পিছনে"
   },
   "photoPicker": {
     "title": "প্রোফাইল ছবি",

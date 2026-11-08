@@ -73,6 +73,9 @@ export const NotificationsScreen = observer(() => {
         case 'messages':
           navigation.navigate('Messages', { screen: 'MessagesList' });
           break;
+        case 'homeCollection':
+          navigation.navigate('HomeCollection', { screen: 'HomeCollectionList' });
+          break;
         case 'messageThread':
           navigation.navigate('Messages', {
             screen: 'MessageThread',

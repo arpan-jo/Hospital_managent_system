@@ -86,6 +86,7 @@ export const PatientDashboard = observer(() => {
   const openMessages = useCallback(() => drawer()?.navigate?.('Messages'), [drawer]);
   const openPrescriptions = useCallback(() => drawer()?.navigate?.('Prescriptions'), [drawer]);
   const openVitals = useCallback(() => drawer()?.navigate?.('Vitals'), [drawer]);
+  const openHomeCollection = useCallback(() => drawer()?.navigate?.('HomeCollection'), [drawer]);
   const openProfile = useCallback(() => drawer()?.navigate?.('MainTabs', { screen: 'ProfileTab' }), [drawer]);
   const openNotifications = useCallback(() => drawer()?.navigate?.('Notifications'), [drawer]);
 
@@ -140,6 +141,27 @@ export const PatientDashboard = observer(() => {
       { key: 'reports', label: t('dashboard.reports'), icon: 'file-chart-outline', onPress: openReports },
     ],
     [t, openMessages, openPrescriptions, openVitals, openReports],
+  );
+
+  // The portal's order: book a visit, then order a lab test.
+  const primaries = useMemo(
+    () => [
+      {
+        key: 'book',
+        label: t('dashboard.bookAppointment'),
+        hint: t('dashboard.bookHint'),
+        icon: 'stethoscope',
+        onPress: openFindDoctors,
+      },
+      {
+        key: 'labTest',
+        label: t('dashboard.orderLabTest'),
+        hint: t('dashboard.orderLabTestHint'),
+        icon: 'home-plus-outline',
+        onPress: openHomeCollection,
+      },
+    ],
+    [t, openFindDoctors, openHomeCollection],
   );
 
   const refresh = useCallback(() => {
@@ -204,16 +226,7 @@ export const PatientDashboard = observer(() => {
         <StatTiles items={tiles} />
 
         <SectionTitle>{t('dashboard.quickActions')}</SectionTitle>
-        <QuickActions
-          primary={{
-            key: 'book',
-            label: t('dashboard.bookAppointment'),
-            hint: t('dashboard.bookHint'),
-            icon: 'stethoscope',
-            onPress: openFindDoctors,
-          }}
-          items={shortcuts}
-        />
+        <QuickActions primaries={primaries} items={shortcuts} />
 
         <SectionTitle>{t('dashboard.todayMedicines')}</SectionTitle>
         <TodayMedicinesPanel patientCode={null} />

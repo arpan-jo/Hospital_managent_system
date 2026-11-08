@@ -16,6 +16,9 @@ import MyPrescriptionsStackNavigator, {
 } from './MyPrescriptionsStackNavigator';
 import BillsStackNavigator, { BillsStackParamList } from './BillsStackNavigator';
 import MessagesStackNavigator, { MessagesStackParamList } from './MessagesStackNavigator';
+import HomeCollectionStackNavigator, {
+  HomeCollectionStackParamList,
+} from './HomeCollectionStackNavigator';
 import PatientVitalsIndex from '../screens/patient/vitals/PatientVitalsIndex';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
@@ -40,6 +43,7 @@ export type DrawerParamList = {
     | NavigatorScreenParams<MyPrescriptionsStackParamList>
     | undefined;
   Vitals: undefined;
+  HomeCollection: NavigatorScreenParams<HomeCollectionStackParamList> | undefined;
   Bills: NavigatorScreenParams<BillsStackParamList> | undefined;
 };
 
@@ -106,6 +110,11 @@ const MENU_ITEMS: MenuItem[] = [
     name: 'Vitals',
     labelKey: 'drawer.vitals',
     icon: 'heart-pulse',
+  },
+  {
+    name: 'HomeCollection',
+    labelKey: 'drawer.homeCollection',
+    icon: 'home-plus-outline',
   },
   {
     name: 'Bills',
@@ -445,6 +454,7 @@ export const DrawerNavigator = () => {
         component={MyPrescriptionsStackNavigator}
       />
       <Drawer.Screen name="Vitals" component={PatientVitalsIndex} />
+      <Drawer.Screen name="HomeCollection" component={HomeCollectionStackNavigator} />
       <Drawer.Screen name="Bills" component={BillsStackNavigator} />
     </Drawer.Navigator>
   );
