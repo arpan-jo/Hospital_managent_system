@@ -1196,7 +1196,11 @@
     "remove": "ছবি সরান",
     "uploading": "ছবি আপলোড হচ্ছে…",
     "uploaded": "ছবি হালনাগাদ হয়েছে",
-    "uploadFailed": "ছবি আপলোড করা যায়নি"
+    "uploadFailed": "ছবি আপলোড করা যায়নি",
+    "tooLargeOwn": "ছবি সর্বোচ্চ 250 KB হতে পারে",
+    "typeOwn": "শুধু JPG বা PNG ছবি দেওয়া যাবে",
+    "tooLargeFamily": "ছবি 5 MB-এর কম হতে হবে।",
+    "typeFamily": "শুধু JPG, PNG বা WEBP ছবি দেওয়া যাবে।"
   },
   "todayMedicines": {
     "title": "আজকের ওষুধ",

@@ -234,6 +234,7 @@ export const PatientProfileIndex = observer(() => {
       </ScrollView>
 
       <PhotoPickerSheet
+        kind="own"
         visible={showPhotoSheet}
         onClose={() => setShowPhotoSheet(false)}
         onPicked={handlePhotoPicked}

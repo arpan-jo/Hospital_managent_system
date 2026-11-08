@@ -262,6 +262,7 @@ export const FamilyMemberSheet = memo<FamilyMemberSheetProps>(function FamilyMem
       </View>
 
       <PhotoPickerSheet
+        kind="family"
         visible={showPhotoSheet}
         onClose={() => setShowPhotoSheet(false)}
         onPicked={setPhoto}

@@ -434,6 +434,7 @@ export const ProfileEditScreen = observer(() => {
       </KeyboardAvoidingView>
 
       <PhotoPickerSheet
+        kind="own"
         visible={showPhotoSheet}
         onClose={() => setShowPhotoSheet(false)}
         onPicked={handlePhotoPicked}

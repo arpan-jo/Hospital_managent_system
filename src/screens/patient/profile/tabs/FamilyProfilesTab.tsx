@@ -490,6 +490,7 @@ export const FamilyProfilesTab = memo<FamilyProfilesTabProps>(function FamilyPro
         onAdd={input => addAllergy(allergyFor, input)}
       />
       <PhotoPickerSheet
+        kind="family"
         visible={!!photoFor}
         onClose={() => setPhotoFor(null)}
         onPicked={handlePhotoPicked}

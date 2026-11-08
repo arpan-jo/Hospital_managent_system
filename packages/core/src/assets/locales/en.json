@@ -1196,7 +1196,11 @@
     "remove": "Remove photo",
     "uploading": "Uploading photo…",
     "uploaded": "Photo updated",
-    "uploadFailed": "Could not upload the photo"
+    "uploadFailed": "Could not upload the photo",
+    "tooLargeOwn": "Image must be max 250 KB",
+    "typeOwn": "Only JPG or PNG allowed",
+    "tooLargeFamily": "Image must be under 5 MB.",
+    "typeFamily": "Only JPG, PNG or WEBP images are allowed."
   },
   "todayMedicines": {
     "title": "Today's Medicines",
