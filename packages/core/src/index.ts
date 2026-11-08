@@ -37,6 +37,7 @@ export * from './utils/notifications';
 export * from './utils/alarm';
 export * from './utils/googleSignIn';
 export * from './utils/appUpdate';
+export * from './utils/dicomPixels';
 export * from './repositories/PatientFollowUpRepository';
 export * from './repositories/PatientReportRepository';
 export * from './repositories/MedicalRecordRepository';

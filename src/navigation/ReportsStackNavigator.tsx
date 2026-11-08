@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import PatientReportIndex from '../screens/patient/reports/PatientReportIndex';
 import VisitPrescriptionScreen from '../screens/patient/reports/VisitPrescriptionScreen';
 import FileViewerScreen, { FileViewerParams } from '../screens/common/fileViewer/FileViewerScreen';
+import RadiologyViewerScreen, { RadiologyViewerParams } from '../screens/patient/reports/RadiologyViewerScreen';
 
 export type ReportsStackParamList = {
   ReportsHome: undefined;
@@ -10,6 +11,8 @@ export type ReportsStackParamList = {
   VisitPrescription: { prescriptionId: number; title?: string };
   /** An uploaded document or a test report PDF, drawn in the app. */
   FileViewer: FileViewerParams;
+  /** A radiology test's images from the PACS, drawn in the app. */
+  RadiologyViewer: RadiologyViewerParams;
 };
 
 const Stack = createNativeStackNavigator<ReportsStackParamList>();
@@ -20,6 +23,7 @@ export const ReportsStackNavigator = () => (
     <Stack.Screen name="ReportsHome" component={PatientReportIndex} />
     <Stack.Screen name="VisitPrescription" component={VisitPrescriptionScreen} />
     <Stack.Screen name="FileViewer" component={FileViewerScreen} />
+    <Stack.Screen name="RadiologyViewer" component={RadiologyViewerScreen} />
   </Stack.Navigator>
 );
 
