@@ -9,6 +9,11 @@ export const ENDPOINTS = {
   sendOtp: '/hms/auth/otp/send',
   verifyOtp: '/hms/auth/otp/verify',
   registerWithOtp: '/hms/auth/otp/register',
+  /**
+   * A signed-in email account proves a mobile number (code from `sendOtp`) and
+   * adopts the hospital-counter registrations carrying it.
+   */
+  linkPhone: '/hms/auth/otp/link-phone',
   forgotPassword: '/hms/auth/forgot-password',
   /** Forgot password by mobile: a reset code by SMS, then the reset with it. */
   sendResetOtp: '/hms/auth/otp/reset/send',

@@ -17,6 +17,7 @@ import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useProfileViewModel } from './useProfileViewModel';
 import { useFamilyProfilesViewModel } from './useFamilyProfilesViewModel';
 import { EmptyState } from './ProfileComponents';
+import LinkMobileCard from './LinkMobileCard';
 import ProfileHeaderCard from './ProfileHeaderCard';
 import ProfileTabs from './ProfileTabs';
 import PersonalInfoTab from './tabs/PersonalInfoTab';
@@ -92,6 +93,20 @@ export const PatientProfileIndex = observer(() => {
   // doubles as the create form and POSTs the first save. Only a 404 says so:
   // after any other failure the create form would add a second profile.
   if (!profile) {
+    const createProfileState = (
+      <EmptyState
+        icon="account-plus-outline"
+        title={t('patientProfile.noProfileTitle')}
+        description={t('patientProfile.noProfileDesc')}
+        actionLabel={t('patientProfile.createProfile')}
+        onAction={handleEdit}
+      />
+    );
+    // An email account has no number for the backend to match on sign-in, so
+    // it may already be registered at the counter: as on the portal, it can
+    // prove its number first. A mobile account's email field holds the number.
+    const isEmailAccount = String(authStore?.user?.email ?? '').includes('@');
+
     return (
       <SafeAreaView
         edges={['top', 'left', 'right']}
@@ -103,15 +118,21 @@ export const PatientProfileIndex = observer(() => {
             <ActivityIndicator size="small" color={theme.colors.primary} />
           </View>
         ) : viewModel.hasNoProfile ? (
-          <View style={styles.stateWrap}>
-            <EmptyState
-              icon="account-plus-outline"
-              title={t('patientProfile.noProfileTitle')}
-              description={t('patientProfile.noProfileDesc')}
-              actionLabel={t('patientProfile.createProfile')}
-              onAction={handleEdit}
-            />
-          </View>
+          isEmailAccount ? (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.noProfileScroll,
+                { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE },
+              ]}
+            >
+              <LinkMobileCard onLinked={refreshProfile} />
+              {createProfileState}
+            </ScrollView>
+          ) : (
+            <View style={styles.stateWrap}>{createProfileState}</View>
+          )
         ) : (
           <View style={styles.stateWrap}>
             <EmptyState
@@ -260,6 +281,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 4,
+  },
+  noProfileScroll: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 16,
   },
   tabContent: {
     marginTop: 2,

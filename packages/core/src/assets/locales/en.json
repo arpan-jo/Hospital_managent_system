@@ -468,6 +468,27 @@
     "deleteTitle": "Remove document?",
     "deleteMessage": "\"{{name}}\" will be removed."
   },
+  "linkMobile": {
+    "title": "Already registered at the hospital?",
+    "description": "Verify the mobile number you gave at the counter, and your hospital record, appointments and reports will appear here.",
+    "phoneLabel": "Mobile number",
+    "phoneRequired": "Mobile number is required",
+    "invalidPhone": "Please enter a valid mobile number (01XXXXXXXXX)",
+    "sendCode": "Send code",
+    "resendCode": "Resend code",
+    "codeSent": "Verification code sent by SMS",
+    "codeSentTo": "Code sent to {{phone}}",
+    "changeNumber": "Change number",
+    "codeLabel": "6-digit code",
+    "invalidCode": "Enter the 6-digit code",
+    "verify": "Verify",
+    "verified": "Mobile number verified.",
+    "recordsLinked": "{{count}} hospital record is now linked to your account.",
+    "recordsLinked_plural": "{{count}} hospital records are now linked to your account.",
+    "noRecords": "No hospital record was found for this number yet.",
+    "sendFailed": "Couldn't send the code. Please try again.",
+    "verifyFailed": "Couldn't verify the number. Please try again."
+  },
   "patientProfile": {
     "title": "My Profile",
     "editProfile": "Edit Profile",

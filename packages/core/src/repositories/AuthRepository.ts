@@ -53,6 +53,13 @@ export interface ResetWithOtpResponse {
   message: string;
 }
 
+/** A mobile proven on a signed-in account — "Mobile number verified." */
+export interface LinkPhoneResponse {
+  message: string;
+  /** Hospital-counter registrations that carried the number and are now the account's. */
+  claimedRegistrations: number;
+}
+
 export interface RegisterWithOtpPayload extends AuthContact {
   /** The code `verifyOtp` just accepted; the API checks it once more. */
   code: string;
@@ -189,6 +196,27 @@ export const AuthRepository = {
     }
 
     return res;
+  },
+
+  /**
+   * For an account signed in by email: the code `sendOtp` texted to `phone`
+   * proves the number, the account keeps it, and every hospital-counter
+   * registration carrying it becomes the account's. Needs the session; a
+   * number another account holds answers 409 with a message.
+   */
+  linkPhone: async (phone: string, code: string): Promise<LinkPhoneResponse> => {
+    const api_params: ApiRequestOptions = {
+      url: ENDPOINTS.linkPhone,
+      method: 'POST',
+      data: { phone: toLocalBdMobile(phone), code: code?.trim() ?? '' },
+      baseUrl: API_URL,
+    };
+    const res = await apiRequest<any>(api_params);
+
+    return {
+      message: typeof res?.message === 'string' ? res.message.trim() : '',
+      claimedRegistrations: Math.max(0, Number(res?.claimedRegistrations ?? 0) || 0),
+    };
   },
 };
 
