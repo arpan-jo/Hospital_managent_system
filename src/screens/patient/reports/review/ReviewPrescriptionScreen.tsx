@@ -26,6 +26,7 @@ import { useFocusedStatusBar } from '../../../../hooks/useFocusedStatusBar';
 import { useKeyboardOverlap } from '../../../../hooks/useKeyboardOverlap';
 import { useMonthNames } from '../../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../../navigation/ReportsStackNavigator';
+import { TAB_BAR_CLEARANCE } from '../../../../navigation/tabBarLayout';
 import { AiReadNote, ForWhomPicker, ReviewCard, UNSURE, useReviewProfiles } from './ReviewParts';
 
 /** A blank medicine line, as the portal's "Add medicine" makes it. */
@@ -265,7 +266,8 @@ export const ReviewPrescriptionScreen = () => {
     navigation,
   ]);
 
-  const footerBottom = isKeyboardOpen ? 10 : insets.bottom + 10;
+  // The Reports tab's bar floats over the bottom: the actions sit above it, as on the doctor's page.
+  const footerBottom = isKeyboardOpen ? 10 : insets.bottom + TAB_BAR_CLEARANCE - 24;
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: theme.colors.background }]}>

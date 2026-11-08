@@ -33,6 +33,51 @@ export const StatusStepper = memo<{ status: string; compact?: boolean }>(functio
 
   const index = LAB_ORDER_STEPS.indexOf(status as (typeof LAB_ORDER_STEPS)[number]);
   const done = theme.dark ? DONE.dark : DONE.light;
+  const last = LAB_ORDER_STEPS.length - 1;
+
+  // In full, each step is a column — its dot on the line, its name under it — so
+  // all four fit a phone's width.
+  if (!compact) {
+    return (
+      <View style={styles.full}>
+        {LAB_ORDER_STEPS.map((step, i) => {
+          const isDone = i < index;
+          const isNow = i === index;
+          const dotColor = isDone ? done : isNow ? theme.colors.primary : theme.colors.surfaceVariant;
+          const leftColor = i === 0 ? 'transparent' : i <= index ? done : theme.colors.outlineVariant;
+          const rightColor = i === last ? 'transparent' : i < index ? done : theme.colors.outlineVariant;
+          return (
+            <View key={step} style={styles.fullStep}>
+              <View style={styles.fullTrack}>
+                <View style={[styles.half, { backgroundColor: leftColor }]} />
+                <View style={[styles.dot, { backgroundColor: dotColor }, isNow && { borderColor: theme.colors.primaryContainer }]}>
+                  {isDone ? (
+                    <Icon name="check" size={11} color={theme.colors.onPrimary} />
+                  ) : (
+                    <Text style={[styles.dotText, { color: isNow ? theme.colors.onPrimary : muted }]}>{i + 1}</Text>
+                  )}
+                </View>
+                <View style={[styles.half, { backgroundColor: rightColor }]} />
+              </View>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={[
+                  styles.fullText,
+                  {
+                    color: isNow ? theme.colors.primary : isDone ? theme.colors.onSurface : muted,
+                    fontFamily: isNow ? fontFamilies.semibold : fontFamilies.regular,
+                  },
+                ]}
+              >
+                {t(STATUS_LABEL_KEY[step])}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.stepper}>
@@ -139,6 +184,27 @@ const styles = StyleSheet.create({
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  full: {
+    flexDirection: 'row',
+  },
+  fullStep: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  fullTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+  },
+  half: {
+    flex: 1,
+    height: 2,
+  },
+  fullText: {
+    fontSize: 11.5,
+    marginTop: 4,
+    paddingHorizontal: 2,
   },
   step: {
     flexDirection: 'row',

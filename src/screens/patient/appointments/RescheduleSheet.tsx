@@ -192,7 +192,8 @@ export const RescheduleSheet = memo<RescheduleSheetProps>(function RescheduleShe
         )}
 
         {/* ── A time inside the window; "Auto" leaves it to the server ── */}
-        {selectedSlot && subSlots.length > 1 ? (
+        {/* Shown whenever the window has times — the portal's own rule (`subSlots.length > 0`). */}
+        {selectedSlot && subSlots.length > 0 ? (
           <>
             <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('reschedule.pickTime')}</Text>
             <View style={styles.times}>

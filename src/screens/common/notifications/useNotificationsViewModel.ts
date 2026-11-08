@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -8,7 +9,8 @@ import {
   serverMessageOf,
   useStores,
 } from '@app/core';
-import { unreadSession } from '../../../hooks/useUnreadNotifications';
+import { onMessageReceived } from '../../../hooks/useMessageHub';
+import { UNREAD_POLL_MS, unreadSession } from '../../../hooks/useUnreadNotifications';
 
 export type NotificationFilter = 'all' | 'unread';
 export type NotificationSectionKey = 'today' | 'yesterday' | 'earlier';
@@ -101,11 +103,43 @@ export const useNotificationsViewModel = () => {
   );
 
   // The first visit shows a loader; coming back re-reads behind what is shown.
+  // While open, the list is read again as often as the portal's bell (30 s, only
+  // with the app in front) and at once when the hub says a doctor replied.
   const hasLoadedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
       load(hasLoadedRef.current ? 'quiet' : 'initial');
       hasLoadedRef.current = true;
+
+      let timer: ReturnType<typeof setInterval> | null = null;
+      const start = () => {
+        if (timer) return;
+        timer = setInterval(() => {
+          load('quiet');
+        }, UNREAD_POLL_MS);
+      };
+      const stop = () => {
+        if (timer) clearInterval(timer);
+        timer = null;
+      };
+      if (AppState?.currentState === 'active') start();
+      const subscription = AppState?.addEventListener?.('change', state => {
+        if (state === 'active') {
+          load('quiet');
+          start();
+        } else {
+          stop();
+        }
+      });
+      const stopListening = onMessageReceived(() => {
+        load('quiet');
+      });
+
+      return () => {
+        stop();
+        stopListening?.();
+        subscription?.remove?.();
+      };
     }, [load]),
   );
 

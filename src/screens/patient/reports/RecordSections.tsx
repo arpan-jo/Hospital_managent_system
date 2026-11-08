@@ -266,6 +266,7 @@ const LabTestsSection = ({ type, months, bottomPadding, reloadSignal }: SectionP
         onOpen={openTest}
         actionOf={actionOf}
         header={uploadsHeader}
+        headerHasItems={!!uploadsHeader}
       />
       <CustomDialog
         visible={!!removeTarget}
@@ -287,12 +288,8 @@ export const PathologySection = (props: SectionProps) => <LabTestsSection type="
 /** Radiology — X-rays, scans and other imaging tests and, once final, their reports. */
 export const RadiologySection = (props: SectionProps) => <LabTestsSection type="radiology" {...props} />;
 
-const prescriptionSearch = (item: PortalPrescription) => [
-  item?.code,
-  item?.doctorName,
-  item?.departmentName,
-  item?.sourceHospitalName,
-];
+/** What a prescription is found by, as on the portal: its code, its doctor, its department. */
+const prescriptionSearch = (item: PortalPrescription) => [item?.code, item?.doctorName, item?.departmentName];
 
 /**
  * Prescriptions — written at a hospital visit, read in full rather than as the
