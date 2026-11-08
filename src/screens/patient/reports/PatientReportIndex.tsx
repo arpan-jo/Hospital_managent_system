@@ -1,9 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -58,6 +58,7 @@ export const PatientReportIndex = observer(() => {
   const theme = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ReportsStackParamList>>();
+  const route = useRoute<RouteProp<ReportsStackParamList, 'ReportsHome'>>();
   const insets = useSafeAreaInsets();
   const { toastStore } = useStores();
   const { download } = useDownload();
@@ -70,6 +71,8 @@ export const PatientReportIndex = observer(() => {
   const [opened, setOpened] = useState<Section[]>([SECTIONS[0].key]);
   const [isUploadVisible, setUploadVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PatientDocument | null>(null);
+  /** Bumped per section when a reviewed upload was saved to it, so it reads again. */
+  const [reloadSignals, setReloadSignals] = useState<Partial<Record<Section, number>>>({});
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const openSection = useCallback((key: Section) => {
@@ -78,6 +81,36 @@ export const PatientReportIndex = observer(() => {
   }, []);
 
   const openUpload = useCallback(() => setUploadVisible(true), []);
+
+  // An upload the AI read: its review opens, as the portal's does after the upload.
+  const { read, clearRead } = uploads;
+  useEffect(() => {
+    if (!read?.documentId) return;
+    if (read.kind === 'lab') {
+      navigation.navigate('ReviewLabReport', {
+        documentId: read.documentId,
+        registrationId: read.registrationId,
+        extraction: read.extraction,
+        reportType: read.reportType ?? null,
+      });
+    } else {
+      navigation.navigate('ReviewPrescription', {
+        documentId: read.documentId,
+        registrationId: read.registrationId,
+        extraction: read.extraction,
+      });
+    }
+    clearRead();
+  }, [read, clearRead, navigation]);
+
+  // Back from a saved review: that section opens and reads again — the portal's own move.
+  const savedAt = route?.params?.saved?.at ?? 0;
+  const savedSection = route?.params?.saved?.section;
+  useEffect(() => {
+    if (!savedAt || !savedSection) return;
+    openSection(savedSection);
+    setReloadSignals(previous => ({ ...previous, [savedSection]: savedAt }));
+  }, [savedAt, savedSection, openSection]);
   const closeUpload = useCallback(() => setUploadVisible(false), []);
 
   /** Opened in the app — a PDF or an image is drawn, anything else gets a message there. */
@@ -219,17 +252,21 @@ export const PatientReportIndex = observer(() => {
       </View>
       {opened.includes('pathology') ? (
         <View style={[styles.body, section !== 'pathology' && styles.hidden]}>
-          <PathologySection months={months} bottomPadding={bottomPadding} />
+          <PathologySection months={months} bottomPadding={bottomPadding} reloadSignal={reloadSignals.pathology} />
         </View>
       ) : null}
       {opened.includes('radiology') ? (
         <View style={[styles.body, section !== 'radiology' && styles.hidden]}>
-          <RadiologySection months={months} bottomPadding={bottomPadding} />
+          <RadiologySection months={months} bottomPadding={bottomPadding} reloadSignal={reloadSignals.radiology} />
         </View>
       ) : null}
       {opened.includes('prescriptions') ? (
         <View style={[styles.body, section !== 'prescriptions' && styles.hidden]}>
-          <VisitPrescriptionsSection months={months} bottomPadding={bottomPadding} />
+          <VisitPrescriptionsSection
+            months={months}
+            bottomPadding={bottomPadding}
+            reloadSignal={reloadSignals.prescriptions}
+          />
         </View>
       ) : null}
 

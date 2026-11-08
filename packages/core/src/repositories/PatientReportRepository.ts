@@ -110,8 +110,11 @@ export const PatientReportRepository = {
   /** The file crosses first and answers with a blob name, which `createReport` files. */
   uploadFile: async (file: UploadFile): Promise<string> => FileRepository.upload(file),
 
-  /** `POST /hms/patient/documents`. */
-  createReport: async (payload: CreateReportPayload): Promise<void> => {
+  /**
+   * `POST /hms/patient/documents` — answers with the saved document; its id
+   * (0 when the answer had none) is what an AI read and its review key off.
+   */
+  createReport: async (payload: CreateReportPayload): Promise<number> => {
     const api_params: ApiRequestOptions = {
       url: ENDPOINTS.patientDocuments,
       method: 'POST',
@@ -126,7 +129,8 @@ export const PatientReportRepository = {
         notes: payload?.notes?.trim() || null,
       },
     };
-    await apiRequest<any>(api_params);
+    const response = await apiRequest<any>(api_params);
+    return Number(response?.documentId ?? 0) || 0;
   },
 
   /** `DELETE /hms/patient/documents/{documentId}`. */

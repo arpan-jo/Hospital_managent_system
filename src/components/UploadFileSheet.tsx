@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { IconButton, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { types as fileTypes } from '@react-native-documents/picker';
@@ -52,6 +52,10 @@ interface UploadFileSheetProps<T extends string> {
    * without picking the file again.
    */
   onUpload: (result: UploadFileResult<T>) => void | boolean | Promise<void | boolean>;
+  /** More fields for the chosen category, under the category — e.g. whose prescription it is. */
+  renderExtra?: (category: T) => ReactNode;
+  /** A line under the button while the upload runs — e.g. that the AI is reading it. */
+  busyHint?: (category: T) => string | undefined;
 }
 
 /**
@@ -73,6 +77,8 @@ export function UploadFileSheet<T extends string>({
   allowedExtensions = REPORT_ALLOWED_EXTENSIONS,
   onClose,
   onUpload,
+  renderExtra,
+  busyHint,
 }: UploadFileSheetProps<T>) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -195,43 +201,52 @@ export function UploadFileSheet<T extends string>({
         <IconButton icon="close" size={20} onPress={onClose} iconColor={theme.colors.onSurface} />
       </View>
 
-      {/* The picker's own constants, not MIME strings: iOS reads each entry as a
-          type identifier, and 'image/*' or 'application/pdf' is not one — the
-          picker would offer nothing at all to choose. */}
-      <CustomFilePicker
-        label={file ? t('uploadFile.changeFile') : t('uploadFile.selectFile')}
-        allowedTypes={[fileTypes.images, fileTypes.pdf]}
-        onFilePicked={handleFilePicked}
-      />
-      <Text style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}>{fileHint}</Text>
-      {fileError ? (
-        <Text style={[styles.error, { color: theme.colors.error }]}>{fileError}</Text>
-      ) : null}
+      {/* The form scrolls on a short phone — a category's extra fields can make it tall. */}
+      <ScrollView
+        style={styles.form}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* The picker's own constants, not MIME strings: iOS reads each entry as a
+            type identifier, and 'image/*' or 'application/pdf' is not one — the
+            picker would offer nothing at all to choose. */}
+        <CustomFilePicker
+          label={file ? t('uploadFile.changeFile') : t('uploadFile.selectFile')}
+          allowedTypes={[fileTypes.images, fileTypes.pdf]}
+          onFilePicked={handleFilePicked}
+        />
+        <Text style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}>{fileHint}</Text>
+        {fileError ? (
+          <Text style={[styles.error, { color: theme.colors.error }]}>{fileError}</Text>
+        ) : null}
 
-      <CustomInput
-        label={`${t('uploadFile.documentTitle')} *`}
-        value={name}
-        onChangeText={handleNameChange}
-        placeholder={t('uploadFile.documentTitlePlaceholder')}
-        error={titleError ?? undefined}
-      />
+        <CustomInput
+          label={`${t('uploadFile.documentTitle')} *`}
+          value={name}
+          onChangeText={handleNameChange}
+          placeholder={t('uploadFile.documentTitlePlaceholder')}
+          error={titleError ?? undefined}
+        />
 
-      <CustomDropdown<T>
-        label={`${t('uploadFile.category')} *`}
-        items={categoryItems}
-        value={category}
-        onValueChange={setCategory}
-      />
+        <CustomDropdown<T>
+          label={`${t('uploadFile.category')} *`}
+          items={categoryItems}
+          value={category}
+          onValueChange={setCategory}
+        />
 
-      <CustomInput
-        label={t('uploadFile.notesOptional')}
-        value={notes}
-        onChangeText={setNotes}
-        placeholder={t('uploadFile.notesPlaceholder')}
-        multiline
-        numberOfLines={3}
-        inputStyle={styles.textarea}
-      />
+        {renderExtra ? renderExtra(category) : null}
+
+        <CustomInput
+          label={t('uploadFile.notesOptional')}
+          value={notes}
+          onChangeText={setNotes}
+          placeholder={t('uploadFile.notesPlaceholder')}
+          multiline
+          numberOfLines={3}
+          inputStyle={styles.textarea}
+        />
+      </ScrollView>
 
       <CustomButton
         mode="contained"
@@ -242,6 +257,11 @@ export function UploadFileSheet<T extends string>({
       >
         {title}
       </CustomButton>
+      {isSubmitting && busyHint?.(category) ? (
+        <Text style={[styles.busyHint, { color: theme.colors.onSurfaceVariant }]}>
+          {busyHint(category)}
+        </Text>
+      ) : null}
     </CustomBottomSheet>
   );
 }
@@ -249,6 +269,15 @@ export function UploadFileSheet<T extends string>({
 const styles = StyleSheet.create({
   sheet: {
     maxHeight: '92%',
+  },
+  form: {
+    flexGrow: 0,
+  },
+  busyHint: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12.5,
+    textAlign: 'center',
+    marginTop: 8,
   },
   header: {
     flexDirection: 'row',

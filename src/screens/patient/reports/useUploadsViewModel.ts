@@ -2,9 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DOCUMENT_CATEGORIES,
+  DocumentReadRepository,
+  ExtractedLabReport,
+  ExtractedPrescription,
+  LabReportType,
   PatientDocument,
+  PatientProfile,
   PatientReportRepository,
+  READ_CATEGORIES,
   UploadFile,
+  isNotThatKind,
+  isReadableLabReport,
+  isReadablePrescription,
   serverMessageOf,
   useStores,
 } from '@app/core';
@@ -19,7 +28,23 @@ export interface UploadDocumentInput {
   title: string;
   category: string;
   notes: string;
+  /** Whose prescription or lab report it is — the AI's read is added to this profile after review. */
+  forWhom?: PatientProfile | null;
+  /** A lab report's kind, or 'Auto' to go by the AI's read. */
+  reportType?: LabReportType | 'Auto';
 }
+
+/** An upload the AI read, waiting for the patient's review — as the portal hands it to its review. */
+export type UploadRead =
+  | { kind: 'rx'; documentId: number; registrationId: number; extraction: ExtractedPrescription }
+  | {
+      kind: 'lab';
+      documentId: number;
+      registrationId: number;
+      extraction: ExtractedLabReport;
+      /** Null — go by the read. */
+      reportType: LabReportType | null;
+    };
 
 /**
  * My Uploads, as the portal's Reports page has it: the account's own
@@ -39,6 +64,8 @@ export const useUploadsViewModel = () => {
   const [search, setSearch] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  /** A read waiting for the screen to open its review. */
+  const [read, setRead] = useState<UploadRead | null>(null);
 
   /** Only the newest read may change the list — an older one cannot bring a deleted document back. */
   const versionRef = useRef(0);
@@ -100,22 +127,79 @@ export const useUploadsViewModel = () => {
     );
   }, [documents, category, search]);
 
-  /** Upload the file, then file it under the account — no patient code, as the portal sends. */
+  /**
+   * Has the AI read a just-saved prescription or lab report, as the portal
+   * does after its upload: a read worth reviewing is handed to the screen; any
+   * other outcome leaves the file a plain document and says so. The upload is
+   * already saved — nothing here can undo it.
+   */
+  const readUpload = useCallback(
+    async (input: UploadDocumentInput, documentId: number, registrationId: number): Promise<UploadRead | null> => {
+      const isLab = input?.category === 'Lab Report';
+      const noun = t(isLab ? 'reports.read.nounLab' : 'reports.read.nounRx');
+      try {
+        let status = '';
+        if (isLab) {
+          const extraction = await DocumentReadRepository.readLabReport(input?.file, documentId);
+          status = extraction?.status ?? '';
+          if (isReadableLabReport(extraction)) {
+            const chosen = input?.reportType;
+            return {
+              kind: 'lab',
+              documentId,
+              registrationId,
+              extraction,
+              reportType: chosen === 'Pathology' || chosen === 'Radiology' ? chosen : null,
+            };
+          }
+        } else {
+          const extraction = await DocumentReadRepository.readPrescription(input?.file, documentId);
+          status = extraction?.status ?? '';
+          if (isReadablePrescription(extraction)) return { kind: 'rx', documentId, registrationId, extraction };
+        }
+        toastStore.show(
+          t(isNotThatKind(status) ? 'reports.read.notThatKind' : 'reports.read.unreadable', { noun }),
+          'info',
+        );
+      } catch (e: any) {
+        console.log('readUpload error ==>', e?.message);
+        toastStore.show(t('reports.read.unavailable', { noun }), 'info');
+      }
+      return null;
+    },
+    [toastStore, t],
+  );
+
+  /**
+   * Upload the file, then file it under the account — no patient code for the
+   * patient's own, a family member's code for theirs, as the portal sends. A
+   * prescription or lab report for a profile with a registration is then read
+   * by the AI; a read worth reviewing waits in `read` for the screen.
+   */
   const upload = useCallback(
     async (input: UploadDocumentInput): Promise<boolean> => {
+      const forWhom = input?.forWhom ?? null;
+      const registrationId = forWhom?.registrationId ?? 0;
+      const reads = READ_CATEGORIES.includes(input?.category ?? '') && registrationId > 0;
       setIsUploading(true);
       try {
         const fileUrl = await PatientReportRepository.uploadFile(input?.file);
-        await PatientReportRepository.createReport({
+        const documentId = await PatientReportRepository.createReport({
           category: input?.category ?? DOCUMENT_CATEGORIES[0],
           title: input?.title ?? '',
           fileUrl,
           fileName: input?.file?.name ?? '',
           fileSize: Number(input?.file?.size ?? 0),
           notes: input?.notes ?? '',
+          // The patient's own stays untagged — My Uploads lists those; a family member's is tagged.
+          patientCode: reads && forWhom?.relationship !== 'self' ? forWhom?.patientCode ?? '' : '',
         });
         toastStore.show(t('reports.uploadSuccess'), 'success');
         await load('quiet');
+        if (reads && documentId > 0) {
+          const result = await readUpload(input, documentId, registrationId);
+          if (result) setRead(result);
+        }
         return true;
       } catch (e: any) {
         console.log('uploadDocument error ==>', e?.message);
@@ -125,7 +209,7 @@ export const useUploadsViewModel = () => {
         setIsUploading(false);
       }
     },
-    [load, toastStore, t],
+    [load, readUpload, toastStore, t],
   );
 
   const remove = useCallback(
@@ -167,6 +251,9 @@ export const useUploadsViewModel = () => {
     upload,
     deletingId,
     remove,
+    /** A read waiting for its review; the screen opens it and clears it. */
+    read,
+    clearRead: () => setRead(null),
   };
 };
 

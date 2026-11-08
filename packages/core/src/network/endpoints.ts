@@ -94,6 +94,11 @@ export const ENDPOINTS = {
   // ── Find Doctors: AI doctor finder — pepobot, on AI_ASSIST_URL ────────────
   /** A patient's symptoms into a recommended specialist and doctors from this hospital. */
   aiDoctorFind: '/hms_doctors_find',
+  /**
+   * An uploaded prescription or lab report read by the AI into fields the
+   * patient reviews — multipart, as the portal sends it (pepobot, like the finder).
+   */
+  aiDocumentExtract: '/v1/documents/extract',
 
   // ── AI voice — Whisper speech-to-text, on AI_STT_URL ──────────────────────
   /** A recording of a patient's symptoms into text. */

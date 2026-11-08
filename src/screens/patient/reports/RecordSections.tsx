@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,7 +24,23 @@ import { useUploadedLabReports } from './useUploadedLabReports';
 interface SectionProps {
   months: string[];
   bottomPadding: number;
+  /** Bumped when something was just saved here — a reviewed upload — so the list is read again. */
+  reloadSignal?: number;
 }
+
+/** Calls `reload` each time `signal` changes after the first render. */
+const useReloadOnSignal = (signal: number | undefined, reload: () => void) => {
+  const firstRef = useRef(true);
+  const reloadRef = useRef(reload);
+  reloadRef.current = reload;
+  useEffect(() => {
+    if (firstRef.current) {
+      firstRef.current = false;
+      return;
+    }
+    reloadRef.current?.();
+  }, [signal]);
+};
 
 type ReportsNavigation = NativeStackNavigationProp<ReportsStackParamList>;
 
@@ -72,7 +88,7 @@ const uploadMatches = (report: UploadedLabReport, term: string): boolean =>
  * radiology test also offers its images, as the portal does. Above them sit
  * the patient's own confirmed uploads, marked "Uploaded", each removable.
  */
-const LabTestsSection = ({ type, months, bottomPadding }: SectionProps & { type: LabTestType }) => {
+const LabTestsSection = ({ type, months, bottomPadding, reloadSignal }: SectionProps & { type: LabTestType }) => {
   const { t } = useTranslation();
   const navigation = useNavigation<ReportsNavigation>();
   const { toastStore } = useStores();
@@ -81,6 +97,11 @@ const LabTestsSection = ({ type, months, bottomPadding }: SectionProps & { type:
   const viewModel = useRecordList(fetchTests, labTestSearch);
   const uploads = useUploadedLabReports(type);
   const [removeTarget, setRemoveTarget] = useState<UploadedLabReport | null>(null);
+  // A reviewed upload just saved here: its new report shows at once.
+  useReloadOnSignal(reloadSignal, () => {
+    uploads?.reload?.();
+    viewModel?.refresh?.();
+  });
 
   // The same family chip and search narrow the uploads as the hospital's tests.
   const { patientCode, search } = viewModel;
@@ -278,11 +299,15 @@ const prescriptionSearch = (item: PortalPrescription) => [
  * PDF. One the patient uploaded can be removed, as on the portal; a doctor's
  * never can.
  */
-export const VisitPrescriptionsSection = ({ months, bottomPadding }: SectionProps) => {
+export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal }: SectionProps) => {
   const { t } = useTranslation();
   const navigation = useNavigation<ReportsNavigation>();
   const { toastStore } = useStores();
   const viewModel = useRecordList(PatientPrescriptionRepository.getMyPrescriptions, prescriptionSearch);
+  // A reviewed prescription just saved: it shows at once.
+  useReloadOnSignal(reloadSignal, () => {
+    viewModel?.refresh?.();
+  });
   const [removeTarget, setRemoveTarget] = useState<PortalPrescription | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
