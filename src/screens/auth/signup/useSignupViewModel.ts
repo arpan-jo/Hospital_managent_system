@@ -3,9 +3,9 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
   AuthContact,
+  authErrorMessageOf,
   AuthRepository,
   isBdMobile,
-  serverMessageOf,
   toLocalBdMobile,
 } from '@app/core';
 
@@ -102,7 +102,7 @@ export const useSignupViewModel = () => {
         message: res?.message,
       };
     } catch (e: any) {
-      error = serverMessageOf(e) || t('signup.sendFailed');
+      error = authErrorMessageOf(e) || t('signup.sendFailed');
     } finally {
       setIsLoading(false);
     }

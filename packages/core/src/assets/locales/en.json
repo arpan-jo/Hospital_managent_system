@@ -51,7 +51,7 @@
     "codeResent": "A new code has been sent.",
     "resendFailed": "Failed to resend code.",
     "invalidCode": "Please enter the full 6-digit code",
-    "invalidPassword": "Password must be at least 6 characters long",
+    "invalidPassword": "Password must be at least 8 characters long",
     "invalidConfirmPassword": "Please confirm your password",
     "passwordMismatch": "Passwords do not match",
     "done": "Password reset! Please sign in with your new password.",
@@ -104,7 +104,7 @@
     "confirmPasswordPlaceholder": "Re-enter your password",
     "button": "Create Account",
     "back": "Back",
-    "invalidPassword": "Password must be at least 6 characters long",
+    "invalidPassword": "Password must be at least 8 characters long",
     "invalidConfirmPassword": "Please confirm your password",
     "passwordMismatch": "Passwords do not match",
     "accountCreated": "Account created successfully!",
@@ -407,6 +407,7 @@
     "profile": "Profile"
   },
   "myPrescriptions": {
+    "uploaded": "Uploaded",
     "title": "My Prescriptions",
     "recordCount": "{{count}} record",
     "recordCount_plural": "{{count}} records",
@@ -673,6 +674,8 @@
     "notes": "Notes: "
   },
   "reports": {
+    "uploadedPrescription": "Uploaded prescription",
+    "hospital": "Hospital / chamber",
     "title": "My Reports & Documents",
     "documentsStored": "{{count}} document stored",
     "documentsStored_plural": "{{count}} documents stored",
@@ -792,6 +795,8 @@
     "languageSection": "Language"
   },
   "common": {
+    "sessionEnded": "Your session has ended. Please sign in again.",
+    "tooManyAttempts": "Too many attempts. Please wait a minute and try again.",
     "confirm": "Confirm",
     "cancel": "Cancel",
     "ok": "OK",

@@ -1,4 +1,4 @@
-import { isServerUnreachable, serverMessageOf } from './serverMessage';
+import { isBareForbidden, isRateLimited, isServerUnreachable, serverMessageOf } from './serverMessage';
 
 /** What `apiClient` rejects with: an Error carrying the decoded body on `data`. */
 const failure = (data?: unknown) =>
@@ -93,5 +93,36 @@ describe('isServerUnreachable', () => {
     expect(isServerUnreachable(answered)).toBe(false);
     expect(isServerUnreachable(unreadable)).toBe(false);
     expect(isServerUnreachable(null)).toBe(false);
+  });
+});
+
+describe('isBareForbidden', () => {
+  const answer = (status: number, data?: unknown) => Object.assign(new Error(`Error: ${status}`), { status, data });
+
+  it('is true for a 403 the server said nothing about — a revoked session', () => {
+    expect(isBareForbidden(answer(403))).toBe(true);
+    expect(isBareForbidden(answer(403, ''))).toBe(true);
+    expect(isBareForbidden(answer(403, { title: 'Forbidden', status: 403 }))).toBe(true);
+  });
+
+  it('is false for a 403 that says why — a refused action, not an ended session', () => {
+    expect(
+      isBareForbidden(answer(403, { message: 'You can only message a doctor you have had an appointment with.' })),
+    ).toBe(false);
+  });
+
+  it('is false for any other status, and for no error at all', () => {
+    expect(isBareForbidden(answer(401))).toBe(false);
+    expect(isBareForbidden(answer(404))).toBe(false);
+    expect(isBareForbidden(null)).toBe(false);
+  });
+});
+
+describe('isRateLimited', () => {
+  it('is true for a 429, with words or without', () => {
+    expect(isRateLimited({ status: 429 })).toBe(true);
+    expect(isRateLimited({ status: 429, data: { message: 'Too many failed attempts. Try again in 15 minutes.' } })).toBe(true);
+    expect(isRateLimited({ status: 401 })).toBe(false);
+    expect(isRateLimited(undefined)).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AuthRepository, serverMessageOf } from '@app/core';
+import { authErrorMessageOf, AuthRepository } from '@app/core';
 import { CODE_LENGTH } from '../verifyEmail/useVerifyEmailViewModel';
 
 export interface ResetPasswordForm {
@@ -61,7 +61,7 @@ export const useResetPasswordViewModel = (phone: string) => {
       setDigits(Array(CODE_LENGTH).fill(''));
       return { ok: true, message: res?.message };
     } catch (e: any) {
-      return { ok: false, message: serverMessageOf(e) };
+      return { ok: false, message: authErrorMessageOf(e) };
     } finally {
       resendInFlightRef.current = false;
       setIsResending(false);
@@ -94,7 +94,7 @@ export const useResetPasswordViewModel = (phone: string) => {
           );
           result = { status: 'reset', message: res?.message };
         } catch (e: any) {
-          result = { status: 'failed', message: serverMessageOf(e) };
+          result = { status: 'failed', message: authErrorMessageOf(e) };
         } finally {
           setIsLoading(false);
         }

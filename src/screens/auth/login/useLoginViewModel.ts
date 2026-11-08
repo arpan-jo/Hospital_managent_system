@@ -3,9 +3,9 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
   AuthContact,
+  authErrorMessageOf,
   isBdMobile,
   pickGoogleAccount,
-  serverMessageOf,
   useStores,
 } from '@app/core';
 import { useSignIn } from '../../../hooks/useSignIn';
@@ -90,7 +90,7 @@ export const useLoginViewModel = () => {
         // The server's words first; a refusal made here in the app (an
         // account this app does not serve) carries its own reason.
         error =
-          serverMessageOf(e) ||
+          authErrorMessageOf(e) ||
           (e?.originalError ? '' : e?.message) ||
           t('login.failed');
       } finally {

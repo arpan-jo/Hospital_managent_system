@@ -1,5 +1,7 @@
 export const ENDPOINTS = {
   login: '/hms/auth/login',
+  /** Ends the login on the server too — every older token of the account is refused after it. */
+  logout: '/hms/auth/logout',
   patientProfile: '/hms/patient/profile',
   patientProfileAll: '/hms/patient/profile/all',
   patientProfileAllergies: '/hms/patient/profile/allergies',

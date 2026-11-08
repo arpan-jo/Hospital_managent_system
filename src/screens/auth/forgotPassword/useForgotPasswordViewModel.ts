@@ -2,9 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
+  authErrorMessageOf,
   AuthRepository,
   isBdMobile,
-  serverMessageOf,
   toLocalBdMobile,
 } from '@app/core';
 
@@ -91,7 +91,7 @@ export const useForgotPasswordViewModel = () => {
         }
       })();
     } catch (e: any) {
-      error = serverMessageOf(e) || t('forgotPassword.sendFailed');
+      error = authErrorMessageOf(e) || t('forgotPassword.sendFailed');
     } finally {
       inFlightRef.current = false;
       setIsLoading(false);

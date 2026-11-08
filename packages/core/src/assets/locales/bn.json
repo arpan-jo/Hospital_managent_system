@@ -51,7 +51,7 @@
     "codeResent": "নতুন কোড পাঠানো হয়েছে।",
     "resendFailed": "কোড আবার পাঠানো যায়নি।",
     "invalidCode": "অনুগ্রহ করে সম্পূর্ণ ৬-সংখ্যার কোড লিখুন",
-    "invalidPassword": "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে",
+    "invalidPassword": "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে",
     "invalidConfirmPassword": "অনুগ্রহ করে পাসওয়ার্ড নিশ্চিত করুন",
     "passwordMismatch": "পাসওয়ার্ড মিলছে না",
     "done": "পাসওয়ার্ড রিসেট হয়েছে! নতুন পাসওয়ার্ড দিয়ে সাইন ইন করুন।",
@@ -104,7 +104,7 @@
     "confirmPasswordPlaceholder": "পুনরায় পাসওয়ার্ড লিখুন",
     "button": "অ্যাকাউন্ট তৈরি করুন",
     "back": "পেছনে",
-    "invalidPassword": "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে",
+    "invalidPassword": "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে",
     "invalidConfirmPassword": "অনুগ্রহ করে পাসওয়ার্ড নিশ্চিত করুন",
     "passwordMismatch": "পাসওয়ার্ড মিলছে না",
     "accountCreated": "অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে!",
@@ -407,6 +407,7 @@
     "profile": "প্রোফাইল"
   },
   "myPrescriptions": {
+    "uploaded": "আপলোড করা",
     "title": "আমার প্রেসক্রিপশন",
     "recordCount": "{{count}} টি রেকর্ড",
     "recordCount_plural": "{{count}} টি রেকর্ড",
@@ -673,6 +674,8 @@
     "notes": "নোট: "
   },
   "reports": {
+    "uploadedPrescription": "আপলোড করা প্রেসক্রিপশন",
+    "hospital": "হাসপাতাল / চেম্বার",
     "title": "আমার রিপোর্ট ও ডকুমেন্ট",
     "documentsStored": "{{count}}টি ডকুমেন্ট রাখা আছে",
     "documentsStored_plural": "{{count}}টি ডকুমেন্ট রাখা আছে",
@@ -792,6 +795,8 @@
     "languageSection": "ভাষা"
   },
   "common": {
+    "sessionEnded": "আপনার সেশন শেষ হয়েছে। আবার সাইন ইন করুন।",
+    "tooManyAttempts": "অনেকবার চেষ্টা করা হয়েছে। এক মিনিট পর আবার চেষ্টা করুন।",
     "confirm": "নিশ্চিত করুন",
     "cancel": "বাতিল",
     "ok": "ঠিক আছে",

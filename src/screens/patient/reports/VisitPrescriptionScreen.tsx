@@ -13,7 +13,7 @@ import {
 import { fontFamilies } from '@app/ui';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
-import { VISIT_LABEL_KEY, doctorTitle } from '../myPrescriptions/prescriptionUi';
+import { prescribedOn, prescriptionKindKey, prescriptionTitle } from '../myPrescriptions/prescriptionUi';
 import {
   DetailCard,
   DetailFacts,
@@ -139,11 +139,13 @@ export const VisitPrescriptionScreen = () => {
 
   const hasMedicines = (rx?.medicines?.length ?? 0) > 0;
   const hasSections = (rx?.sections?.length ?? 0) > 0;
+  // An upload has no code and maybe no doctor — it is named for what it is.
+  const fallbackName = t(rx?.isUploaded ? 'reports.uploadedPrescription' : 'reports.prescription');
 
   return (
     <RecordDetailScreen
-      title={rx?.code || route?.params?.title || t('reports.prescription')}
-      subtitle={[rx?.patientName, formatRecordDate(rx?.prescribedAt, months)].filter(Boolean).join(' · ')}
+      title={rx?.code || route?.params?.title || fallbackName}
+      subtitle={[rx?.patientName, formatRecordDate(prescribedOn(rx), months)].filter(Boolean).join(' · ')}
       isLoading={detail.isLoading}
       isRefreshing={detail.isRefreshing}
       error={detail.error}
@@ -160,7 +162,7 @@ export const VisitPrescriptionScreen = () => {
               </View>
               <View style={styles.summaryText}>
                 <Text style={[styles.summaryTitle, { color: theme.colors.onSurface }]}>
-                  {doctorTitle(rx?.doctorName) || rx?.code}
+                  {prescriptionTitle(rx, fallbackName)}
                 </Text>
                 {rx?.departmentName ? (
                   <Text style={[styles.summaryMeta, { color: theme.colors.onSurfaceVariant }]}>
@@ -171,11 +173,19 @@ export const VisitPrescriptionScreen = () => {
             </View>
             <DetailFacts
               facts={[
-                { label: t('reports.prescribed'), value: formatRecordDateTime(rx?.prescribedAt, months) },
+                {
+                  label: t('reports.prescribed'),
+                  // An upload's date is the day on its sheet — it has no time worth showing.
+                  value: rx?.isUploaded
+                    ? formatRecordDate(prescribedOn(rx), months)
+                    : formatRecordDateTime(rx?.prescribedAt, months),
+                },
                 // As the portal shows it: the name as stored, without a title added.
                 { label: t('reports.doctor'), value: rx?.doctorName },
                 { label: t('reports.department'), value: rx?.departmentName },
-                { label: t('reports.visit'), value: t(VISIT_LABEL_KEY[rx?.visitType] ?? VISIT_LABEL_KEY.opd) },
+                { label: t('reports.hospital'), value: rx?.isUploaded ? rx?.sourceHospitalName : '' },
+                // An upload was not written at a visit; an empty fact is left out.
+                { label: t('reports.visit'), value: rx?.isUploaded ? '' : t(prescriptionKindKey(rx)) },
                 { label: t('reports.patientId'), value: rx?.patientCode },
               ]}
             />

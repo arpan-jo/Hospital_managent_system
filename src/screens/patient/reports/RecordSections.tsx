@@ -11,7 +11,7 @@ import {
   useStores,
 } from '@app/core';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
-import { VISIT_LABEL_KEY, doctorTitle } from '../myPrescriptions/prescriptionUi';
+import { prescribedOn, prescriptionKindKey, prescriptionTitle } from '../myPrescriptions/prescriptionUi';
 import RecordListSection, { BadgeTone, RecordAction, RecordBadge } from './RecordListSection';
 import { formatRecordDate } from './reportsUi';
 import { useRecordList } from './useRecordList';
@@ -160,6 +160,7 @@ const prescriptionSearch = (item: PortalPrescription) => [
   item?.code,
   item?.doctorName,
   item?.departmentName,
+  item?.sourceHospitalName,
 ];
 
 /** Prescriptions — written at a hospital visit, read in full rather than as the PDF. */
@@ -172,8 +173,8 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding }: SectionProp
     (item: PortalPrescription): RecordBadge[] => [
       ...(viewModel.showPatients ? [{ label: item?.patientName ?? '', tone: 'brand' as const }] : []),
       {
-        label: t(VISIT_LABEL_KEY[item?.visitType] ?? VISIT_LABEL_KEY.opd),
-        tone: item?.visitType === 'emergency' ? 'warn' : 'muted',
+        label: t(prescriptionKindKey(item)),
+        tone: !item?.isUploaded && item?.visitType === 'emergency' ? 'warn' : 'muted',
       },
       { label: item?.code ?? '', tone: 'muted' },
     ],
@@ -190,9 +191,11 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding }: SectionProp
       emptyHint={t('reports.rxEmptyHint')}
       noMatchTitle={t('reports.rxNoMatch')}
       keyOf={item => String(item?.id)}
-      titleOf={item => doctorTitle(item?.doctorName) || item?.code || t('reports.prescription')}
+      titleOf={item =>
+        prescriptionTitle(item, t(item?.isUploaded ? 'reports.uploadedPrescription' : 'reports.prescription'))
+      }
       metaOf={item => [
-        formatRecordDate(item?.prescribedAt, months),
+        formatRecordDate(prescribedOn(item), months),
         item?.departmentName,
         (item?.medicineCount ?? 0) > 0 ? t('reports.medicineCount', { count: item.medicineCount }) : '',
       ]}

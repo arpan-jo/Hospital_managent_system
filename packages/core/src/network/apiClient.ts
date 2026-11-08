@@ -6,6 +6,8 @@ import axios, {
 import { API_URL } from '@env';
 import { rootStore } from '../store';
 import { encryptData, decryptData } from '../utils/crypto';
+import i18next from '../utils/i18n';
+import { isBareForbidden } from './serverMessage';
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -191,6 +193,25 @@ apiClient.interceptors.request.use(
   },
 );
 
+/** The call carried a login — the request interceptor's, or one passed in on purpose. */
+const sentLogin = (config?: InternalAxiosRequestConfig): boolean => {
+  const headers: any = config?.headers;
+  const value = typeof headers?.get === 'function' ? headers.get('Authorization') : headers?.Authorization;
+  return Boolean(value);
+};
+
+/**
+ * The session was ended elsewhere — a sign-out or password reset on another
+ * device — and the server now refuses this token. Signed out once, however
+ * many calls were in flight, and told why, since nothing on this phone did it.
+ */
+const endRevokedSession = () => {
+  if (!rootStore?.authStore?.isAuthenticated) return;
+  rootStore?.authStore?.logout?.();
+  rootStore?.profileStore?.clear?.();
+  rootStore?.toastStore?.show?.(i18next.t('common.sessionEnded'), 'info', 5000);
+};
+
 /**
  * RESPONSE INTERCEPTOR
  */
@@ -281,6 +302,18 @@ apiClient.interceptors.response.use(
       if (error.response.status === 401) {
         rootStore.authStore.logout();
         rootStore.profileStore.clear();
+      }
+
+      /**
+       * A signed-in call refused with a bare 403 is a revoked session, not a
+       * refused action — see `isBareForbidden`. Left alone, every screen would
+       * fail until the token expired, up to an hour.
+       */
+      if (
+        sentLogin(error?.config) &&
+        isBareForbidden({ status: error?.response?.status, data: responseData })
+      ) {
+        endRevokedSession();
       }
     } else if (error.request) {
 

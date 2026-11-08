@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AuthRepository, serverMessageOf } from '@app/core';
+import { authErrorMessageOf, AuthRepository } from '@app/core';
 import { SIGNUP_ROLE } from '../signup/useSignupViewModel';
 
 export const CODE_LENGTH = 6;
@@ -66,7 +66,7 @@ export const useVerifyEmailViewModel = (
       setSecondsLeft(res?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS);
       return { ok: true, message: res?.message };
     } catch (e: any) {
-      return { ok: false, message: serverMessageOf(e) };
+      return { ok: false, message: authErrorMessageOf(e) };
     } finally {
       setIsResending(false);
     }
@@ -87,7 +87,7 @@ export const useVerifyEmailViewModel = (
         code,
       };
     } catch (e: any) {
-      return { status: 'rejected', message: serverMessageOf(e) };
+      return { status: 'rejected', message: authErrorMessageOf(e) };
     } finally {
       setIsLoading(false);
     }

@@ -12,7 +12,7 @@ import {
 import { CustomAvatar, fontFamilies } from '@app/ui';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import PrescriptionAttachments from './PrescriptionAttachments';
-import { VISIT_LABEL_KEY, doctorTitle, prescriptionDay } from './prescriptionUi';
+import { doctorTitle, prescribedOn, prescriptionDay, prescriptionKindKey } from './prescriptionUi';
 
 interface PrescriptionCardProps {
   prescription: PortalPrescription;
@@ -62,9 +62,14 @@ export const PrescriptionCard = memo<PrescriptionCardProps>(function Prescriptio
   const handleAdd = useCallback(() => onAddAttachment(prescription), [onAddAttachment, prescription]);
 
   const muted = theme.colors.onSurfaceVariant;
-  const day = prescriptionDay(prescription?.prescribedAt);
-  const doctor = doctorTitle(prescription?.doctorName, t('myPrescriptions.doctorFallback'));
-  const isEmergency = prescription?.visitType === 'emergency';
+  const isUploaded = Boolean(prescription?.isUploaded);
+  const day = prescriptionDay(prescribedOn(prescription));
+  // An upload may name no doctor — its hospital or chamber stands in.
+  const doctor =
+    doctorTitle(prescription?.doctorName) ||
+    (isUploaded ? prescription?.sourceHospitalName || t('reports.uploadedPrescription') : '') ||
+    t('myPrescriptions.doctorFallback');
+  const isEmergency = !isUploaded && prescription?.visitType === 'emergency';
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
@@ -111,7 +116,7 @@ export const PrescriptionCard = memo<PrescriptionCardProps>(function Prescriptio
           ]}
         >
           <Text style={[styles.pillText, { color: isEmergency ? EMERGENCY.color : muted }]}>
-            {t(VISIT_LABEL_KEY[prescription?.visitType ?? 'opd'] ?? VISIT_LABEL_KEY.opd)}
+            {t(prescriptionKindKey(prescription))}
           </Text>
         </View>
         {prescription?.code ? (

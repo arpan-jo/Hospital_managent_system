@@ -14,6 +14,7 @@ import PhotoPickerSheet from '../../../components/PhotoPickerSheet';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { ProfileStackParamList } from '../../../navigation/ProfileStackNavigator';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
+import { useSignOut } from '../../../hooks/useSignOut';
 import { useProfileViewModel } from './useProfileViewModel';
 import { useFamilyProfilesViewModel } from './useFamilyProfilesViewModel';
 import { EmptyState } from './ProfileComponents';
@@ -32,7 +33,7 @@ export const PatientProfileIndex = observer(() => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const insets = useSafeAreaInsets();
-  const { authStore, profileStore } = useStores();
+  const { authStore } = useStores();
   const viewModel = useProfileViewModel();
 
   // The holder's card on the Family tab shares their records and photo.
@@ -69,11 +70,11 @@ export const PatientProfileIndex = observer(() => {
     }, [refreshProfile]),
   );
 
+  const signOut = useSignOut();
   const handleConfirmLogout = useCallback(() => {
     setShowLogoutDialog(false);
-    authStore.logout();
-    profileStore.clear();
-  }, [authStore, profileStore]);
+    signOut();
+  }, [signOut]);
 
   const handleEdit = useCallback(() => navigation.navigate('ProfileEdit'), [navigation]);
   const handlePhoto = useCallback(() => setShowPhotoSheet(true), []);

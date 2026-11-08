@@ -1,5 +1,5 @@
 /** How a prescription reads on screen — shared by the list, its card and the upload form. */
-import { PrescriptionVisitType, toISODate, withDoctorTitle } from '@app/core';
+import { PortalPrescription, PrescriptionVisitType, toISODate, withDoctorTitle } from '@app/core';
 
 /**
  * The day a prescription was written, on the patient's own calendar.
@@ -20,3 +20,36 @@ export const VISIT_LABEL_KEY: Record<PrescriptionVisitType, string> = {
   emergency: 'myPrescriptions.visit.emergency',
   ipd: 'myPrescriptions.visit.ipd',
 };
+
+type PrescriptionLike =
+  | Partial<
+      Pick<
+        PortalPrescription,
+        'doctorName' | 'code' | 'visitType' | 'prescribedAt' | 'isUploaded' | 'sourceHospitalName' | 'sourceDate'
+      >
+    >
+  | null
+  | undefined;
+
+/**
+ * What kind of prescription it is, as a label key: the visit it was written at,
+ * or "Uploaded" for one the patient uploaded — never "OPD" for that.
+ */
+export const prescriptionKindKey = (rx?: PrescriptionLike): string =>
+  rx?.isUploaded
+    ? 'myPrescriptions.uploaded'
+    : VISIT_LABEL_KEY[rx?.visitType ?? 'opd'] ?? VISIT_LABEL_KEY.opd;
+
+/**
+ * When it was written. An upload carries the date on its sheet; its
+ * `prescribedAt` is only when it was saved here.
+ */
+export const prescribedOn = (rx?: PrescriptionLike): string =>
+  (rx?.isUploaded && rx?.sourceDate) || rx?.prescribedAt || '';
+
+/**
+ * Its name in a list: the doctor, else its code, else — for an upload, which has
+ * neither — the hospital or chamber on its sheet, else the fallback.
+ */
+export const prescriptionTitle = (rx: PrescriptionLike, fallback = ''): string =>
+  doctorTitle(rx?.doctorName) || rx?.code || rx?.sourceHospitalName || fallback;

@@ -70,3 +70,19 @@ export const serverMessageOf = (error: any): string => {
  */
 export const isServerUnreachable = (error: any): boolean =>
   !error?.status && !!error?.originalError && !error?.originalError?.response;
+
+/**
+ * A 403 with no words from the server. On a signed-in call that is a revoked
+ * session: since 2026-11-07 the backend refuses a token issued before the
+ * account's last logout or password reset — on any device — with exactly this.
+ * A 403 that says why ("You can only message a doctor …") is a refused action,
+ * not an ended session.
+ */
+export const isBareForbidden = (error: any): boolean =>
+  Number(error?.status) === 403 && !serverMessageOf(error);
+
+/**
+ * A 429 — too many calls. The sign-in lockout says why in words; the auth rate
+ * limit (60 a minute per network) answers with no body at all.
+ */
+export const isRateLimited = (error: any): boolean => Number(error?.status) === 429;

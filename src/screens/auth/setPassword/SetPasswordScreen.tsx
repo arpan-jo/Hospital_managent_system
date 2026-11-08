@@ -4,7 +4,7 @@ import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useStores } from '@app/core';
+import { NEW_PASSWORD_MIN_LENGTH, useStores } from '@app/core';
 import {
   CustomInput,
   CustomFormInput,
@@ -81,7 +81,7 @@ export const SetPasswordScreen = observer(() => {
           rules={{
             required: t('setPassword.invalidPassword'),
             minLength: {
-              value: 6,
+              value: NEW_PASSWORD_MIN_LENGTH,
               message: t('setPassword.invalidPassword'),
             },
           }}

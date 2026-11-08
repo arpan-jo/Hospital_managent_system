@@ -9,6 +9,7 @@ import SettingsScreen from '../screens/common/settings/SettingsScreen';
 import PatientFollowUpIndex from '../screens/patient/followUps/PatientFollowUpIndex';
 import NotificationsScreen from '../screens/common/notifications/NotificationsScreen';
 import { useUnreadNotificationsSync } from '../hooks/useUnreadNotifications';
+import { useSignOut } from '../hooks/useSignOut';
 import MyPrescriptionsStackNavigator, {
   MyPrescriptionsStackParamList,
 } from './MyPrescriptionsStackNavigator';
@@ -188,6 +189,7 @@ const MenuRow = ({
 
 const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
   const { authStore, profileStore } = useStores();
+  const signOut = useSignOut();
   const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -360,10 +362,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
           icon="logout"
           label={t('profile.logoutButton')}
           destructive
-          onPress={() => {
-            authStore.logout();
-            profileStore.clear();
-          }}
+          onPress={signOut}
         />
       </View>
     </View>

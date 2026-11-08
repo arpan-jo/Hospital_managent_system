@@ -34,6 +34,16 @@ export interface PortalPrescription {
   patientRegistrationId: number;
   patientName: string;
   patientCode: string;
+  /**
+   * The patient uploaded it and confirmed what was read off it (`source:
+   * "PatientUpload"`), rather than a hospital doctor writing it. Such a one has
+   * no code, maybe no doctor, and its `prescribedAt` is only when it was saved.
+   */
+  isUploaded: boolean;
+  /** An upload's hospital or chamber, as on its sheet; '' otherwise. */
+  sourceHospitalName: string;
+  /** An upload's own date, as on its sheet (local, no zone); '' when not given. */
+  sourceDate: string;
 }
 
 /** The web's upload categories — the same list the Reports page files under. */
@@ -100,6 +110,10 @@ export const toPortalPrescription = (raw: any): PortalPrescription => ({
   patientRegistrationId: Number(raw?.patientRegistrationId ?? 0) || 0,
   patientName: toText(raw?.patientName),
   patientCode: toText(raw?.patientCode),
+  // Absent on a backend older than 2026-11-05: everything is then a doctor's.
+  isUploaded: toText(raw?.source).toLowerCase() === 'patientupload',
+  sourceHospitalName: toText(raw?.sourceHospitalName),
+  sourceDate: toText(raw?.sourceDate),
 });
 
 const toAttachment = (raw: any, index: number): PrescriptionAttachment => ({

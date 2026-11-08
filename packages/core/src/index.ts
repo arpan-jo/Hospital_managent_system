@@ -11,6 +11,7 @@ export { default as apiRequest } from './network/apiRequest';
 export * from './network/apiRequest';
 export * from './network/endpoints';
 export * from './network/serverMessage';
+export * from './network/authErrorMessage';
 export * from './utils/crypto';
 export * from './utils/secureStorage';
 export { default as offlineCache } from './utils/offlineCache';

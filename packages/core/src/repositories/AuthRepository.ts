@@ -3,6 +3,13 @@ import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
 import { toLocalBdMobile } from '../utils/bdPhone';
 
+/**
+ * The shortest password a new account or a reset may set — the backend's
+ * `MinLength(8)` on `otp/register` and `otp/reset` since 2026-11-07. Signing in
+ * still takes 6, so passwords set before then keep working.
+ */
+export const NEW_PASSWORD_MIN_LENGTH = 8;
+
 /** Who the auth calls are about: an email, or a BD mobile number. Exactly one. */
 export interface AuthContact {
   email?: string;
@@ -171,10 +178,8 @@ export const AuthRepository = {
   },
 
   /**
-   * An email or a mobile number, with the password.
-   *
-   * There is no matching logout call: the API keeps no session to close, so
-   * signing out is just clearing the stores.
+   * An email or a mobile number, with the password. Signing out is `logout`
+   * below, after the stores are cleared.
    */
   login: async (contact: AuthContact, password: string) => {
     const payload = {
@@ -217,6 +222,26 @@ export const AuthRepository = {
       message: typeof res?.message === 'string' ? res.message.trim() : '',
       claimedRegistrations: Math.max(0, Number(res?.claimedRegistrations ?? 0) || 0),
     };
+  },
+
+  /**
+   * `POST /hms/auth/logout` — ends the login on the server too, as the portal's
+   * own sign-out does: the account's token version moves on, so every older
+   * token — this phone's and the web's — is refused from then on. It takes the
+   * token because the stores are already cleared when it goes out; without one
+   * there is nothing to end.
+   */
+  logout: async (token?: string | null): Promise<void> => {
+    if (!token) return;
+    const api_params: ApiRequestOptions = {
+      url: ENDPOINTS.logout,
+      method: 'POST',
+      baseUrl: API_URL,
+      headers: { Authorization: `Bearer ${token}` },
+      // Best effort: a slow network must not hold a sign-out the app has already done.
+      timeout: 5000,
+    };
+    await apiRequest(api_params);
   },
 };
 

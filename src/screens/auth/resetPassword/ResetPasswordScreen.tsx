@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useStores } from '@app/core';
+import { NEW_PASSWORD_MIN_LENGTH, useStores } from '@app/core';
 import {
   CustomButton,
   CustomDialog,
@@ -120,7 +120,7 @@ export const ResetPasswordScreen = observer(() => {
           rules={{
             required: t('resetPassword.invalidPassword'),
             minLength: {
-              value: 6,
+              value: NEW_PASSWORD_MIN_LENGTH,
               message: t('resetPassword.invalidPassword'),
             },
           }}
