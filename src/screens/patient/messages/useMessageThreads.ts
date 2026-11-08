@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MessageRepository, PortalMessageThread, serverMessageOf, useStores } from '@app/core';
+import { onMessageReceived } from '../../../hooks/useMessageHub';
 import { applyUnreadMessages, unreadMessagesSession } from '../../../hooks/useUnreadMessages';
 
 /** As often as the portal's list — a doctor's reply shows up without a pull. */
@@ -75,6 +76,10 @@ export const useMessageThreads = () => {
 
       load();
       if (AppState?.currentState === 'active') start();
+      // A doctor's reply pushed over the hub: read again at once, not at the next tick.
+      const stopListening = onMessageReceived(() => {
+        load();
+      });
       const subscription = AppState?.addEventListener?.('change', state => {
         if (state === 'active') {
           load();
@@ -86,6 +91,7 @@ export const useMessageThreads = () => {
 
       return () => {
         stop();
+        stopListening?.();
         subscription?.remove?.();
       };
     }, [load]),

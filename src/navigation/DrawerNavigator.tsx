@@ -10,6 +10,7 @@ import PatientFollowUpIndex from '../screens/patient/followUps/PatientFollowUpIn
 import NotificationsScreen from '../screens/common/notifications/NotificationsScreen';
 import { useUnreadNotificationsSync } from '../hooks/useUnreadNotifications';
 import { useUnreadMessagesSync } from '../hooks/useUnreadMessages';
+import { useMessageHub } from '../hooks/useMessageHub';
 import { useSignOut } from '../hooks/useSignOut';
 import MyPrescriptionsStackNavigator, {
   MyPrescriptionsStackParamList,
@@ -430,6 +431,8 @@ export const DrawerNavigator = () => {
   useUnreadNotificationsSync();
   // …and the Messages badge, as the portal's menu keeps it.
   useUnreadMessagesSync();
+  // A doctor's reply arrives at once over the portal's real-time channel; polling stays as the fallback.
+  useMessageHub();
 
   return (
     <Drawer.Navigator

@@ -9,6 +9,7 @@ import {
   serverMessageOf,
   useStores,
 } from '@app/core';
+import { onMessageReceived } from '../../../hooks/useMessageHub';
 import { useRefreshUnreadMessages } from '../../../hooks/useUnreadMessages';
 
 /** As often as the portal's conversation — a reply lands while the patient waits on it. */
@@ -89,6 +90,10 @@ export const useMessageThread = (patientRegistrationId: number, doctorEmployeeId
 
       load();
       if (AppState?.currentState === 'active') start();
+      // A doctor's reply pushed over the hub: read again at once, not at the next tick.
+      const stopListening = onMessageReceived(() => {
+        load();
+      });
       const subscription = AppState?.addEventListener?.('change', state => {
         if (state === 'active') {
           load();
@@ -100,6 +105,7 @@ export const useMessageThread = (patientRegistrationId: number, doctorEmployeeId
 
       return () => {
         stop();
+        stopListening?.();
         subscription?.remove?.();
       };
     }, [load]),

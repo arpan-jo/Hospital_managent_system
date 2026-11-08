@@ -10,6 +10,7 @@ export * from './network/apiClient';
 export { default as apiRequest } from './network/apiRequest';
 export * from './network/apiRequest';
 export * from './network/endpoints';
+export * from './network/messageHub';
 export * from './network/serverMessage';
 export * from './network/authErrorMessage';
 export * from './utils/crypto';
