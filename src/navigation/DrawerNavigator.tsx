@@ -9,11 +9,13 @@ import SettingsScreen from '../screens/common/settings/SettingsScreen';
 import PatientFollowUpIndex from '../screens/patient/followUps/PatientFollowUpIndex';
 import NotificationsScreen from '../screens/common/notifications/NotificationsScreen';
 import { useUnreadNotificationsSync } from '../hooks/useUnreadNotifications';
+import { useUnreadMessagesSync } from '../hooks/useUnreadMessages';
 import { useSignOut } from '../hooks/useSignOut';
 import MyPrescriptionsStackNavigator, {
   MyPrescriptionsStackParamList,
 } from './MyPrescriptionsStackNavigator';
 import BillsStackNavigator, { BillsStackParamList } from './BillsStackNavigator';
+import MessagesStackNavigator, { MessagesStackParamList } from './MessagesStackNavigator';
 import PatientVitalsIndex from '../screens/patient/vitals/PatientVitalsIndex';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
@@ -33,6 +35,7 @@ export type DrawerParamList = {
   Settings: undefined;
   Notifications: undefined;
   FollowUps: undefined;
+  Messages: NavigatorScreenParams<MessagesStackParamList> | undefined;
   Prescriptions:
     | NavigatorScreenParams<MyPrescriptionsStackParamList>
     | undefined;
@@ -47,6 +50,8 @@ type MenuItem = {
   tab?: keyof TabParamList;
   /** Starts a new group under this heading — sets the app's own entries apart from the portal's menu. */
   sectionKey?: string;
+  /** A count beside the label — the unread messages, as on the portal's menu. */
+  badge?: 'messages';
 };
 
 /**
@@ -56,10 +61,16 @@ type MenuItem = {
 const MENU_ITEMS: MenuItem[] = [
   {
     name: 'MainTabs',
+    labelKey: 'drawer.dashboard',
+    icon: 'view-dashboard-outline',
+    tab: 'DashboardTab',
+    sectionKey: 'drawer.sectionMenu',
+  },
+  {
+    name: 'MainTabs',
     labelKey: 'drawer.findDoctors',
     icon: 'stethoscope',
     tab: 'HomeTab',
-    sectionKey: 'drawer.sectionMenu',
   },
   {
     name: 'MainTabs',
@@ -72,6 +83,12 @@ const MENU_ITEMS: MenuItem[] = [
     name: 'FollowUps',
     labelKey: 'drawer.followUps',
     icon: 'calendar-refresh-outline',
+  },
+  {
+    name: 'Messages',
+    labelKey: 'drawer.messages',
+    icon: 'message-text-outline',
+    badge: 'messages',
   },
   {
     name: 'Prescriptions',
@@ -131,12 +148,15 @@ const MenuRow = ({
   label,
   active = false,
   destructive = false,
+  badge = 0,
   onPress,
 }: {
   icon: string;
   label: string;
   active?: boolean;
   destructive?: boolean;
+  /** Shown as a count at the row's end when above 0. */
+  badge?: number;
   onPress: () => void;
 }) => {
   const theme = useTheme();
@@ -197,12 +217,19 @@ const MenuRow = ({
       >
         {label}
       </Text>
+      {badge > 0 ? (
+        <View style={[styles.badge, { backgroundColor: theme.colors.primary }]}>
+          <Text style={[styles.badgeText, { color: theme.colors.onPrimary }]}>
+            {badge > 99 ? '99+' : badge}
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 };
 
 const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
-  const { authStore, profileStore } = useStores();
+  const { authStore, profileStore, notificationStore } = useStores();
   const signOut = useSignOut();
   const { t } = useTranslation();
   const theme = useTheme();
@@ -212,7 +239,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
 
   const focusedTab =
     activeRoute?.name === 'MainTabs'
-      ? getFocusedRouteNameFromRoute(activeRoute) ?? 'HomeTab'
+      ? getFocusedRouteNameFromRoute(activeRoute) ?? 'DashboardTab'
       : undefined;
 
   const isActive = (item: MenuItem): boolean =>
@@ -349,6 +376,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
               icon={item.icon}
               label={t(item.labelKey)}
               active={isActive(item)}
+              badge={item.badge === 'messages' ? notificationStore?.unreadMessages ?? 0 : 0}
               onPress={() =>
                 item.tab
                   ? props.navigation.navigate('MainTabs', {
@@ -391,6 +419,8 @@ export const DrawerNavigator = () => {
   const theme = useTheme();
   // Signed in from here down: the bell's count is read once on sign-in.
   useUnreadNotificationsSync();
+  // …and the Messages badge, as the portal's menu keeps it.
+  useUnreadMessagesSync();
 
   return (
     <Drawer.Navigator
@@ -409,6 +439,7 @@ export const DrawerNavigator = () => {
       <Drawer.Screen name="Settings" component={SettingsScreen} />
       <Drawer.Screen name="Notifications" component={NotificationsScreen} />
       <Drawer.Screen name="FollowUps" component={PatientFollowUpIndex} />
+      <Drawer.Screen name="Messages" component={MessagesStackNavigator} />
       <Drawer.Screen
         name="Prescriptions"
         component={MyPrescriptionsStackNavigator}
@@ -539,6 +570,18 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     fontSize: 14.5,
+  },
+  badge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 11,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,

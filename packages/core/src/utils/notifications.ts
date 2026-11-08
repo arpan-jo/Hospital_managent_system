@@ -27,8 +27,11 @@ export const toNotificationTimestamp = (value: unknown): string => {
 /** An app screen a notification can open. */
 export type NotificationTarget =
   | { screen: 'appointment'; appointmentId: number }
+  /** A doctor's reply: the conversation it landed in. */
+  | { screen: 'messageThread'; doctorEmployeeId: number; patientRegistrationId: number }
   | {
       screen:
+        | 'messages'
         | 'appointments'
         | 'followUps'
         | 'prescriptions'
@@ -60,6 +63,19 @@ export const notificationTarget = (
   }
 
   if (path === '/appointments') return { screen: 'appointments' };
+  if (path === '/messages') {
+    // "/messages?doctor=23248&patient=2313" — the reply's own conversation.
+    const query = String(link ?? '').split('?')[1]?.split('#')[0] ?? '';
+    const read = (name: string): number => {
+      const match = new RegExp(`(?:^|&)${name}=(\\d+)`, 'i').exec(query);
+      return Number(match?.[1] ?? 0) || 0;
+    };
+    const doctorEmployeeId = read('doctor');
+    const patientRegistrationId = read('patient');
+    return doctorEmployeeId > 0 && patientRegistrationId > 0
+      ? { screen: 'messageThread', doctorEmployeeId, patientRegistrationId }
+      : { screen: 'messages' };
+  }
   if (path === '/follow-ups') return { screen: 'followUps' };
   if (path === '/prescriptions' || path.startsWith('/prescriptions/')) {
     return { screen: 'prescriptions' };

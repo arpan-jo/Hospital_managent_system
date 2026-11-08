@@ -70,6 +70,19 @@ export const NotificationsScreen = observer(() => {
         case 'followUps':
           navigation.navigate('FollowUps');
           break;
+        case 'messages':
+          navigation.navigate('Messages', { screen: 'MessagesList' });
+          break;
+        case 'messageThread':
+          navigation.navigate('Messages', {
+            screen: 'MessageThread',
+            params: {
+              doctorEmployeeId: target.doctorEmployeeId,
+              patientRegistrationId: target.patientRegistrationId,
+            },
+            initial: false,
+          });
+          break;
         case 'prescriptions':
           navigation.navigate('Prescriptions');
           break;

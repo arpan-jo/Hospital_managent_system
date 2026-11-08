@@ -22,8 +22,11 @@ import AppointmentsStackNavigator, {
 import ReportsStackNavigator, {
   ReportsStackParamList,
 } from './ReportsStackNavigator';
+import PatientDashboard from '../screens/patient/dashboard/PatientDashboard';
 
 export type TabParamList = {
+  /** The portal's dashboard — where the app opens, as the portal does since 2026-11-07. */
+  DashboardTab: undefined;
   HomeTab: NavigatorScreenParams<FindDoctorsStackParamList> | undefined;
   ActivityTab: NavigatorScreenParams<AppointmentsStackParamList> | undefined;
   ReportsTab: NavigatorScreenParams<ReportsStackParamList> | undefined;
@@ -40,13 +43,22 @@ type TabConfig = {
 };
 
 /**
- * The tab bar — Find Doctors, Appointments, Reports, Profile. Each tab is
- * labelled after the screen it actually shows; the route names stay as they
- * were so existing `navigate('MainTabs', { screen: ... })` calls keep working.
+ * The tab bar — Home, Find Doctors, Appointments, Reports, Profile. Home comes
+ * first, so the app opens on it, as the portal opens on its dashboard. Each tab
+ * is labelled after the screen it actually shows; the route names stay as they
+ * were so existing `navigate('MainTabs', { screen: ... })` calls keep working
+ * (`HomeTab` is Find Doctors, from before there was a home screen).
  * The drawer entries of the same names focus these tabs, so each screen exists
  * exactly once whichever entry point is used.
  */
 export const TABS: TabConfig[] = [
+  {
+    name: 'DashboardTab',
+    titleKey: 'tabs.home',
+    icon: 'home-outline',
+    activeIcon: 'home',
+    component: PatientDashboard,
+  },
   {
     name: 'HomeTab',
     titleKey: 'tabs.findDoctors',

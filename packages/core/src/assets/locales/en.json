@@ -412,7 +412,8 @@
     "findDoctors": "Find Doctors",
     "reports": "Reports",
     "appointments": "Appointments",
-    "profile": "Profile"
+    "profile": "Profile",
+    "home": "Home"
   },
   "myPrescriptions": {
     "uploaded": "Uploaded",
@@ -825,7 +826,9 @@
     "sectionGeneral": "General",
     "viewProfile": "View profile",
     "vitals": "Vitals",
-    "bills": "Bills"
+    "bills": "Bills",
+    "dashboard": "Dashboard",
+    "messages": "Messages"
   },
   "settings": {
     "title": "Settings",
@@ -934,6 +937,54 @@
     "confirm": "Reschedule",
     "done": "Appointment rescheduled."
   },
+  "dashboard": {
+    "title": "Dashboard",
+    "nextAppointment": "Next appointment",
+    "seeAll": "See all",
+    "noUpcoming": "No upcoming appointment",
+    "bookAppointment": "Book Appointment",
+    "bookHint": "Find a doctor and pick a time",
+    "doctor": "Doctor",
+    "token": "Token {{token}}",
+    "overview": "Overview",
+    "reportsPending": "Reports pending",
+    "reportsReady": "Reports ready",
+    "billsDue": "Bills due",
+    "unreadMessages": "Unread messages",
+    "quickActions": "Quick actions",
+    "messageDoctor": "Message a doctor",
+    "prescriptions": "Prescriptions",
+    "vitals": "Vitals",
+    "reports": "Reports",
+    "todayMedicines": "Today's medicines",
+    "loadFailed": "Couldn't load your dashboard. Check your connection."
+  },
+  "messages": {
+    "title": "Messages",
+    "subtitle": "Ask a question to a doctor you have visited",
+    "emergencyNotice": "For emergencies call the hospital directly.",
+    "newMessage": "New message",
+    "emptyTitle": "No conversations yet",
+    "emptyHint": "You can message doctors you have had an appointment with.",
+    "loadFailed": "Couldn't load your messages",
+    "you": "You",
+    "doctor": "Doctor",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "noMessagesYet": "No messages yet",
+    "unreadCount": "{{count}} unread",
+    "unreadCount_plural": "{{count}} unread",
+    "chooseDoctor": "Choose a doctor",
+    "whoCanMessage": "You can message doctors you have had an appointment with.",
+    "noDoctors": "No doctors to message yet",
+    "noDoctorsHint": "Once you have had an appointment with a doctor, you can message them here.",
+    "doctorsFailed": "Couldn't load the doctors",
+    "threadFailed": "Couldn't load this conversation",
+    "threadEmpty": "No messages in this conversation yet.",
+    "threadEmptyHint": "Write your question below. The doctor's reply will appear here.",
+    "typeMessage": "Type your message…",
+    "send": "Send"
+  },
   "common": {
     "sessionEnded": "Your session has ended. Please sign in again.",
     "tooManyAttempts": "Too many attempts. Please wait a minute and try again.",
@@ -951,7 +1002,8 @@
     "na": "N/A",
     "retry": "Retry",
     "close": "Close",
-    "somethingWentWrong": "Something went wrong"
+    "somethingWentWrong": "Something went wrong",
+    "back": "Back"
   },
   "photoPicker": {
     "title": "Profile photo",

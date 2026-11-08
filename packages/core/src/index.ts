@@ -45,6 +45,7 @@ export * from './repositories/MedicalRecordRepository';
 export * from './repositories/BillsRepository';
 export * from './repositories/UploadedLabReportRepository';
 export * from './repositories/DoctorReviewRepository';
+export * from './repositories/MessageRepository';
 export * from './repositories/VitalsRepository';
 export * from './repositories/PatientPrescriptionRepository';
 export * from './repositories/NotificationRepository';

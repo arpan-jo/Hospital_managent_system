@@ -25,6 +25,25 @@ describe('toNotificationTimestamp', () => {
 });
 
 describe('notificationTarget', () => {
+  it("opens a doctor's reply in its own conversation", () => {
+    // PortalMessageController.DoctorReply links the patient's notice this way.
+    expect(notificationTarget('/messages?doctor=23248&patient=2313')).toEqual({
+      screen: 'messageThread',
+      doctorEmployeeId: 23248,
+      patientRegistrationId: 2313,
+    });
+    expect(notificationTarget('/messages?patient=2313&doctor=23248#x')).toEqual({
+      screen: 'messageThread',
+      doctorEmployeeId: 23248,
+      patientRegistrationId: 2313,
+    });
+  });
+
+  it('opens the conversations when the reply names no thread', () => {
+    expect(notificationTarget('/messages')).toEqual({ screen: 'messages' });
+    expect(notificationTarget('/messages?doctor=7')).toEqual({ screen: 'messages' });
+  });
+
   it("opens an appointment's own page", () => {
     // AppointmentService links the patient's notices this way.
     expect(notificationTarget('/appointments/3295')).toEqual({

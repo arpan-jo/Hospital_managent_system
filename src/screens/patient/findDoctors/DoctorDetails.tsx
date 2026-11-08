@@ -151,6 +151,10 @@ export const DoctorDetails = observer(() => {
   }
 
   const photoUri = getFileUrl(doctor?.photoUrl);
+  // The booking bar belongs to Schedule; on About or Reviews it shows only once a
+  // date and a window are chosen there, so the choice can still be booked — a
+  // disabled bar would only take room from a review being written.
+  const showFooter = activeTab === 'schedule' || !!viewModel.canBook;
   const experienceYears = doctor?.experienceYears ?? 0;
   const currentFee = viewModel.currentFee ?? 0;
 
@@ -189,7 +193,13 @@ export const DoctorDetails = observer(() => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: keyboardHeight ? keyboardHeight + 24 : 24 },
+          {
+            paddingBottom: keyboardHeight
+              ? keyboardHeight + 24
+              : showFooter
+              ? 24
+              : insets.bottom + TAB_BAR_CLEARANCE,
+          },
         ]}
       >
         {/* ── The doctor ── */}
@@ -222,7 +232,8 @@ export const DoctorDetails = observer(() => {
               ) : null}
               {detail?.experience ? (
                 <View style={styles.inline}>
-                  <Icon name="star" size={13} color="#F5A524" />
+                  {/* Not a star: the rating chip above is the only one in the header. */}
+                  <Icon name="briefcase-outline" size={13} color={muted} />
                   <Text style={[styles.caption, { color: muted }]}>
                     {t('doctorProfile.experienceLine', { experience: detail.experience })}
                   </Text>
@@ -308,32 +319,34 @@ export const DoctorDetails = observer(() => {
       </ScrollView>
 
       {/* ── The way on: open while a date and a window are chosen ── */}
-      <View
-        style={[
-          styles.footer,
-          {
-            backgroundColor: theme.colors.surface,
-            borderTopColor: theme.colors.outlineVariant,
-            paddingBottom: insets.bottom + TAB_BAR_CLEARANCE - 24,
-          },
-        ]}
-      >
-        {viewModel.canBook ? null : (
-          <Text style={[styles.caption, styles.footerHint, { color: muted }]}>
-            {t('doctorProfile.selectFirst')}
-          </Text>
-        )}
-        <CustomButton
-          mode="contained"
-          onPress={viewModel.openConfirmation}
-          disabled={!viewModel.canBook}
-          style={styles.footerButton}
+      {showFooter ? (
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.outlineVariant,
+              paddingBottom: insets.bottom + TAB_BAR_CLEARANCE - 24,
+            },
+          ]}
         >
-          {currentFee > 0
-            ? `${t('doctorProfile.appointment')}  •  ${taka(currentFee)}`
-            : t('doctorProfile.appointment')}
-        </CustomButton>
-      </View>
+          {viewModel.canBook ? null : (
+            <Text style={[styles.caption, styles.footerHint, { color: muted }]}>
+              {t('doctorProfile.selectFirst')}
+            </Text>
+          )}
+          <CustomButton
+            mode="contained"
+            onPress={viewModel.openConfirmation}
+            disabled={!viewModel.canBook}
+            style={styles.footerButton}
+          >
+            {currentFee > 0
+              ? `${t('doctorProfile.appointment')}  •  ${taka(currentFee)}`
+              : t('doctorProfile.appointment')}
+          </CustomButton>
+        </View>
+      ) : null}
 
       {/* ── Confirmation: nothing is sent until this is confirmed ── */}
       <CustomBottomSheet visible={viewModel.isConfirming} onClose={viewModel.closeConfirmation}>

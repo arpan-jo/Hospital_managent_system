@@ -24,6 +24,7 @@ const linking = {
       MainTabs: {
         path: 'main',
         screens: {
+          DashboardTab: 'dashboard',
           HomeTab: 'home',
           ActivityTab: 'activity',
           ProfileTab: 'me',

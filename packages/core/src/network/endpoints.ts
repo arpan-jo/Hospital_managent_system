@@ -44,6 +44,14 @@ export const ENDPOINTS = {
   /** Today's appointments and where each doctor's queue stands — the Queue Monitor's rule. */
   portalTodayQueue: '/hms/portal/appointments/GetTodayQueue',
   portalRescheduleAppointment: '/hms/portal/appointments/RescheduleAppointment',
+  // ── Messages: the patient and the doctors they have seen ───────────────────
+  /** Doctors a registration has had an appointment with — whom a new thread can go to. */
+  portalMessageDoctors: '/hms/portal/messages/GetDoctors',
+  /** Every thread of the account, latest first, with its last message and unread count. */
+  portalMessageThreads: '/hms/portal/messages/GetThreads',
+  /** One thread in full — reading it marks the doctor's messages as read. */
+  portalMessageThread: '/hms/portal/messages/GetThread',
+  portalMessageSend: '/hms/portal/messages/Send',
   /** The patient's prescriptions, and one drawn as a PDF (outside the API's encryption). */
   portalPrescriptions: '/hms/portal/medical-records/GetMyPrescriptions',
   portalPrescriptionPdf: '/hms/portal/medical-records/GetPrescriptionPdf',
