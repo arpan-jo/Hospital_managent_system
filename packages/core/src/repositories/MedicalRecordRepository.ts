@@ -53,6 +53,13 @@ export interface LabTest extends RecordPatient {
   status: LabTestStatus;
   /** The report PDF can be opened. */
   isReportReady: boolean;
+  /** What is still unpaid on the test's bill; 0 when paid, or on a backend older than the field. */
+  billDueAmount: number;
+  /**
+   * The bill has money due, so the report is held back online even when final —
+   * the PDF and the images answer 404 until it is paid, as on the portal.
+   */
+  isLockedByDue: boolean;
   /**
    * When the hospital expects to hand the report over — from the item's normal
    * or urgent delivery schedule, Bangladesh wall-clock with no zone. '' when the
@@ -175,6 +182,7 @@ const toLabTestStatus = (raw: any): LabTestStatus => {
 
 const toLabTest = (raw: any): LabTest => {
   const status = toLabTestStatus(raw?.status);
+  const billDueAmount = Math.max(0, toNumber(raw?.billDueAmount));
   return {
     ...toRecordPatient(raw),
     billRowId: toNumber(raw?.billRowId),
@@ -185,6 +193,9 @@ const toLabTest = (raw: any): LabTest => {
     status,
     // Both must agree: the PDF route answers 404 until the stage is final.
     isReportReady: status === 'final' && raw?.isReportReady !== false,
+    billDueAmount,
+    // The server's own flag is `billDueAmount > 0`; either says the bill is owed.
+    isLockedByDue: raw?.isLockedByDue === true || billDueAmount > 0,
     expectedDeliveryAt: toText(raw?.expectedDeliveryAt),
   };
 };

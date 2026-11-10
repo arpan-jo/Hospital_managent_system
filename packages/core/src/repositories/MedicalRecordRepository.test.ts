@@ -167,4 +167,21 @@ describe('MedicalRecordRepository.getLabTests', () => {
     expect(tests.map(test => test.expectedDeliveryAt)).toEqual(['2026-11-09T17:00:00', '', '']);
     expect(tests.map(test => test.isReportReady)).toEqual([false, true, false]);
   });
+
+  it('reads a report held back by money due on its bill', async () => {
+    request.mockResolvedValueOnce([
+      { billRowId: 1, status: 'final', isReportReady: true, billDueAmount: 500, isLockedByDue: true },
+      // The amount alone says it too, should the flag be missing.
+      { billRowId: 2, status: 'final', isReportReady: true, billDueAmount: 120.5 },
+      { billRowId: 3, status: 'final', isReportReady: true, billDueAmount: 0, isLockedByDue: false },
+      // An older backend sends neither — nothing is locked.
+      { billRowId: 4, status: 'final', isReportReady: true },
+      { billRowId: 5, status: 'final', isReportReady: true, billDueAmount: -40 },
+    ]);
+
+    const tests = await MedicalRecordRepository.getLabTests('radiology');
+
+    expect(tests.map(test => test.isLockedByDue)).toEqual([true, true, false, false, false]);
+    expect(tests.map(test => test.billDueAmount)).toEqual([500, 120.5, 0, 0, 0]);
+  });
 });

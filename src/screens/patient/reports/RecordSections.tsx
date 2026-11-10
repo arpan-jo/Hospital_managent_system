@@ -9,6 +9,7 @@ import {
   PatientPrescriptionRepository,
   PortalPrescription,
   UploadedLabReport,
+  formatTaka,
   serverMessageOf,
   useStores,
 } from '@app/core';
@@ -45,6 +46,9 @@ const useReloadOnSignal = (signal: number | undefined, reload: () => void) => {
 type ReportsNavigation = NativeStackNavigationProp<ReportsStackParamList>;
 
 const labTestSearch = (item: LabTest) => [item?.itemName, item?.department, item?.billCode];
+
+/** A ready report the hospital holds back until its bill is paid — as the portal locks it. */
+const isDueLocked = (item: LabTest): boolean => Boolean(item?.isReportReady && item?.isLockedByDue);
 
 /** The portal's colour for each stage: grey while waiting, amber once results are in, brand when ready. */
 const STATUS_TONE: Record<LabTest['status'], BadgeTone> = {
@@ -153,6 +157,10 @@ const LabTestsSection = ({ type, months, bottomPadding, reloadSignal }: SectionP
         },
         // A badge of its own: on the single meta line it would be cut off.
         ...(expected ? [{ label: t('reports.expectedBy', { time: expected }), tone: 'muted' as const }] : []),
+        // Ready, but held back until the bill is paid — the portal's warning pill.
+        ...(isDueLocked(item)
+          ? [{ label: t('reports.dueLocked', { amount: formatTaka(item?.billDueAmount) }), tone: 'warn' as const }]
+          : []),
       ];
     },
     [viewModel.showPatients, expectedOf, t],
@@ -165,6 +173,17 @@ const LabTestsSection = ({ type, months, bottomPadding, reloadSignal }: SectionP
         const expected = expectedOf(item);
         toastStore.show(
           expected ? t('reports.reportNotReadyBy', { time: expected }) : t('reports.reportNotReady'),
+          'info',
+        );
+        return;
+      }
+      // The server answers 404 for it until the bill is paid — say why instead.
+      if (isDueLocked(item)) {
+        const amount = formatTaka(item?.billDueAmount);
+        toastStore.show(
+          item?.billCode
+            ? t('reports.dueLockedMessage', { amount, bill: item.billCode })
+            : t('reports.dueLockedMessageNoBill', { amount }),
           'info',
         );
         return;
@@ -203,7 +222,8 @@ const LabTestsSection = ({ type, months, bottomPadding, reloadSignal }: SectionP
 
   const actionOf = useCallback(
     (item: LabTest): RecordAction | null =>
-      type === 'radiology' && item?.isReportReady
+      // No images while the bill is owed: the PACS link is held back with the report.
+      type === 'radiology' && item?.isReportReady && !isDueLocked(item)
         ? {
             icon: 'image-multiple-outline',
             label: t('reports.viewImages'),

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   createDrawerNavigator,
   DrawerContentComponentProps,
@@ -32,7 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStores, getFileUrl } from '@app/core';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { CustomAvatar, fontFamilies } from '@app/ui';
+import { CustomAvatar, CustomDialog, fontFamilies } from '@app/ui';
 
 export type DrawerParamList = {
   MainTabs: NavigatorScreenParams<TabParamList> | undefined;
@@ -244,6 +244,17 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  /**
+   * Logout asks first, as the profile's does — at the foot of the drawer it is
+   * one stray tap away, and signing out ends the account's other sessions too.
+   */
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const askLogout = useCallback(() => setConfirmingLogout(true), []);
+  const cancelLogout = useCallback(() => setConfirmingLogout(false), []);
+  const confirmLogout = useCallback(() => {
+    setConfirmingLogout(false);
+    signOut();
+  }, [signOut]);
 
   const activeRoute = props.state.routes[props.state.index];
 
@@ -414,9 +425,19 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
           icon="logout"
           label={t('profile.logoutButton')}
           destructive
-          onPress={signOut}
+          onPress={askLogout}
         />
       </View>
+
+      <CustomDialog
+        visible={confirmingLogout}
+        title={t('profile.logoutButton')}
+        message={t('profile.logoutConfirm')}
+        confirmText={t('profile.logoutButton')}
+        cancelText={t('common.cancel')}
+        onConfirm={confirmLogout}
+        onDismiss={cancelLogout}
+      />
     </View>
   );
 });

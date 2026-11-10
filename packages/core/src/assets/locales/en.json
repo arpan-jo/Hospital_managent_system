@@ -900,7 +900,10 @@
         "noTests": "Add at least one test.",
         "testName": "Every test needs a name."
       }
-    }
+    },
+    "dueLocked": "Due {{amount}} — pay to view",
+    "dueLockedMessage": "Please clear the due of {{amount}} on bill {{bill}} to view this report.",
+    "dueLockedMessageNoBill": "Please clear the due of {{amount}} on its bill to view this report."
   },
   "drawer": {
     "appointments": "Appointments",
