@@ -71,6 +71,16 @@ export const AppDarkTheme = {
     onSurfaceVariant: '#9AA0B5',
     outlineVariant: '#2A3042',
     error: '#F2B8B5',
+    // Paper's raised surfaces — dialogs (level3), menus (level2), search bars
+    // (level3). Its defaults are a purple grey; these follow the app's navy.
+    elevation: {
+      level0: 'transparent',
+      level1: '#171B2D',
+      level2: '#1C2134',
+      level3: '#222840',
+      level4: '#252B44',
+      level5: '#282F49',
+    },
     aiGlow: '#67E8F9',
     aiConsole: '#070B1F',
     aiConsoleRaised: '#141C45',

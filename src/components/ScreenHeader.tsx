@@ -74,8 +74,10 @@ export const ScreenHeader = memo<ScreenHeaderProps>(function ScreenHeader({
           {title}
         </Text>
         {subtitle ? (
+          // Two lines, not one: a sentence such as the review screens' "please
+          // check and correct before saving" is cut on a 360dp phone otherwise.
           <Text
-            numberOfLines={1}
+            numberOfLines={2}
             style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
           >
             {subtitle}

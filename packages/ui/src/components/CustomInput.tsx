@@ -23,6 +23,12 @@ interface CustomInputProps {
   returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
   multiline?: boolean;
   numberOfLines?: number;
+  /**
+   * What the return key does in a multiline field. `blurAndSubmit` lets a long
+   * one-line value (a hospital's name) wrap to show whole, without Enter
+   * putting a line break into it.
+   */
+  submitBehavior?: 'submit' | 'blurAndSubmit' | 'newline';
   style?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
   disabled?: boolean;
@@ -53,6 +59,7 @@ export const CustomInput = memo<CustomInputProps>(function CustomInput({
   returnKeyType,
   multiline = false,
   numberOfLines,
+  submitBehavior,
   style,
   inputStyle,
   disabled = false,
@@ -109,6 +116,7 @@ export const CustomInput = memo<CustomInputProps>(function CustomInput({
         disabled={disabled}
         multiline={multiline}
         numberOfLines={numberOfLines}
+        submitBehavior={submitBehavior}
         mode="outlined"
         error={!!error}
         left={leftIcon ? leftAdornment() : null}

@@ -315,6 +315,10 @@ export const ReviewLabReportScreen = () => {
               label={t('reports.review.labName')}
               value={labName}
               onChangeText={text => setLabName(text ?? '')}
+              // A long name wraps to show whole; Enter closes the keyboard, no line break.
+              multiline
+              submitBehavior="blurAndSubmit"
+              returnKeyType="done"
               compact
             />
             <CustomDatePicker

@@ -301,6 +301,10 @@ export const ReviewPrescriptionScreen = () => {
               label={t('reports.review.hospital')}
               value={hospitalName}
               onChangeText={text => setHospitalName(text ?? '')}
+              // A long name wraps to show whole; Enter closes the keyboard, no line break.
+              multiline
+              submitBehavior="blurAndSubmit"
+              returnKeyType="done"
               compact
             />
             <CustomDatePicker
