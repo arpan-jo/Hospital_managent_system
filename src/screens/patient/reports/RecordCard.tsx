@@ -45,7 +45,8 @@ interface RecordCardProps {
   badges: RecordBadge[];
   /** Without it the card is not pressable and shows no chevron. */
   onOpen?: () => void;
-  action?: RecordAction | null;
+  /** One button, or a few side by side — e.g. preview and remove, as the portal's row has. */
+  action?: RecordAction | RecordAction[] | null;
 }
 
 /** One record on a list — the kind's icon tile, a title, a meta line, badges, and what it can do. */
@@ -58,8 +59,7 @@ export const RecordCard = memo<RecordCardProps>(function RecordCard({ kind, titl
     .filter(Boolean)
     .join(' · ');
   const shownBadges = (badges ?? []).filter(badge => badge?.label);
-  const actionColor = action?.destructive ? theme.colors.error : tone.color;
-  const actionTint = action?.destructive ? theme.colors.errorContainer : tone.tint;
+  const actions = (Array.isArray(action) ? action : action ? [action] : []).filter(Boolean);
 
   return (
     <Pressable
@@ -98,24 +98,29 @@ export const RecordCard = memo<RecordCardProps>(function RecordCard({ kind, titl
           </View>
         ) : null}
       </View>
-      {action ? (
-        // Not `disabled` while busy: a disabled button lets the press
-        // through to the card, which would open the record instead.
-        <Pressable
-          onPress={() => action?.onPress?.()}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel={action?.label ?? ''}
-          accessibilityState={{ busy: !!action?.isBusy }}
-          style={({ pressed }) => [styles.action, { backgroundColor: actionTint, opacity: pressed ? 0.7 : 1 }]}
-        >
-          {action?.isBusy ? (
-            <ActivityIndicator size={16} color={actionColor} />
-          ) : (
-            <Icon name={action?.icon || 'image-outline'} size={19} color={actionColor} />
-          )}
-        </Pressable>
-      ) : null}
+      {actions.map((item, index) => {
+        const color = item?.destructive ? theme.colors.error : tone.color;
+        const tint = item?.destructive ? theme.colors.errorContainer : tone.tint;
+        return (
+          // Not `disabled` while busy: a disabled button lets the press
+          // through to the card, which would open the record instead.
+          <Pressable
+            key={`${item?.icon}-${index}`}
+            onPress={() => item?.onPress?.()}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={item?.label ?? ''}
+            accessibilityState={{ busy: !!item?.isBusy }}
+            style={({ pressed }) => [styles.action, { backgroundColor: tint, opacity: pressed ? 0.7 : 1 }]}
+          >
+            {item?.isBusy ? (
+              <ActivityIndicator size={16} color={color} />
+            ) : (
+              <Icon name={item?.icon || 'image-outline'} size={19} color={color} />
+            )}
+          </Pressable>
+        );
+      })}
       {onOpen ? <Icon name="chevron-right" size={20} color={theme.colors.onSurfaceVariant} /> : null}
     </Pressable>
   );

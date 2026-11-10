@@ -1295,7 +1295,10 @@
       "prescriptions": "View prescriptions",
       "reports": "View reports",
       "findDoctors": "Find doctors",
-      "profile": "View profile"
+      "profile": "View profile",
+      "messageThread": "Open conversation",
+      "messages": "View messages",
+      "homeCollection": "View home collection"
     }
   },
   "appUpdate": {

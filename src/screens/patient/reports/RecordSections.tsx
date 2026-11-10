@@ -292,9 +292,9 @@ export const RadiologySection = (props: SectionProps) => <LabTestsSection type="
 const prescriptionSearch = (item: PortalPrescription) => [item?.code, item?.doctorName, item?.departmentName];
 
 /**
- * Prescriptions — written at a hospital visit, read in full rather than as the
- * PDF. One the patient uploaded can be removed, as on the portal; a doctor's
- * never can.
+ * Prescriptions — written at a hospital visit. A row opens the prescription in
+ * full, and its button previews the PDF the server draws, as the portal's row
+ * does. One the patient uploaded can also be removed; a doctor's never can.
  */
 export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal }: SectionProps) => {
   const { t } = useTranslation();
@@ -314,20 +314,48 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal 
     [t],
   );
 
+  /** The PDF the server draws, opened in the app — the portal's preview button. */
+  const previewPdf = useCallback(
+    (item: PortalPrescription) => {
+      if (!item?.id) return;
+      navigation.navigate('FileViewer', {
+        url: PatientPrescriptionRepository.getPdfUrl(item.id),
+        filename: PatientPrescriptionRepository.getPdfFileName(item?.code),
+        title: t('myPrescriptions.preview'),
+        subtitle: [item?.patientName, formatRecordDate(prescribedOn(item), months), t(prescriptionKindKey(item))]
+          .filter(Boolean)
+          .join(' · '),
+        canDownload: true,
+        fresh: true,
+      });
+    },
+    [navigation, months, t],
+  );
+
+  /** Every row previews its PDF; one the patient uploaded can also be removed. */
   const actionOf = useCallback(
-    (item: PortalPrescription): RecordAction | null =>
-      item?.isUploaded && item?.id
-        ? {
-            icon: 'trash-can-outline',
-            label: t('reports.removeUpload'),
-            destructive: true,
-            isBusy: removingId === item.id,
-            onPress: () => {
-              if (!removingId) setRemoveTarget(item);
-            },
-          }
-        : null,
-    [removingId, t],
+    (item: PortalPrescription): RecordAction[] | null => {
+      if (!item?.id) return null;
+      const preview: RecordAction = {
+        icon: 'file-eye-outline',
+        label: t('myPrescriptions.preview'),
+        onPress: () => previewPdf(item),
+      };
+      if (!item?.isUploaded) return [preview];
+      return [
+        preview,
+        {
+          icon: 'trash-can-outline',
+          label: t('reports.removeUpload'),
+          destructive: true,
+          isBusy: removingId === item.id,
+          onPress: () => {
+            if (!removingId) setRemoveTarget(item);
+          },
+        },
+      ];
+    },
+    [previewPdf, removingId, t],
   );
 
   const cancelRemove = useCallback(() => {

@@ -146,8 +146,12 @@ const TabItem = ({ label, icon, activeIcon, isFocused, onPress }: TabItemProps) 
         />
         <Icon name={isFocused ? activeIcon : icon} size={22} color={tint} />
       </View>
+      {/* On a 360dp phone "Appointments" is wider than its tab — the label
+          shrinks a little rather than end in "…". */}
       <Text
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
         style={[
           styles.label,
           {

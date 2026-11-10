@@ -145,6 +145,9 @@ export const DoctorReviewsPanel = memo<DoctorReviewsPanelProps>(function DoctorR
   const showForm = viewModel.canReview && (editing || !mine);
   const shown = compact && !showAll ? reviews.slice(0, COMPACT_LIMIT) : reviews;
   const maxSpread = Math.max(...spread.slice(1), 1);
+  // The server lists at most 100 reviews while its count and average cover all of
+  // them — the bars, counted from the list, show only when the list is complete.
+  const showSpread = reviews.length >= (Number(summary?.reviewCount ?? 0) || 0);
   // Null until someone has rated — and never a value that is not a number.
   const average =
     summary?.averageRating !== null &&
@@ -157,7 +160,7 @@ export const DoctorReviewsPanel = memo<DoctorReviewsPanelProps>(function DoctorR
     <View style={styles.panel}>
       {/* ── The average, and how the stars fall ── */}
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
-        <View style={styles.summary}>
+        <View style={[styles.summary, !showSpread && styles.summaryAlone]}>
           <View style={styles.average}>
             <Text style={[styles.averageValue, { color: theme.colors.onSurface }]}>
               {average !== null ? average.toFixed(1) : '—'}
@@ -167,17 +170,19 @@ export const DoctorReviewsPanel = memo<DoctorReviewsPanelProps>(function DoctorR
               {t('reviews.count', { count: summary?.reviewCount ?? 0 })}
             </Text>
           </View>
-          <View style={styles.bars}>
-            {[5, 4, 3, 2, 1].map(star => (
-              <View key={star} style={styles.barRow}>
-                <Text style={[styles.barLabel, { color: muted }]}>{star}</Text>
-                <Icon name="star" size={10} color={STAR_COLOR} />
-                <View style={[styles.barTrack, { backgroundColor: theme.colors.surfaceVariant }]}>
-                  <View style={[styles.barFill, { width: `${(spread[star] / maxSpread) * 100}%` }]} />
+          {showSpread ? (
+            <View style={styles.bars}>
+              {[5, 4, 3, 2, 1].map(star => (
+                <View key={star} style={styles.barRow}>
+                  <Text style={[styles.barLabel, { color: muted }]}>{star}</Text>
+                  <Icon name="star" size={10} color={STAR_COLOR} />
+                  <View style={[styles.barTrack, { backgroundColor: theme.colors.surfaceVariant }]}>
+                    <View style={[styles.barFill, { width: `${((spread?.[star] ?? 0) / maxSpread) * 100}%` }]} />
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {mine && !editing ? (
@@ -303,6 +308,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+  },
+  summaryAlone: {
+    justifyContent: 'center',
   },
   average: {
     alignItems: 'center',

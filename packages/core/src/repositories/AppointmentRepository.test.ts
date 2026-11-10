@@ -61,6 +61,18 @@ describe('AppointmentRepository.getTodayQueue', () => {
     expect(entry.doctorName).toBe('');
   });
 
+  it('keeps a now-serving 0 — someone without a token is being seen, so the queue has started', async () => {
+    request.mockResolvedValueOnce([
+      { appointmentId: 43, status: 'confirmed', tokenNumber: 0, nowServingToken: 0, aheadCount: 2 },
+    ]);
+
+    const [entry] = await AppointmentRepository.getTodayQueue();
+    expect(entry.nowServingToken).toBe(0);
+    // The patient's own token stays "none" at 0 — there is no token #0 to show.
+    expect(entry.tokenNumber).toBeNull();
+    expect(entry.aheadCount).toBe(2);
+  });
+
   it('answers an empty list for anything that is not a list, and drops rows with no id', async () => {
     request.mockResolvedValueOnce(null);
     await expect(AppointmentRepository.getTodayQueue()).resolves.toEqual([]);

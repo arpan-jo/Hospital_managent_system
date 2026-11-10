@@ -192,7 +192,9 @@ export const MessagesListScreen = () => {
           />
         }
       />
-      {viewModel.threads.length ? (
+      {/* A new conversation does not need the list — the portal keeps its button
+          even when the threads fail to load. The empty state has its own. */}
+      {!viewModel.isLoading && (viewModel.error !== null || (viewModel.threads?.length ?? 0) > 0) ? (
         <FAB
           icon="plus"
           label={t('messages.newMessage')}

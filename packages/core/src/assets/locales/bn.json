@@ -1295,7 +1295,10 @@
       "prescriptions": "প্রেসক্রিপশন দেখুন",
       "reports": "রিপোর্ট দেখুন",
       "findDoctors": "ডাক্তার খুঁজুন",
-      "profile": "প্রোফাইল দেখুন"
+      "profile": "প্রোফাইল দেখুন",
+      "messageThread": "কথোপকথন দেখুন",
+      "messages": "মেসেজ দেখুন",
+      "homeCollection": "হোম কালেকশন দেখুন"
     }
   },
   "appUpdate": {

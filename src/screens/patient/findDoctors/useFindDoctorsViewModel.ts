@@ -212,15 +212,48 @@ export const useFindDoctorsViewModel = () => {
     fetchTopRated();
   }, [fetchFilterOptions, fetchTopRated]);
 
+  /**
+   * Every page already on screen, read again in place — the portal refetches each
+   * loaded page of its list the same way. The list keeps its length and the
+   * patient their scroll; if any page fails, the list stays as it was.
+   */
+  const refreshLoadedPages = useCallback(async () => {
+    const pages = pagesLoadedRef.current;
+    if (pages <= 0) {
+      fetchFirstPage();
+      return;
+    }
+
+    const searchId = searchIdRef.current;
+    try {
+      const results = await Promise.all(
+        Array.from({ length: pages }, (_, pageNo) =>
+          FindDoctorsRepository.searchDoctors({
+            ...toCriteria(),
+            pageNo,
+            pageSize: PORTAL_DOCTOR_PAGE_SIZE,
+          }),
+        ),
+      );
+      // A new search, or another page, arrived meanwhile — this read is out of date.
+      if (searchId !== searchIdRef.current || pages !== pagesLoadedRef.current) return;
+
+      setDoctors((results ?? []).flatMap(page => page?.data ?? []));
+      setTotalCount(prev => results?.[0]?.totalCount ?? prev);
+    } catch (e: any) {
+      console.log('refreshDoctors error ==>', e?.message);
+    }
+  }, [fetchFirstPage, toCriteria]);
+
   // A rating was saved somewhere in the app: the list and the strip read again,
   // so their stars are current — the portal reloads its doctor list the same way.
   useEffect(
     () =>
       onDoctorRated(() => {
-        fetchFirstPage();
+        refreshLoadedPages();
         fetchTopRated();
       }),
-    [fetchFirstPage, fetchTopRated],
+    [refreshLoadedPages, fetchTopRated],
   );
 
   /** Read off what is typed, not the debounced text: the strip steps aside at the first key. */

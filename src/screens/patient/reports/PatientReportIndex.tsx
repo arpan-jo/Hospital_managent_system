@@ -7,7 +7,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { PatientDocument, getFileUrl, useDownload, useStores } from '@app/core';
+import { PatientDocument, READ_CATEGORIES, getFileUrl, useDownload, useStores } from '@app/core';
 import { CustomDialog, fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
@@ -161,7 +161,14 @@ export const PatientReportIndex = observer(() => {
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget || uploads.deletingId) return;
     const deleted = await uploads.remove(deleteTarget?.id ?? '');
-    if (deleted) setDeleteTarget(null);
+    if (!deleted) return;
+    // The server removes what the AI read off the file with it — the uploaded
+    // prescription or lab report — so the sections already open read again.
+    if (READ_CATEGORIES.includes(deleteTarget?.category ?? '')) {
+      const at = Date.now();
+      setReloadSignals(previous => ({ ...previous, prescriptions: at, pathology: at, radiology: at }));
+    }
+    setDeleteTarget(null);
   }, [deleteTarget, uploads]);
 
   const active = SECTIONS.find(item => item.key === section) ?? SECTIONS[0];

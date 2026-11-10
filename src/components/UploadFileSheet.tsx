@@ -33,6 +33,17 @@ export interface UploadFileResult<T extends string> {
   notes: string;
 }
 
+/**
+ * The type a file is known by, lowercase: its name's extension, else its MIME
+ * type's ("image/jpeg" → "jpeg", "image/svg+xml" → "svg"). '' when neither says.
+ */
+const extensionOf = (picked: PickedFile | null | undefined): string => {
+  const fromName = fileExtensionLabel(picked?.name).toLowerCase();
+  if (fromName) return fromName;
+  const subtype = String(picked?.type ?? '').toLowerCase().split('/')?.[1] ?? '';
+  return subtype.split(/[+;]/)?.[0]?.trim() ?? '';
+};
+
 interface UploadFileSheetProps<T extends string> {
   visible: boolean;
   /** Sheet title — "Upload Document", "Upload Report", etc. */
@@ -126,8 +137,9 @@ export function UploadFileSheet<T extends string>({
    */
   const validateFile = useCallback(
     (picked: PickedFile): string | null => {
-      const extension = fileExtensionLabel(picked?.name).toLowerCase();
-      if (extension && !allowedExtensions.includes(extension)) {
+      // A file with no type to go by is turned away too — the web checks every file.
+      const extension = extensionOf(picked);
+      if (!extension || !allowedExtensions.includes(extension)) {
         return t('uploadFile.typeNotAllowed', { types: typeLabel });
       }
       if ((picked?.size ?? 0) > maxBytes) {
@@ -149,11 +161,16 @@ export function UploadFileSheet<T extends string>({
 
       const error = validateFile(picked);
       setFileError(error);
+      // A name with no extension gets its type's, so the stored file can be opened again.
+      const named =
+        !error && !fileExtensionLabel(picked?.name)
+          ? { ...picked, name: `${picked?.name || 'document'}.${extensionOf(picked)}` }
+          : picked;
       // A rejected file is not kept, so "Upload" cannot send it anyway.
-      setFile(error ? null : picked);
+      setFile(error ? null : named);
       // An empty title takes the file's name, without its extension — as on the web.
       if (!error) {
-        setName(prev => prev || String(picked?.name ?? '').replace(/\.[^.]+$/, ''));
+        setName(prev => prev || String(named?.name ?? '').replace(/\.[^.]+$/, ''));
         setTitleError(null);
       }
     },

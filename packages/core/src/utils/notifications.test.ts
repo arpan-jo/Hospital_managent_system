@@ -79,3 +79,30 @@ describe('notificationTarget', () => {
     expect(notificationTarget(undefined)).toBeNull();
   });
 });
+
+describe('notification row labels', () => {
+  // Every screen a notification can open needs its "View …" label in both
+  // languages — without one the row shows the raw key.
+  const LINKS = [
+    '/appointments/41',
+    '/appointments',
+    '/lab-orders',
+    '/messages?doctor=23248&patient=2313',
+    '/messages',
+    '/follow-ups',
+    '/prescriptions',
+    '/reports',
+    '/doctors',
+    '/profile',
+  ];
+
+  it.each(['en', 'bn'])('has a label for every screen in %s', language => {
+    const open = require(`../assets/locales/${language}.json`)?.notifications?.open ?? {};
+    LINKS.forEach(link => {
+      const screen = notificationTarget(link)?.screen ?? '';
+      expect(screen).not.toBe('');
+      expect(typeof open[screen]).toBe('string');
+      expect(open[screen].length).toBeGreaterThan(0);
+    });
+  });
+});

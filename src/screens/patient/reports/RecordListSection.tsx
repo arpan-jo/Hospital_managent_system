@@ -35,8 +35,8 @@ interface RecordListSectionProps<T extends RecordPatient> {
    * read wrong). Loading and failures still show.
    */
   headerHasItems?: boolean;
-  /** A button beside the chevron, for the records that have one; null for the rest. */
-  actionOf?: (item: T) => RecordAction | null;
+  /** Buttons beside the chevron, for the records that have any; null for the rest. */
+  actionOf?: (item: T) => RecordAction | RecordAction[] | null;
 }
 
 /**

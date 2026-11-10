@@ -146,6 +146,18 @@ const toToken = (value: any): number | null => {
     : null;
 };
 
+/**
+ * The token the doctor is on. Null means nobody has been called yet. The server
+ * sends 0 once someone is being seen who has no token or serial — the queue has
+ * started all the same, as the portal reads it (`!= null`).
+ */
+const toServingToken = (value: any): number | null => {
+  const token = Number(value);
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(token) && token >= 0
+    ? token
+    : null;
+};
+
 /** '09:30:00' → '09:30', so `to12Hour` reads it; anything else is kept as sent. */
 const toClockTime = (value: any): string => {
   const text = toText(value);
@@ -161,7 +173,7 @@ const toQueueEntry = (raw: any): TodayQueueEntry => ({
   doctorEmployeeId: toNumber(raw?.doctorEmployeeId),
   doctorName: toText(raw?.doctorName),
   roomNumber: toText(raw?.roomNumber),
-  nowServingToken: toToken(raw?.nowServingToken),
+  nowServingToken: toServingToken(raw?.nowServingToken),
   aheadCount: Math.max(0, toNumber(raw?.aheadCount)),
   isCalled: Boolean(raw?.isCalled),
   patientName: toText(raw?.patientName),

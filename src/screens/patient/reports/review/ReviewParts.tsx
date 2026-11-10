@@ -1,5 +1,5 @@
 import React, { ReactNode, memo, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -18,6 +18,28 @@ export const UNSURE = {
  * hold a reviewed upload — and which one it is for: the one the upload named,
  * else the first, as the portal's review starts.
  */
+/** Below this width the footer's two buttons are too narrow for the tick and "Confirm & save". */
+const ROOMY_FOOTER_WIDTH = 400;
+
+/**
+ * The review footer's buttons. On a narrow phone (360dp) the confirm button
+ * drops its tick and both labels take less side margin, so the words fit whole.
+ */
+export const useReviewFooter = () => {
+  const { width } = useWindowDimensions();
+  const roomy = width >= ROOMY_FOOTER_WIDTH;
+  return {
+    confirmIcon: roomy ? 'check' : undefined,
+    labelStyle: roomy ? undefined : footerStyles.narrowLabel,
+  };
+};
+
+const footerStyles = StyleSheet.create({
+  narrowLabel: {
+    marginHorizontal: 12,
+  },
+});
+
 export const useReviewProfiles = (defaultRegistrationId?: number | null) => {
   const [profiles, setProfiles] = useState<PatientProfile[]>([]);
   const [registrationId, setRegistrationId] = useState<number>(Number(defaultRegistrationId ?? 0) || 0);

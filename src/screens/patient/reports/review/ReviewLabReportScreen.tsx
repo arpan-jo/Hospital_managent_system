@@ -30,7 +30,7 @@ import { useKeyboardOverlap } from '../../../../hooks/useKeyboardOverlap';
 import { useMonthNames } from '../../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../../navigation/ReportsStackNavigator';
 import { TAB_BAR_CLEARANCE } from '../../../../navigation/tabBarLayout';
-import { AiReadNote, ForWhomPicker, ReviewCard, UNSURE, useReviewProfiles } from './ReviewParts';
+import { AiReadNote, ForWhomPicker, ReviewCard, UNSURE, useReviewFooter, useReviewProfiles } from './ReviewParts';
 
 /** A blank result line, numbered after the last — the portal's "Add line". */
 const emptyRow = (serial: number): ExtractedLabRow => ({
@@ -149,6 +149,7 @@ export const ReviewLabReportScreen = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const footer = useReviewFooter();
   const months = useMonthNames();
   const { toastStore } = useStores();
   const navigation = useNavigation<NativeStackNavigationProp<ReportsStackParamList>>();
@@ -399,16 +400,23 @@ export const ReviewLabReportScreen = () => {
             },
           ]}
         >
-          <CustomButton mode="outlined" onPress={leave} disabled={isSaving} style={[styles.flex, styles.footerButton]}>
+          <CustomButton
+            mode="outlined"
+            onPress={leave}
+            disabled={isSaving}
+            style={[styles.flex, styles.footerButton]}
+            labelStyle={footer.labelStyle}
+          >
             {t('reports.review.notNow')}
           </CustomButton>
           <CustomButton
             mode="contained"
-            icon="check"
+            icon={footer.confirmIcon}
             onPress={confirm}
             loading={isSaving}
             disabled={isSaving || tests.length === 0}
             style={[styles.flex, styles.footerButton]}
+            labelStyle={footer.labelStyle}
           >
             {t('reports.review.confirm')}
           </CustomButton>
