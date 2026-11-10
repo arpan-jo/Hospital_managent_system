@@ -43,6 +43,16 @@ export const AppLightTheme = {
     onSurfaceVariant: '#8A90A6',
     outlineVariant: '#EDEFF5',
     error: '#B3261E',
+    // Paper's raised surfaces — dialogs (level3), menus (level2), search bars
+    // (level3). Its defaults are a lilac; these follow the app's blue-grey.
+    elevation: {
+      level0: 'transparent',
+      level1: '#F6F7FC',
+      level2: '#F0F2FA',
+      level3: '#E8EBF6',
+      level4: '#E5E8F5',
+      level5: '#E1E5F3',
+    },
     // AI Assist — its dark console, and the cyan glow that marks what is AI's.
     aiGlow: '#22D3EE',
     aiConsole: '#0B1235',
