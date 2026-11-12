@@ -104,6 +104,9 @@ export const trendSeries = (
   }
 };
 
-/** A line needs two points — a measure taken once has no trend yet. */
+/**
+ * Whether the measure was taken at all — the portal charts it from the first
+ * reading, as a dot, and joins the dots into a line from the second.
+ */
 export const hasTrend = (records: VitalsRecord[] | null | undefined, metric: VitalsMetric): boolean =>
-  trendSeries(records, metric).lines.some(line => line.filter(value => value !== null).length >= 2);
+  trendSeries(records, metric).lines.some(line => line.some(value => value !== null));

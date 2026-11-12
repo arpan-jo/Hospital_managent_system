@@ -11,13 +11,13 @@ const slot = (fields: Partial<AvailableSlot>): AvailableSlot =>
   ({ slotId: 1, bookingCapacity: 10, availableSlots: 3, subSlots: [], ...fields } as AvailableSlot);
 
 describe('isSlotFull', () => {
-  it('is full once a capped window has no place left', () => {
+  it('is full once a window has no place left', () => {
     expect(isSlotFull(slot({ availableSlots: 0 }))).toBe(true);
     expect(isSlotFull(slot({ availableSlots: 2 }))).toBe(false);
   });
 
-  it('never calls an uncapped window full, as the booking page does', () => {
-    expect(isSlotFull(slot({ bookingCapacity: 0, availableSlots: 0 }))).toBe(false);
+  it('calls a window with no capacity full, as the portal Reschedule does — the server refuses it', () => {
+    expect(isSlotFull(slot({ bookingCapacity: 0, availableSlots: 0 }))).toBe(true);
     expect(isSlotFull(null)).toBe(false);
   });
 });

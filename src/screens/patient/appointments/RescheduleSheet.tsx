@@ -155,7 +155,6 @@ export const RescheduleSheet = memo<RescheduleSheetProps>(function RescheduleShe
             {slots.map(slot => {
               const full = isSlotFull(slot);
               const active = slot?.slotId === viewModel.slotId;
-              const hasCapacity = (slot?.bookingCapacity ?? 0) > 0;
               return (
                 <Pressable
                   key={slot?.slotId}
@@ -175,16 +174,15 @@ export const RescheduleSheet = memo<RescheduleSheetProps>(function RescheduleShe
                   <Text style={[styles.slotTime, { color: active ? theme.colors.onPrimary : theme.colors.onSurface }]}>
                     {`${to12Hour(slot?.startTime ?? '')} – ${to12Hour(slot?.endTime ?? '')}`}
                   </Text>
-                  {full || hasCapacity ? (
-                    <Text
-                      style={[
-                        styles.slotLeft,
-                        { color: active ? theme.colors.onPrimary : full ? theme.colors.error : muted },
-                      ]}
-                    >
-                      {full ? t('reschedule.full') : t('reschedule.left', { count: slot?.availableSlots ?? 0 })}
-                    </Text>
-                  ) : null}
+                  {/* Every window says how many places are left, as the portal's does. */}
+                  <Text
+                    style={[
+                      styles.slotLeft,
+                      { color: active ? theme.colors.onPrimary : full ? theme.colors.error : muted },
+                    ]}
+                  >
+                    {full ? t('reschedule.full') : t('reschedule.left', { count: slot?.availableSlots ?? 0 })}
+                  </Text>
                 </Pressable>
               );
             })}

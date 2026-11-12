@@ -48,7 +48,7 @@ import {
   ALL_MEMBERS,
   useMyPrescriptionsViewModel,
 } from './useMyPrescriptionsViewModel';
-import { VISIT_LABEL_KEY, prescriptionDay } from './prescriptionUi';
+import { prescriptionDay, prescriptionKindKey } from './prescriptionUi';
 
 /** My Prescriptions: every prescription on the account, each opened as its PDF. */
 export const PatientPrescriptionIndex = observer(() => {
@@ -86,10 +86,8 @@ export const PatientPrescriptionIndex = observer(() => {
           prescription?.code,
           prescription?.patientName,
           day ? formatLongDate(day, monthNames) : '',
-          t(
-            VISIT_LABEL_KEY[prescription?.visitType ?? 'opd'] ??
-              VISIT_LABEL_KEY.opd,
-          ),
+          // "Uploaded" for the patient's own sheet, as its card says — never "OPD".
+          t(prescriptionKindKey(prescription)),
         ]
           .filter(Boolean)
           .join(' · '),

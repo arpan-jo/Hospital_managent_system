@@ -115,11 +115,22 @@ export const AppointmentCard = memo<AppointmentCardProps>(function AppointmentCa
           <Icon name={type.icon} size={12} color={theme.colors.primary} />
           <Text style={[styles.typeText, { color: theme.colors.primary }]}>{t(type.labelKey)}</Text>
         </View>
+        {/* Where, as on the portal's card: remote, or the clinic it is at. */}
         {isRemoteType(appointment?.type) ? (
           <View style={styles.whereRow}>
             <Icon name="monitor-cellphone" size={13} color={theme.colors.onSurfaceVariant} />
             <Text style={[styles.whereText, { color: theme.colors.onSurfaceVariant }]}>
               {t('appointments.remote')}
+            </Text>
+          </View>
+        ) : appointment?.locationName ? (
+          <View style={[styles.whereRow, styles.whereShrink]}>
+            <Icon name="map-marker-outline" size={13} color={theme.colors.onSurfaceVariant} />
+            <Text
+              numberOfLines={1}
+              style={[styles.whereText, styles.whereShrink, { color: theme.colors.onSurfaceVariant }]}
+            >
+              {appointment.locationName}
             </Text>
           </View>
         ) : null}
@@ -234,6 +245,10 @@ const styles = StyleSheet.create({
   whereText: {
     fontFamily: fontFamilies.medium,
     fontSize: 11.5,
+  },
+  /** A long clinic name gives way and ends in "…" rather than pushing the row wide. */
+  whereShrink: {
+    flexShrink: 1,
   },
   tiles: {
     flexDirection: 'row',

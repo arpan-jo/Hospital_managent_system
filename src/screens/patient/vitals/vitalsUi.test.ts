@@ -69,10 +69,11 @@ describe('trendSeries / hasTrend', () => {
     ]);
   });
 
-  it('needs two readings of a measure for a trend', () => {
+  it('charts a measure from its first reading, as the portal does', () => {
     expect(hasTrend(rows, 'bp')).toBe(true);
     expect(hasTrend(rows, 'pulse')).toBe(true);
-    expect(hasTrend(rows, 'spo2')).toBe(false);
+    // Taken once: a dot, not yet a line — still charted.
+    expect(hasTrend(rows, 'spo2')).toBe(true);
     expect(hasTrend(rows, 'temp')).toBe(false);
     expect(hasTrend([], 'bp')).toBe(false);
     expect(hasTrend(null, 'bp')).toBe(false);

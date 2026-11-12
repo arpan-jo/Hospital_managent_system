@@ -15,7 +15,7 @@ import {
 } from '@app/core';
 import { CustomDialog } from '@app/ui';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
-import { prescribedOn, prescriptionKindKey, prescriptionTitle } from '../myPrescriptions/prescriptionUi';
+import { doctorTitle, prescribedOn, prescriptionKindKey, prescriptionTitle } from '../myPrescriptions/prescriptionUi';
 import RecordCard from './RecordCard';
 import RecordListSection, { BadgeTone, RecordAction, RecordBadge } from './RecordListSection';
 import { formatRecordDate, formatRecordDateTime } from './reportsUi';
@@ -286,7 +286,6 @@ const LabTestsSection = ({ type, months, bottomPadding, reloadSignal }: SectionP
         onOpen={openTest}
         actionOf={actionOf}
         header={uploadsHeader}
-        headerHasItems={!!uploadsHeader}
       />
       <CustomDialog
         visible={!!removeTarget}
@@ -443,7 +442,10 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal 
       <CustomDialog
         visible={!!removeTarget}
         title={t('reports.removeUploadTitle')}
-        message={t('reports.removeUploadMessage', { name: removeTarget ? titleOf(removeTarget) : '' })}
+        // Named by its doctor, else "Uploaded prescription" — as the portal asks, never by its URX code.
+        message={t('reports.removeUploadMessage', {
+          name: doctorTitle(removeTarget?.doctorName) || t('reports.uploadedPrescription'),
+        })}
         confirmText={t('reports.remove')}
         cancelText={t('common.cancel')}
         loading={!!removingId}

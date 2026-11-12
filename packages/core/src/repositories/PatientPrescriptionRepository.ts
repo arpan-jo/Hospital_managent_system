@@ -37,7 +37,8 @@ export interface PortalPrescription {
   /**
    * The patient uploaded it and confirmed what was read off it (`source:
    * "PatientUpload"`), rather than a hospital doctor writing it. Such a one has
-   * no code, maybe no doctor, and its `prescribedAt` is only when it was saved.
+   * maybe no doctor, and its `prescribedAt` is only when it was saved. Since
+   * 2026-11-10 it carries a URX-… code for the pharmacy (none before).
    */
   isUploaded: boolean;
   /** An upload's hospital or chamber, as on its sheet; '' otherwise. */

@@ -13,9 +13,13 @@ import {
 /** How many days from today the strip of dates offers; the calendar reaches further. */
 export const RESCHEDULE_DAYS = 14;
 
-/** A window with a capacity and no place left — one without a capacity is not capped. */
+/**
+ * A window with no place left — the portal's Reschedule rule
+ * (`availableSlots <= 0`). Unlike the booking page it caps a window with no
+ * capacity too: the server answers "fully booked" for one, so it is never offered.
+ */
 export const isSlotFull = (slot?: AvailableSlot | null): boolean =>
-  (slot?.bookingCapacity ?? 0) > 0 && (slot?.availableSlots ?? 0) <= 0;
+  Boolean(slot) && (slot?.availableSlots ?? 0) <= 0;
 
 /** Today, or the appointment's own day when that is still ahead — where the picker opens. */
 export const startDateFor = (detail?: AppointmentDetail | null, today = toISODate(new Date())): string => {

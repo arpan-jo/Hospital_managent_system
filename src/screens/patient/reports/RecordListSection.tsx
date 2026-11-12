@@ -29,12 +29,6 @@ interface RecordListSectionProps<T extends RecordPatient> {
   onOpen?: (item: T) => void;
   /** Shown above the cards, scrolling with them — a summary of the list. */
   header?: ReactNode;
-  /**
-   * The header already lists something — the patient's own uploads — so an
-   * empty list says nothing more ("no lab tests yet" under an uploaded one would
-   * read wrong). Loading and failures still show.
-   */
-  headerHasItems?: boolean;
   /** Buttons beside the chevron, for the records that have any; null for the rest. */
   actionOf?: (item: T) => RecordAction | RecordAction[] | null;
 }
@@ -59,7 +53,6 @@ export function RecordListSection<T extends RecordPatient>({
   onOpen,
   actionOf,
   header,
-  headerHasItems = false,
 }: RecordListSectionProps<T>) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -97,7 +90,8 @@ export function RecordListSection<T extends RecordPatient>({
       actionLabel={t('reports.tryAgain')}
       onAction={viewModel.retry}
     />
-  ) : headerHasItems ? null : hasFilter && viewModel.hasRecords ? (
+    // Under the patient's own uploads too: the portal still says the hospital has no tests.
+  ) : hasFilter && viewModel.hasRecords ? (
     <RecordState icon="filter-variant" title={noMatchTitle} hint={t('reports.recordsNoMatchHint')} />
   ) : (
     <RecordState icon={RECORD_TONE[kind].icon} title={emptyTitle} hint={emptyHint} />

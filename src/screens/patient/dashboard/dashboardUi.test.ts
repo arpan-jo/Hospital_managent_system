@@ -14,6 +14,7 @@ const visit = (over: Partial<AppointmentSummary>): AppointmentSummary =>
     doctorDesignation: '',
     doctorPhotoUrl: '',
     fee: 0,
+    locationName: '',
     ...over,
   }) as AppointmentSummary;
 

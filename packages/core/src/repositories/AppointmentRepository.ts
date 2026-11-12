@@ -38,6 +38,8 @@ export interface AppointmentSummary {
   doctorPhotoUrl: string;
   /** The consultation fee; 0 when none was recorded. */
   fee: number;
+  /** The clinic it is at — "Where" on the portal's card; '' when not set. */
+  locationName: string;
 }
 
 /**
@@ -136,6 +138,7 @@ const toSummary = (raw: any): AppointmentSummary => ({
   doctorDesignation: toText(raw?.doctorDesignation),
   doctorPhotoUrl: toText(raw?.doctorPhotoUrl),
   fee: toNumber(raw?.paymentAmount),
+  locationName: toText(raw?.locationName),
 });
 
 /** A token is a positive whole number; anything else is "none". */

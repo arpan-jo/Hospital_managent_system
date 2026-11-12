@@ -139,7 +139,7 @@ export const VisitPrescriptionScreen = () => {
 
   const hasMedicines = (rx?.medicines?.length ?? 0) > 0;
   const hasSections = (rx?.sections?.length ?? 0) > 0;
-  // An upload has no code and maybe no doctor — it is named for what it is.
+  // An upload may have no doctor (and before 2026-11-10 no code) — it is named for what it is.
   const fallbackName = t(rx?.isUploaded ? 'reports.uploadedPrescription' : 'reports.prescription');
 
   return (

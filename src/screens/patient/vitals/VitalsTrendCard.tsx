@@ -58,7 +58,7 @@ export const VitalsTrendCard = memo<VitalsTrendCardProps>(function VitalsTrendCa
 
   const available = useMemo(() => TREND_METRICS.filter(metric => hasTrend(records, metric)), [records]);
   const [chosen, setChosen] = useState<VitalsMetric>('bp');
-  // Another family member may not have the chosen measure twice — fall back to one they have.
+  // Another family member may not have the chosen measure — fall back to one they have.
   const metric: VitalsMetric = available.includes(chosen) ? chosen : available[0] ?? 'bp';
   useEffect(() => {
     if (available.length && !available.includes(chosen)) setChosen(available[0]);
@@ -74,14 +74,16 @@ export const VitalsTrendCard = memo<VitalsTrendCardProps>(function VitalsTrendCa
     const values = lines.flatMap(line => taken.map(index => line?.[index])).filter(
       (value): value is number => value !== null && value !== undefined,
     );
-    if (taken.length < 2 || !values.length || width <= 0) return null;
+    if (!taken.length || !values.length || width <= 0) return null;
 
     const pad = Math.max((Math.max(...values) - Math.min(...values)) * 0.2, metric === 'temp' ? 0.5 : 3);
     const min = Math.max(0, Math.min(...values) - pad);
     const max = Math.max(...values) + pad;
     const innerW = Math.max(width - INSET.x * 2, 1);
     const innerH = CHART_HEIGHT - INSET.y * 2;
-    const x = (position: number) => INSET.x + (position / Math.max(taken.length - 1, 1)) * innerW;
+    // A single reading sits in the middle — a dot, with no line to draw yet.
+    const x = (position: number) =>
+      taken.length === 1 ? INSET.x + innerW / 2 : INSET.x + (position / (taken.length - 1)) * innerW;
     const y = (value: number) => INSET.y + innerH - ((value - min) / Math.max(max - min, 1e-6)) * innerH;
 
     const series = lines.map(line => {
@@ -105,6 +107,7 @@ export const VitalsTrendCard = memo<VitalsTrendCardProps>(function VitalsTrendCa
       axis: [max, (max + min) / 2, min].map(value => value.toFixed(digits)),
       firstDate: shortDate(dates[taken[0]], months),
       lastDate: shortDate(dates[taken[taken.length - 1]], months),
+      isSingle: taken.length === 1,
     };
   }, [records, metric, width, months]);
 
@@ -180,9 +183,12 @@ export const VitalsTrendCard = memo<VitalsTrendCardProps>(function VitalsTrendCa
         </View>
       </View>
 
-      <View style={styles.dates}>
+      {/* One reading: its date under the dot. More: the first and the last. */}
+      <View style={[styles.dates, chart?.isSingle && styles.datesSingle]}>
         <Text style={[styles.axisText, { color: muted }]}>{chart?.firstDate ?? ''}</Text>
-        <Text style={[styles.axisText, { color: muted }]}>{chart?.lastDate ?? ''}</Text>
+        {chart?.isSingle ? null : (
+          <Text style={[styles.axisText, { color: muted }]}>{chart?.lastDate ?? ''}</Text>
+        )}
       </View>
 
       {metric === 'bp' ? (
@@ -243,6 +249,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginLeft: 34,
     marginTop: 4,
+  },
+  datesSingle: {
+    justifyContent: 'center',
   },
   legend: {
     flexDirection: 'row',

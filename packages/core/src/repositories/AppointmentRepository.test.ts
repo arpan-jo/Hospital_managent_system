@@ -140,3 +140,19 @@ describe('AppointmentRepository.rescheduleAppointment', () => {
     ).rejects.toThrow('409');
   });
 });
+
+describe('AppointmentRepository.getAppointments', () => {
+  beforeEach(() => request.mockReset());
+
+  it("keeps the clinic each appointment is at, for the card's Where line", async () => {
+    request.mockResolvedValueOnce([
+      { appointmentId: 1, status: 'pending', locationName: ' Mirpur Branch ' },
+      { appointmentId: 2, status: 'pending', locationName: null },
+      { appointmentId: 3, status: 'pending' },
+    ]);
+
+    const appointments = await AppointmentRepository.getAppointments();
+
+    expect(appointments.map(item => item.locationName)).toEqual(['Mirpur Branch', '', '']);
+  });
+});
