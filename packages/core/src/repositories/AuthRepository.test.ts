@@ -55,3 +55,17 @@ describe('AuthRepository.linkPhone', () => {
     await expect(AuthRepository.linkPhone('01711000000', '123456')).rejects.toBe(conflict);
   });
 });
+
+describe('AuthRepository.login', () => {
+  beforeEach(() => request.mockReset());
+
+  it('gives a sign-in 30 seconds, not the client default', async () => {
+    request.mockResolvedValueOnce({ token: 'jwt', role: 'Patient', userId: 18 });
+
+    await AuthRepository.login({ email: ' a@b.com ' }, 'secret1');
+
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ url: ENDPOINTS.login, method: 'POST', timeout: 30_000 }),
+    );
+  });
+});

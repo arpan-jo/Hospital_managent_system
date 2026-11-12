@@ -7,7 +7,8 @@ import { API_URL } from '@env';
 import { rootStore } from '../store';
 import { encryptData, decryptData } from '../utils/crypto';
 import i18next from '../utils/i18n';
-import { isBareForbidden } from './serverMessage';
+// Off with the bare-403 sign-out below — back on together with it.
+// import { isBareForbidden } from './serverMessage';
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -193,24 +194,25 @@ apiClient.interceptors.request.use(
   },
 );
 
-/** The call carried a login — the request interceptor's, or one passed in on purpose. */
-const sentLogin = (config?: InternalAxiosRequestConfig): boolean => {
-  const headers: any = config?.headers;
-  const value = typeof headers?.get === 'function' ? headers.get('Authorization') : headers?.Authorization;
-  return Boolean(value);
-};
-
-/**
- * The session was ended elsewhere — a sign-out or password reset on another
- * device — and the server now refuses this token. Signed out once, however
- * many calls were in flight, and told why, since nothing on this phone did it.
- */
-const endRevokedSession = () => {
-  if (!rootStore?.authStore?.isAuthenticated) return;
-  rootStore?.authStore?.logout?.();
-  rootStore?.profileStore?.clear?.();
-  rootStore?.toastStore?.show?.(i18next.t('common.sessionEnded'), 'info', 5000);
-};
+// Off with the bare-403 sign-out below — back on together with it.
+// /** The call carried a login — the request interceptor's, or one passed in on purpose. */
+// const sentLogin = (config?: InternalAxiosRequestConfig): boolean => {
+//   const headers: any = config?.headers;
+//   const value = typeof headers?.get === 'function' ? headers.get('Authorization') : headers?.Authorization;
+//   return Boolean(value);
+// };
+//
+// /**
+//  * The session was ended elsewhere — a sign-out or password reset on another
+//  * device — and the server now refuses this token. Signed out once, however
+//  * many calls were in flight, and told why, since nothing on this phone did it.
+//  */
+// const endRevokedSession = () => {
+//   if (!rootStore?.authStore?.isAuthenticated) return;
+//   rootStore?.authStore?.logout?.();
+//   rootStore?.profileStore?.clear?.();
+//   rootStore?.toastStore?.show?.(i18next.t('common.sessionEnded'), 'info', 5000);
+// };
 
 /**
  * RESPONSE INTERCEPTOR
@@ -300,21 +302,32 @@ apiClient.interceptors.response.use(
        * Auto logout when token is invalid/expired
        */
       if (error.response.status === 401) {
+        // Read before the logout below: only an ended session is told, and
+        // only once — a wrong password at sign-in is a 401 too, and the calls
+        // still in flight answer 401 after the first has signed it out.
+        const wasSignedIn = Boolean(rootStore?.authStore?.isAuthenticated);
         rootStore.authStore.logout();
         rootStore.profileStore.clear();
+        if (wasSignedIn) {
+          rootStore?.toastStore?.show?.(i18next.t('common.sessionExpired'), 'info', 5000);
+        }
       }
 
       /**
-       * A signed-in call refused with a bare 403 is a revoked session, not a
-       * refused action — see `isBareForbidden`. Left alone, every screen would
-       * fail until the token expired, up to an hour.
+       * A 403 signs nobody out — as on the web, whose axios acts on 401 only.
+       * A session ended elsewhere (sign-out or password reset on another
+       * device) then fails its calls with a bare 403 until the token expires
+       * (up to an hour) and the 401 above signs it out.
+       *
+       * Off since 2026-11-12 to match the web; back on with the helpers and
+       * imports above if the web starts acting on it too:
        */
-      if (
-        sentLogin(error?.config) &&
-        isBareForbidden({ status: error?.response?.status, data: responseData })
-      ) {
-        endRevokedSession();
-      }
+      // if (
+      //   sentLogin(error?.config) &&
+      //   isBareForbidden({ status: error?.response?.status, data: responseData })
+      // ) {
+      //   endRevokedSession();
+      // }
     } else if (error.request) {
 
     /**

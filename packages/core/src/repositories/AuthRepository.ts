@@ -10,6 +10,9 @@ import { toLocalBdMobile } from '../utils/bdPhone';
  */
 export const NEW_PASSWORD_MIN_LENGTH = 8;
 
+/** How long a sign-in may take — longer than the client's 10s default. */
+const LOGIN_TIMEOUT_MS = 30_000;
+
 /** Who the auth calls are about: an email, or a BD mobile number. Exactly one. */
 export interface AuthContact {
   email?: string;
@@ -193,6 +196,9 @@ export const AuthRepository = {
       method: 'POST',
       data: payload,
       baseUrl: API_URL,
+      // The client's 10s default fails a sign-in on slow mobile data, and a
+      // second press was then the only way in.
+      timeout: LOGIN_TIMEOUT_MS,
     };
     const res = await apiRequest<LoginResponse>(api_params);
 

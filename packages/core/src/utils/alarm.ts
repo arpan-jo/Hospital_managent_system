@@ -144,6 +144,37 @@ export const scheduleAlarm = async ({
   );
 };
 
+/**
+ * Takes every alarm away — those still to ring and one ringing now — for a
+ * session that has ended, so the next person on this phone never hears the
+ * last one's words. Never throws: a sign-out must not fail on it.
+ */
+export const cancelAllAlarms = async () => {
+  const lib = loadNotifee();
+  if (!lib) return;
+  try {
+    const notifee = lib.default;
+    const isAlarm = (notification?: NotifeeModule.Notification) =>
+      Platform.OS !== 'android' || notification?.android?.channelId === CHANNEL_ID;
+
+    const scheduled = await notifee.getTriggerNotifications();
+    const scheduledIds = (scheduled ?? [])
+      .filter(item => isAlarm(item?.notification))
+      .map(item => item?.notification?.id ?? '')
+      .filter(Boolean);
+    if (scheduledIds.length) await notifee.cancelTriggerNotifications(scheduledIds);
+
+    const shown = await notifee.getDisplayedNotifications();
+    const shownIds = (shown ?? [])
+      .filter(item => isAlarm(item?.notification))
+      .map(item => item?.id ?? item?.notification?.id ?? '')
+      .filter(Boolean);
+    if (shownIds.length) await notifee.cancelDisplayedNotifications(shownIds);
+  } catch (error: any) {
+    console.log('cancelAllAlarms error ==>', error?.message);
+  }
+};
+
 /** The stop action silences the alarm by taking it away. */
 const handleAlarmEvent = async (event: NotifeeModule.Event) => {
   const lib = loadNotifee();

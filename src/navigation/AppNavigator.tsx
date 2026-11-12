@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { observer } from 'mobx-react-lite';
-import { useStores } from '@app/core';
+import { cancelAllAlarms, useStores } from '@app/core';
 import AuthStackNavigator from './AuthStackNavigator';
 import DrawerNavigator from './DrawerNavigator';
 import { NavigationLightTheme, NavigationDarkTheme } from '@app/ui';
@@ -38,6 +38,18 @@ const linking = {
 
 export const AppNavigator = observer(() => {
   const { authStore, themeStore } = useStores();
+  const isAuthenticated = Boolean(authStore?.isAuthenticated);
+
+  // A session that ends — Logout, or an expired one signed out by the API
+  // client — takes its alarms with it. Only on that change, not at a launch
+  // that starts signed out.
+  const wasAuthenticated = useRef(isAuthenticated);
+  useEffect(() => {
+    if (wasAuthenticated.current && !isAuthenticated) {
+      cancelAllAlarms();
+    }
+    wasAuthenticated.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   return (
     <NavigationContainer
