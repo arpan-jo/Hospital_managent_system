@@ -973,7 +973,7 @@
     "billFallback": "Bill #{{id}}",
     "status": {
       "paid": "Paid",
-      "partial": "Partly paid",
+      "partial": "Partial",
       "unpaid": "Unpaid",
       "cancelled": "Cancelled",
       "refunded": "Refunded"

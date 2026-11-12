@@ -167,9 +167,8 @@ export const BillDetailScreen = () => {
   const payments = bill?.payments ?? [];
 
   // The portal links a bill to its reports. Here the Reports tab opens on the
-  // bill's own tests: its lab section, searched by the bill's code.
+  // bill's own tests: the lab sections, searched by the bill's code.
   const billCode = bill?.billCode ?? '';
-  const billType = bill?.billType ?? '';
   const openReports = useCallback(() => {
     if (!billCode) return;
     navigation
@@ -179,15 +178,11 @@ export const BillDetailScreen = () => {
         params: {
           screen: 'ReportsHome',
           params: {
-            bill: {
-              code: billCode,
-              section: /radio/i.test(billType) ? 'radiology' : 'pathology',
-              at: Date.now(),
-            },
+            bill: { code: billCode, at: Date.now() },
           },
         },
       });
-  }, [navigation, billCode, billType]);
+  }, [navigation, billCode]);
 
   return (
     <RecordDetailScreen

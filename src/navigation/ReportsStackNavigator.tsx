@@ -14,9 +14,10 @@ export type ReportsSavedTo = { section: 'prescriptions' | 'pathology' | 'radiolo
 
 /**
  * A bill's tests, asked for from the bill — the lab sections open searched by
- * its code, the portal's "Reports" link from a bill.
+ * its code, the portal's "Reports" link from a bill. Which section opens is
+ * read off the tests, not the bill's type (that is the visit: OPD, IPD, …).
  */
-export type ReportsForBill = { code: string; section: 'pathology' | 'radiology'; at: number };
+export type ReportsForBill = { code: string; at: number };
 
 export type ReportsStackParamList = {
   ReportsHome: { saved?: ReportsSavedTo; bill?: ReportsForBill } | undefined;

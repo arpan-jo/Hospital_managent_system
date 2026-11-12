@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
@@ -7,13 +7,22 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { PatientDocument, READ_CATEGORIES, getFileUrl, useDownload, useStores } from '@app/core';
+import {
+  LabTestType,
+  MedicalRecordRepository,
+  PatientDocument,
+  READ_CATEGORIES,
+  getFileUrl,
+  useDownload,
+  useStores,
+} from '@app/core';
 import { CustomDialog, fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
+import { billLabSection } from './billLabSection';
 import { PathologySection, RadiologySection, VisitPrescriptionsSection } from './RecordSections';
 import UploadProgressModal from './UploadProgressModal';
 import UploadReportSheet from './UploadReportSheet';
@@ -27,6 +36,15 @@ type Section = 'uploads' | 'pathology' | 'radiology' | 'prescriptions';
  * The portal's four sections, in its order: what the hospital issued, then the
  * patient's own files. The first is the one the page opens on.
  */
+/** One lab list, or null when it could not be read — only to tell which section a bill's tests are in. */
+const readLabTests = async (type: LabTestType) => {
+  try {
+    return (await MedicalRecordRepository?.getLabTests?.(type)) ?? null;
+  } catch {
+    return null;
+  }
+};
+
 const SECTIONS: { key: Section; labelKey: string; subtitleKey: string; icon: string }[] = [
   {
     key: 'prescriptions',
@@ -114,18 +132,31 @@ export const PatientReportIndex = observer(() => {
   }, [savedAt, savedSection, openSection]);
   const closeUpload = useCallback(() => setUploadVisible(false), []);
 
-  // Asked for from a bill: its lab section opens, both lab sections searched by the bill's code.
+  // Asked for from a bill: both lab sections are searched by the bill's code.
+  // Pathology opens at once; once both lists are read, a bill only radiology
+  // has moves there — unless the patient has already gone elsewhere.
   const billAt = route?.params?.bill?.at ?? 0;
   const billCode = route?.params?.bill?.code ?? '';
-  const billSection = route?.params?.bill?.section;
   const presetSearch = useMemo(
     () => (billAt && billCode ? { text: billCode, at: billAt } : undefined),
     [billAt, billCode],
   );
+  const sectionRef = useRef(section);
+  useEffect(() => {
+    sectionRef.current = section;
+  }, [section]);
   useEffect(() => {
     if (!billAt || !billCode) return;
-    openSection(billSection === 'radiology' ? 'radiology' : 'pathology');
-  }, [billAt, billCode, billSection, openSection]);
+    openSection('pathology');
+    let isCurrent = true;
+    Promise.all([readLabTests('pathology'), readLabTests('radiology')]).then(([pathology, radiology]) => {
+      if (!isCurrent || sectionRef.current !== 'pathology') return;
+      if (billLabSection(billCode, pathology, radiology) === 'radiology') openSection('radiology');
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [billAt, billCode, openSection]);
 
   /** Opened in the app — a PDF or an image is drawn, anything else gets a message there. */
   const previewDocument = useCallback(

@@ -56,11 +56,17 @@ describe('isBillDue', () => {
 });
 
 describe('paidShare', () => {
-  it('is the paid part of the total, held between 0 and 1', () => {
-    expect(paidShare(bill({ billTotal: 1000, paidAmount: 250 }))).toBe(0.25);
-    expect(paidShare(bill({ billTotal: 1000, paidAmount: 1500 }))).toBe(1);
-    expect(paidShare(bill({ billTotal: 0, paidAmount: 0 }))).toBe(0);
+  it('is the settled part of the total, held between 0 and 1', () => {
+    expect(paidShare(bill({ billTotal: 1000, paidAmount: 250, dueAmount: 750 }))).toBe(0.25);
+    expect(paidShare(bill({ billTotal: 1000, paidAmount: 1000, dueAmount: 0 }))).toBe(1);
+    expect(paidShare(bill({ billTotal: 1000, paidAmount: 1500, dueAmount: -500 }))).toBe(1);
+    expect(paidShare(bill({ billTotal: 1000, dueAmount: 1500 }))).toBe(0);
+    expect(paidShare(bill({ billTotal: 0, paidAmount: 0, dueAmount: 0 }))).toBe(0);
     expect(paidShare(null)).toBe(0);
+  });
+
+  it('is full for a refunded bill with nothing due, though the paid sum is short of the total', () => {
+    expect(paidShare(bill({ billTotal: 1000, paidAmount: 600, dueAmount: 0, isRefunded: true }))).toBe(1);
   });
 });
 

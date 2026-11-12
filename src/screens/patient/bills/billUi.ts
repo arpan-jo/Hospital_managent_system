@@ -36,11 +36,16 @@ export const billSearch = (bill: PortalBill) => [
   ...(bill?.items ?? []).map(item => item?.itemName),
 ];
 
-/** How much of the bill is paid, 0 to 1 — for the bar on the bill's page. */
+/**
+ * How much of the bill is settled, 0 to 1 — for the bar on the bill's page.
+ * Read off what is still due, not off the payments: a refund leaves the paid
+ * sum short of the total while nothing is owed, and that bill is settled.
+ */
 export const paidShare = (bill?: PortalBill | null): number => {
   const total = Number(bill?.billTotal ?? 0) || 0;
   if (total <= 0) return 0;
-  const share = (Number(bill?.paidAmount ?? 0) || 0) / total;
+  const due = Number(bill?.dueAmount ?? 0) || 0;
+  const share = (total - due) / total;
   return Math.min(Math.max(share, 0), 1);
 };
 
