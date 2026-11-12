@@ -14,6 +14,7 @@ import {
 import { DropdownItem, fontFamilies } from '@app/ui';
 import UploadFileSheet, { UploadFileResult } from '../../../components/UploadFileSheet';
 import FilterPills, { FilterPill } from './FilterPills';
+import { forWhomLabel } from './forWhomLabel';
 import { CATEGORY_LABEL_KEY } from './reportsUi';
 import { UploadDocumentInput } from './useUploadsViewModel';
 
@@ -95,9 +96,8 @@ export const UploadReportSheet = ({ visible, onClose, onUpload }: UploadReportSh
     () =>
       profiles.map(profile => ({
         key: String(profile?.registrationId ?? ''),
-        label: `${profile?.fullName || profile?.patientCode || '—'}${
-          profile?.relationship === 'self' ? ` (${t('reports.read.self')})` : ''
-        }`,
+        // Who they are to the account too, as the portal labels its choices.
+        label: forWhomLabel(profile, t),
       })),
     [profiles, t],
   );

@@ -6,6 +6,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { PatientProfile, PatientRepository } from '@app/core';
 import { fontFamilies } from '@app/ui';
 import FilterPills, { FilterPill } from '../FilterPills';
+import { forWhomLabel } from '../forWhomLabel';
 
 /** The amber of a line the AI was unsure of, in light and dark. */
 export const UNSURE = {
@@ -99,14 +100,19 @@ export const ReviewCard = ({ title, icon, children, right }: { title?: string; i
   );
 };
 
-/** Whose it is: the profile chips, and a warning when the sheet names someone else. */
+/**
+ * Whose it is: the profile chips, each with who they are to the account, and
+ * a warning when the read names someone else — "the sheet says" for a
+ * prescription, "the report says" for a lab report, as the portal words it.
+ */
 export const ForWhomPicker = memo<{
   profiles: PatientProfile[];
   registrationId: number;
   onPick: (registrationId: number) => void;
   sheetName?: string | null;
   selectedName?: string | null;
-}>(function ForWhomPicker({ profiles, registrationId, onPick, sheetName, selectedName }) {
+  kind?: 'rx' | 'lab';
+}>(function ForWhomPicker({ profiles, registrationId, onPick, sheetName, selectedName, kind = 'rx' }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const unsure = theme.dark ? UNSURE.dark : UNSURE.light;
@@ -114,9 +120,7 @@ export const ForWhomPicker = memo<{
     () =>
       (profiles ?? []).map(profile => ({
         key: String(profile?.registrationId ?? ''),
-        label: `${profile?.fullName || profile?.patientCode || '—'}${
-          profile?.relationship === 'self' ? ` (${t('reports.read.self')})` : ''
-        }`,
+        label: forWhomLabel(profile, t),
       })),
     [profiles, t],
   );
@@ -133,7 +137,7 @@ export const ForWhomPicker = memo<{
         <View style={[styles.warning, { backgroundColor: unsure.tint }]}>
           <Icon name="alert-outline" size={15} color={unsure.ink} />
           <Text style={[styles.warningText, { color: unsure.ink }]}>
-            {t('reports.review.nameMismatch', { name: mismatch })}
+            {t(kind === 'lab' ? 'reports.review.nameMismatchLab' : 'reports.review.nameMismatch', { name: mismatch })}
           </Text>
         </View>
       ) : null}

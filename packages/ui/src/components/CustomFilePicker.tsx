@@ -17,6 +17,12 @@ interface CustomFilePickerProps {
   allowedTypes?: string[];
   label?: string;
   style?: ViewStyle;
+  /**
+   * The files the owner kept, when it decides that — the list shows these
+   * rather than the last pick, so a pick the owner refused (too large, a type
+   * it does not take) never shows as if it were the file to be sent.
+   */
+  value?: PickedFile[] | null;
 }
 
 const formatSize = (bytes?: number | null): string => {
@@ -32,9 +38,11 @@ export const CustomFilePicker = memo<CustomFilePickerProps>(function CustomFileP
   allowedTypes,
   label = 'Pick File',
   style,
+  value,
 }) {
   const theme = useTheme();
   const [selectedFiles, setSelectedFiles] = useState<PickedFile[]>([]);
+  const shownFiles = value ?? selectedFiles;
   const [pickError, setPickError] = useState<string | null>(null);
 
   const handlePickFile = useCallback(async () => {
@@ -64,11 +72,11 @@ export const CustomFilePicker = memo<CustomFilePickerProps>(function CustomFileP
 
   const handleRemoveFile = useCallback(
     (index: number) => {
-      const updated = selectedFiles.filter((_, i) => i !== index);
+      const updated = (shownFiles ?? []).filter((_, i) => i !== index);
       setSelectedFiles(updated);
       onFilePicked(updated);
     },
-    [selectedFiles, onFilePicked],
+    [shownFiles, onFilePicked],
   );
 
   const listStyle = useMemo(
@@ -91,13 +99,13 @@ export const CustomFilePicker = memo<CustomFilePickerProps>(function CustomFileP
         {pickError}
       </HelperText>
 
-      {selectedFiles.length > 0 && (
+      {(shownFiles?.length ?? 0) > 0 && (
         <View style={listStyle}>
-          {selectedFiles.map((file, index) => (
+          {shownFiles.map((file, index) => (
             <List.Item
               key={index}
-              title={file.name}
-              description={formatSize(file.size)}
+              title={file?.name}
+              description={formatSize(file?.size)}
               left={(props) => <List.Icon {...props} icon="file-document-outline" />}
               right={(props) => (
                 <IconButton

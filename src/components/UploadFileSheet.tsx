@@ -166,8 +166,9 @@ export function UploadFileSheet<T extends string>({
         !error && !fileExtensionLabel(picked?.name)
           ? { ...picked, name: `${picked?.name || 'document'}.${extensionOf(picked)}` }
           : picked;
-      // A rejected file is not kept, so "Upload" cannot send it anyway.
-      setFile(error ? null : named);
+      // A rejected file is not taken; a good one picked before it stays, as on
+      // the portal — only the error says why the new one was refused.
+      if (!error) setFile(named);
       // An empty title takes the file's name, without its extension — as on the web.
       if (!error) {
         setName(prev => prev || String(named?.name ?? '').replace(/\.[^.]+$/, ''));
@@ -231,6 +232,8 @@ export function UploadFileSheet<T extends string>({
           label={file ? t('uploadFile.changeFile') : t('uploadFile.selectFile')}
           allowedTypes={[fileTypes.images, fileTypes.pdf]}
           onFilePicked={handleFilePicked}
+          // The file that will be sent — a refused pick never shows in its place.
+          value={file ? [file] : []}
         />
         <Text style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}>{fileHint}</Text>
         {fileError ? (

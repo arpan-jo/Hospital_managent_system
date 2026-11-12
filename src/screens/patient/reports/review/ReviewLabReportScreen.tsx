@@ -278,6 +278,7 @@ export const ReviewLabReportScreen = () => {
             onPick={setRegistrationId}
             sheetName={header?.patientName}
             selectedName={selected?.fullName}
+            kind="lab"
           />
 
           <ReviewCard title={t('reports.review.details')} icon="flask-outline">

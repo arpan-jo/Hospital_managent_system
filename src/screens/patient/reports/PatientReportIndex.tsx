@@ -310,7 +310,13 @@ export const PatientReportIndex = observer(() => {
         title={t('reports.deleteTitle')}
         tone="danger"
         icon="trash-can-outline"
-        message={t('reports.deleteMessage', { title: deleteTarget?.title ?? '' })}
+        // A prescription or lab report the AI read takes what was saved from it along — say so.
+        message={t(
+          READ_CATEGORIES.includes(deleteTarget?.category ?? '')
+            ? 'reports.deleteMessageWithRecords'
+            : 'reports.deleteMessage',
+          { title: deleteTarget?.title ?? '' },
+        )}
         confirmText={t('reports.delete')}
         cancelText={t('common.cancel')}
         loading={!!uploads.deletingId}

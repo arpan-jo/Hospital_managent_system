@@ -718,6 +718,7 @@
     "loadFailedHint": "Something went wrong reaching the hospital. Please try again.",
     "deleteTitle": "Delete Document?",
     "deleteMessage": "\"{{title}}\" will be permanently removed.",
+    "deleteMessageWithRecords": "\"{{title}}\" will be permanently removed, along with the prescription or report saved from it.",
     "deleteSuccess": "Document deleted.",
     "deleteFailed": "Failed to delete. Please try again.",
     "downloadSaved": "Saved to Downloads",
@@ -841,6 +842,7 @@
       "subtitle": "Read automatically — please check and correct before saving.",
       "aiNote": "The AI read this from your file. Check each line — the ones marked in amber it was unsure of.",
       "nameMismatch": "The sheet says “{{name}}”. Make sure you picked the right person.",
+      "nameMismatchLab": "The report says “{{name}}”. Make sure you picked the right person.",
       "noProfiles": "No profile with a hospital registration yet.",
       "details": "Details",
       "doctor": "Doctor",
@@ -899,7 +901,7 @@
         "date": "Pick a valid date.",
         "medicineName": "Every medicine needs a name.",
         "reportType": "Pick Pathology or Radiology.",
-        "noTests": "Add at least one test.",
+        "noTests": "No tests could be read from this report.",
         "testName": "Every test needs a name."
       }
     },

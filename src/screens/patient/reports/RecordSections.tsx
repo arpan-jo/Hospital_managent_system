@@ -359,7 +359,8 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal 
         url: PatientPrescriptionRepository.getPdfUrl(item.id),
         filename: PatientPrescriptionRepository.getPdfFileName(item?.code),
         title: t('myPrescriptions.preview'),
-        subtitle: [item?.patientName, formatRecordDate(prescribedOn(item), months), t(prescriptionKindKey(item))]
+        // Its code first, as the portal's preview shows it — the one quoted at the desk or the pharmacy.
+        subtitle: [item?.code, item?.patientName, formatRecordDate(prescribedOn(item), months), t(prescriptionKindKey(item))]
           .filter(Boolean)
           .join(' · '),
         canDownload: true,
