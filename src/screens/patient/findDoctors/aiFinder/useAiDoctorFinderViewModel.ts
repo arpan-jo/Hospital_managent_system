@@ -86,7 +86,8 @@ export const useAiDoctorFinderViewModel = () => {
         if (signal.aborted || flow !== flowRef.current) return;
 
         setMatch(answer);
-        setInput('');
+        // The words stay in the box, as on the portal — to change a little and ask again.
+        setInput(words);
       } catch (error) {
         if (signal.aborted || flow !== flowRef.current) return;
 

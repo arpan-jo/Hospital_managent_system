@@ -101,6 +101,8 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
 
   /** Bumped by every slot request, so an answer for an earlier date is dropped. */
   const slotsRequestRef = useRef(0);
+  /** Which doctor, date and patient the slots on screen were read for — '' before any read. */
+  const slotsForRef = useRef('');
   /** Bumped by every load, so one doctor's answer never lands on another's page. */
   const loadRequestRef = useRef(0);
   /**
@@ -216,10 +218,12 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
   const fetchSlots = useCallback(async () => {
     if (!doctor || !date) {
       setSlots([]);
+      slotsForRef.current = '';
       return;
     }
 
     const requestId = ++slotsRequestRef.current;
+    const readFor = `${doctor?.employeeId ?? ''}|${date}|${patientRegistrationId}`;
     setIsSlotsLoading(true);
 
     try {
@@ -232,10 +236,18 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
       });
       if (requestId !== slotsRequestRef.current) return;
       setSlots(response ?? []);
+      slotsForRef.current = readFor;
     } catch (error: any) {
       if (requestId !== slotsRequestRef.current) return;
       console.log('getAvailableSlots error ==>', error?.message);
-      setSlots([]);
+      // A re-read of the same day that fails (after a time was taken, or a
+      // review) keeps the slots already shown, as the portal keeps its last
+      // good list. Only a first read of a day empties it — another day's slots
+      // must never stand in for this one.
+      if (slotsForRef.current !== readFor) {
+        setSlots([]);
+        slotsForRef.current = '';
+      }
     } finally {
       if (requestId === slotsRequestRef.current) setIsSlotsLoading(false);
     }
