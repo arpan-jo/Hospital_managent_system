@@ -1060,7 +1060,8 @@
     "noUpcomingHint": "Find a doctor and book a visit.",
     "date": "Date",
     "time": "Time",
-    "tokenLabel": "Token"
+    "tokenLabel": "Token",
+    "loadFailedRetry": "Couldn't load your dashboard. Please try again."
   },
   "messages": {
     "title": "Messages",
@@ -1198,7 +1199,9 @@
     "retry": "Retry",
     "close": "Close",
     "somethingWentWrong": "Something went wrong",
-    "back": "Back"
+    "back": "Back",
+    "sessionEndedRelogin": "Your session has ended. Please log out and sign in again.",
+    "sessionEndedTitle": "Session ended"
   },
   "photoPicker": {
     "title": "Profile photo",

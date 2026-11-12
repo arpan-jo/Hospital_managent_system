@@ -4,10 +4,12 @@ import {
   AppointmentRepository,
   AppointmentSummary,
   BillsRepository,
+  FailureKind,
   LabTest,
   MedicalRecordRepository,
   MessageRepository,
   PortalBill,
+  failureKindOf,
   toISODate,
   totalDueOf,
   useStores,
@@ -42,8 +44,13 @@ export const useDashboard = () => {
   const [lists, setLists] = useState<DashboardLists>(EMPTY);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  /** Every read failed — the phone is likely offline; the screen offers a retry. */
+  /** Every read failed — the screen says why and offers a way on. */
   const [allFailed, setAllFailed] = useState(false);
+  /**
+   * Why they failed: an ended session (log out and sign in again) wins, then a
+   * phone with no connection, else just a failure. Null while not all failed.
+   */
+  const [failure, setFailure] = useState<FailureKind | null>(null);
   const isMountedRef = useRef(true);
   /** Only the newest read may land. */
   const readRef = useRef(0);
@@ -83,7 +90,20 @@ export const useDashboard = () => {
       else console.log('dashboard threads error ==>', (threads.reason as any)?.message);
 
       const results = [appointments, pathology, radiology, bills, threads];
-      setAllFailed(results.every(result => result.status === 'rejected'));
+      const everyFailed = results.every(result => result?.status === 'rejected');
+      const kinds = results.map(result =>
+        result?.status === 'rejected' ? failureKindOf((result as PromiseRejectedResult)?.reason) : null,
+      );
+      setAllFailed(everyFailed);
+      setFailure(
+        !everyFailed
+          ? null
+          : kinds.includes('session')
+            ? 'session'
+            : kinds.every(kind => kind === 'offline')
+              ? 'offline'
+              : 'other',
+      );
       hasLoadedRef.current = true;
       setIsLoading(false);
       setIsRefreshing(false);
@@ -109,6 +129,7 @@ export const useDashboard = () => {
     isLoading,
     isRefreshing,
     allFailed,
+    failure,
     next,
     pendingReports: reports.pending,
     readyReports: reports.ready,

@@ -22,6 +22,14 @@ export const AuthStore = types
     authToken: types.maybeNull(types.string),
     expiresAt: types.maybeNull(types.string),
   })
+  /**
+   * The server refused this login with a bare 403 — it was ended elsewhere (a
+   * sign-out or password reset on another device). Volatile: never saved, so a
+   * relaunch does not bring the question back by itself.
+   */
+  .volatile(() => ({
+    isSessionRevoked: false,
+  }))
   .actions(self => ({
     login(response: LoginResponse) {
       self.user = User.create({
@@ -33,11 +41,20 @@ export const AuthStore = types
       self.authToken = response?.token ?? null;
       self.expiresAt = response?.expiresAt ?? null;
       self.isAuthenticated = true;
+      self.isSessionRevoked = false;
     },
     logout() {
       self.isAuthenticated = false;
       self.user = null;
       self.authToken = null;
       self.expiresAt = null;
+      self.isSessionRevoked = false;
+    },
+    /**
+     * Asks the patient to log out and sign in again — the session ended
+     * elsewhere. Only Log out answers it: `logout` (and a new `login`) clear it.
+     */
+    markSessionRevoked() {
+      if (self.isAuthenticated) self.isSessionRevoked = true;
     },
   }));

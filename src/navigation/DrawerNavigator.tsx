@@ -12,6 +12,7 @@ import { useUnreadNotificationsSync } from '../hooks/useUnreadNotifications';
 import { useUnreadMessagesSync } from '../hooks/useUnreadMessages';
 import { useMessageHub } from '../hooks/useMessageHub';
 import { useSignOut } from '../hooks/useSignOut';
+import SessionEndedDialog from '../components/SessionEndedDialog';
 import MyPrescriptionsStackNavigator, {
   MyPrescriptionsStackParamList,
 } from './MyPrescriptionsStackNavigator';
@@ -471,31 +472,35 @@ export const DrawerNavigator = () => {
   useMessageHub();
 
   return (
-    <Drawer.Navigator
-      drawerContent={renderDrawerContent}
-      screenOptions={{
-        headerShown: false,
-        drawerStyle: {
-          backgroundColor: theme.colors.surface,
-          width: 300,
-          borderTopRightRadius: 28,
-          borderBottomRightRadius: 28,
-        },
-      }}
-    >
-      <Drawer.Screen name="MainTabs" component={TabNavigator} />
-      <Drawer.Screen name="Settings" component={SettingsScreen} />
-      <Drawer.Screen name="Notifications" component={NotificationsScreen} />
-      <Drawer.Screen name="FollowUps" component={PatientFollowUpIndex} />
-      <Drawer.Screen name="Messages" component={MessagesStackNavigator} />
-      <Drawer.Screen
-        name="Prescriptions"
-        component={MyPrescriptionsStackNavigator}
-      />
-      <Drawer.Screen name="Vitals" component={PatientVitalsIndex} />
-      <Drawer.Screen name="HomeCollection" component={HomeCollectionStackNavigator} />
-      <Drawer.Screen name="Bills" component={BillsStackNavigator} />
-    </Drawer.Navigator>
+    <>
+      <Drawer.Navigator
+        drawerContent={renderDrawerContent}
+        screenOptions={{
+          headerShown: false,
+          drawerStyle: {
+            backgroundColor: theme.colors.surface,
+            width: 300,
+            borderTopRightRadius: 28,
+            borderBottomRightRadius: 28,
+          },
+        }}
+      >
+        <Drawer.Screen name="MainTabs" component={TabNavigator} />
+        <Drawer.Screen name="Settings" component={SettingsScreen} />
+        <Drawer.Screen name="Notifications" component={NotificationsScreen} />
+        <Drawer.Screen name="FollowUps" component={PatientFollowUpIndex} />
+        <Drawer.Screen name="Messages" component={MessagesStackNavigator} />
+        <Drawer.Screen
+          name="Prescriptions"
+          component={MyPrescriptionsStackNavigator}
+        />
+        <Drawer.Screen name="Vitals" component={PatientVitalsIndex} />
+        <Drawer.Screen name="HomeCollection" component={HomeCollectionStackNavigator} />
+        <Drawer.Screen name="Bills" component={BillsStackNavigator} />
+      </Drawer.Navigator>
+      {/* Signed in only: a login ended elsewhere asks once to log out and sign in again. */}
+      <SessionEndedDialog />
+    </>
   );
 };
 

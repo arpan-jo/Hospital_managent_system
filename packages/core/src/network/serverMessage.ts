@@ -86,3 +86,14 @@ export const isBareForbidden = (error: any): boolean =>
  * limit (60 a minute per network) answers with no body at all.
  */
 export const isRateLimited = (error: any): boolean => Number(error?.status) === 429;
+
+/** Why a read failed, as a screen tells it: the session ended, no answer came, or anything else. */
+export type FailureKind = 'session' | 'offline' | 'other';
+
+/**
+ * A bare 403 on a signed-in call is a session ended elsewhere (see
+ * `isBareForbidden`) — signing in again is the cure, not a retry. No answer at
+ * all is the connection. Anything else is just a failure.
+ */
+export const failureKindOf = (error: any): FailureKind =>
+  isBareForbidden(error) ? 'session' : isServerUnreachable(error) ? 'offline' : 'other';

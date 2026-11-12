@@ -1,4 +1,4 @@
-import { isBareForbidden, isRateLimited, isServerUnreachable, serverMessageOf } from './serverMessage';
+import { failureKindOf, isBareForbidden, isRateLimited, isServerUnreachable, serverMessageOf } from './serverMessage';
 
 /** What `apiClient` rejects with: an Error carrying the decoded body on `data`. */
 const failure = (data?: unknown) =>
@@ -124,5 +124,26 @@ describe('isRateLimited', () => {
     expect(isRateLimited({ status: 429, data: { message: 'Too many failed attempts. Try again in 15 minutes.' } })).toBe(true);
     expect(isRateLimited({ status: 401 })).toBe(false);
     expect(isRateLimited(undefined)).toBe(false);
+  });
+});
+
+describe('failureKindOf', () => {
+  it('reads a bare 403 as an ended session', () => {
+    expect(failureKindOf({ status: 403, data: null })).toBe('session');
+    expect(failureKindOf({ status: 403, data: { title: 'Forbidden', status: 403 } })).toBe('session');
+  });
+
+  it('reads a 403 that says why as a plain failure, not an ended session', () => {
+    expect(failureKindOf({ status: 403, data: { message: 'You can only message a doctor you have had an appointment with.' } })).toBe('other');
+  });
+
+  it('reads no answer at all as the connection', () => {
+    expect(failureKindOf({ originalError: { request: {} } })).toBe('offline');
+  });
+
+  it('reads any other failure as just a failure', () => {
+    expect(failureKindOf({ status: 500, data: null, originalError: { response: {} } })).toBe('other');
+    expect(failureKindOf(null)).toBe('other');
+    expect(failureKindOf(undefined)).toBe('other');
   });
 });

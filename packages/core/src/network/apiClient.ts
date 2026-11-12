@@ -7,8 +7,7 @@ import { API_URL } from '@env';
 import { rootStore } from '../store';
 import { encryptData, decryptData } from '../utils/crypto';
 import i18next from '../utils/i18n';
-// Off with the bare-403 sign-out below — back on together with it.
-// import { isBareForbidden } from './serverMessage';
+import { isBareForbidden } from './serverMessage';
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -194,14 +193,31 @@ apiClient.interceptors.request.use(
   },
 );
 
+/** The call carried a login — the request interceptor's, or one passed in on purpose. */
+const sentLogin = (config?: InternalAxiosRequestConfig): boolean => {
+  const headers: any = config?.headers;
+  const value = typeof headers?.get === 'function' ? headers.get('Authorization') : headers?.Authorization;
+  return Boolean(value);
+};
+
+/** The login the "sign in again" notice was last shown for — once per login, not per failed call. */
+let revokedNoticeToken: string | null = null;
+
+/**
+ * The session was ended elsewhere — a sign-out or password reset on another
+ * device — and the server refuses this token with a bare 403. As on the web,
+ * that signs nobody out; the patient is asked once, for this login, to log out
+ * and sign in again (the signed-in screens' SessionEndedDialog). A new login
+ * can be asked again.
+ */
+const noticeRevokedSession = () => {
+  const token = rootStore?.authStore?.authToken ?? null;
+  if (!rootStore?.authStore?.isAuthenticated || !token || revokedNoticeToken === token) return;
+  revokedNoticeToken = token;
+  rootStore?.authStore?.markSessionRevoked?.();
+};
+
 // Off with the bare-403 sign-out below — back on together with it.
-// /** The call carried a login — the request interceptor's, or one passed in on purpose. */
-// const sentLogin = (config?: InternalAxiosRequestConfig): boolean => {
-//   const headers: any = config?.headers;
-//   const value = typeof headers?.get === 'function' ? headers.get('Authorization') : headers?.Authorization;
-//   return Boolean(value);
-// };
-//
 // /**
 //  * The session was ended elsewhere — a sign-out or password reset on another
 //  * device — and the server now refuses this token. Signed out once, however
@@ -317,11 +333,19 @@ apiClient.interceptors.response.use(
        * A 403 signs nobody out — as on the web, whose axios acts on 401 only.
        * A session ended elsewhere (sign-out or password reset on another
        * device) then fails its calls with a bare 403 until the token expires
-       * (up to an hour) and the 401 above signs it out.
-       *
-       * Off since 2026-11-12 to match the web; back on with the helpers and
-       * imports above if the web starts acting on it too:
+       * (up to an hour) and the 401 above signs it out — so the patient is
+       * told to log out and sign in again. A 403 that says why ("You can only
+       * message a doctor …") is a refused action and says nothing more.
        */
+      if (
+        sentLogin(error?.config) &&
+        isBareForbidden({ status: error?.response?.status, data: responseData })
+      ) {
+        noticeRevokedSession();
+      }
+
+      // The sign-out on it is off since 2026-11-12 to match the web; back on
+      // with `endRevokedSession` above in place of the notice:
       // if (
       //   sentLogin(error?.config) &&
       //   isBareForbidden({ status: error?.response?.status, data: responseData })

@@ -1,7 +1,12 @@
 import apiClient from './apiClient';
 
 const mockStore = {
-  authStore: { isAuthenticated: true, logout: jest.fn() },
+  authStore: {
+    isAuthenticated: true,
+    authToken: 'token-1' as string | null,
+    logout: jest.fn(),
+    markSessionRevoked: jest.fn(),
+  },
   profileStore: { clear: jest.fn() },
   toastStore: { show: jest.fn() },
 };
@@ -17,8 +22,8 @@ jest.mock('../utils/i18n', () => ({ __esModule: true, default: { t: (key: string
 /** The response interceptor's error side, as axios calls it. */
 const onError = (apiClient.interceptors.response as any).handlers[0].rejected as (error: any) => Promise<any>;
 
-const answer = (status: number, data: any = null) => ({
-  config: { url: '/hms/appointments', headers: {} },
+const answer = (status: number, data: any = null, signedIn = true) => ({
+  config: { url: '/hms/appointments', headers: signedIn ? { Authorization: 'Bearer token' } : {} },
   response: { status, data },
 });
 
@@ -50,10 +55,56 @@ describe('apiClient on a 401', () => {
     expect(mockStore.toastStore.show).not.toHaveBeenCalled();
   });
 
-  it('signs nobody out on a 403, as the web does', async () => {
+});
+
+describe('apiClient on a bare 403 — a session ended elsewhere', () => {
+  const asked = mockStore.authStore.markSessionRevoked;
+
+  beforeEach(() => {
+    mockStore.authStore.isAuthenticated = true;
+    mockStore.authStore.logout.mockReset();
+    mockStore.profileStore.clear.mockReset();
+    mockStore.toastStore.show.mockReset();
+    asked.mockReset();
+  });
+
+  it('signs nobody out, as the web does, but asks once to log out and sign in again', async () => {
+    mockStore.authStore.authToken = 'token-a';
+
+    await expect(onError(answer(403))).rejects.toBeTruthy();
     await expect(onError(answer(403))).rejects.toBeTruthy();
 
     expect(mockStore.authStore.logout).not.toHaveBeenCalled();
-    expect(mockStore.toastStore.show).not.toHaveBeenCalled();
+    expect(mockStore.profileStore.clear).not.toHaveBeenCalled();
+    expect(asked).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks again for a new login that ends too', async () => {
+    mockStore.authStore.authToken = 'token-b';
+    await expect(onError(answer(403))).rejects.toBeTruthy();
+    mockStore.authStore.authToken = 'token-c';
+    await expect(onError(answer(403))).rejects.toBeTruthy();
+
+    expect(asked).toHaveBeenCalledTimes(2);
+  });
+
+  it('asks nothing for a 403 that gives its reason — a refused action, not an ended session', async () => {
+    mockStore.authStore.authToken = 'token-d';
+
+    await expect(
+      onError(answer(403, { message: 'You can only message a doctor you have had an appointment with.' })),
+    ).rejects.toBeTruthy();
+
+    expect(asked).not.toHaveBeenCalled();
+  });
+
+  it('asks nothing for a call sent without a login, or when nobody is signed in', async () => {
+    mockStore.authStore.authToken = 'token-e';
+    await expect(onError(answer(403, null, false))).rejects.toBeTruthy();
+
+    mockStore.authStore.isAuthenticated = false;
+    await expect(onError(answer(403))).rejects.toBeTruthy();
+
+    expect(asked).not.toHaveBeenCalled();
   });
 });

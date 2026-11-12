@@ -1060,7 +1060,8 @@
     "noUpcomingHint": "ডাক্তার খুঁজে একটি ভিজিট বুক করুন।",
     "date": "তারিখ",
     "time": "সময়",
-    "tokenLabel": "টোকেন"
+    "tokenLabel": "টোকেন",
+    "loadFailedRetry": "ড্যাশবোর্ড লোড করা যায়নি। আবার চেষ্টা করুন।"
   },
   "messages": {
     "title": "মেসেজ",
@@ -1198,7 +1199,9 @@
     "retry": "আবার চেষ্টা করুন",
     "close": "বন্ধ",
     "somethingWentWrong": "কিছু একটা সমস্যা হয়েছে",
-    "back": "পিছনে"
+    "back": "পিছনে",
+    "sessionEndedRelogin": "আপনার সেশন শেষ হয়েছে। লগআউট করে আবার সাইন ইন করুন।",
+    "sessionEndedTitle": "সেশন শেষ হয়েছে"
   },
   "photoPicker": {
     "title": "প্রোফাইল ছবি",

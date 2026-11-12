@@ -30,6 +30,7 @@ import { aiPalette, withAlpha } from '../../../components/ai/aiPalette';
 import NotificationBell from '../../../components/NotificationBell';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useMonthNames } from '../../../hooks/useMonthNames';
+import { useSignOut } from '../../../hooks/useSignOut';
 import { useRefreshUnreadNotifications } from '../../../hooks/useUnreadNotifications';
 import { DrawerParamList } from '../../../navigation/DrawerNavigator';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
@@ -76,6 +77,30 @@ export const PatientDashboard = observer(() => {
   const navigation = useNavigation();
   const { authStore, profileStore } = useStores();
   const viewModel = useDashboard();
+  const signOut = useSignOut();
+
+  /**
+   * When every read failed, the banner says why and what helps: an ended
+   * session (a bare 403 — this app, like the portal, does not sign out on it)
+   * needs a log out and a fresh sign-in; no connection or any other failure, a retry.
+   */
+  const failureKind = viewModel?.failure ?? 'other';
+  const failureView =
+    failureKind === 'session'
+      ? {
+          icon: 'account-lock-outline',
+          text: t('common.sessionEndedRelogin'),
+          action: t('profile.logoutButton'),
+          onAction: signOut,
+        }
+      : failureKind === 'offline'
+        ? { icon: 'wifi-off', text: t('dashboard.loadFailed'), action: t('common.retry'), onAction: viewModel?.retry }
+        : {
+            icon: 'alert-circle-outline',
+            text: t('dashboard.loadFailedRetry'),
+            action: t('common.retry'),
+            onAction: viewModel?.retry,
+          };
   const queue = useTodayQueue();
   const palette = aiPalette(theme);
   const ink = palette.onGradient;
@@ -297,14 +322,14 @@ export const PatientDashboard = observer(() => {
             onBook={openFindDoctors}
           />
 
-          {viewModel.allFailed && !viewModel.isLoading ? (
+          {viewModel?.allFailed && !viewModel?.isLoading ? (
             <View style={[styles.failed, { backgroundColor: theme.colors.errorContainer }]}>
-              <Icon name="wifi-off" size={18} color={theme.colors.error} />
+              <Icon name={failureView.icon} size={18} color={theme.colors.error} />
               <Text style={[styles.failedText, { color: theme.colors.onErrorContainer }]}>
-                {t('dashboard.loadFailed')}
+                {failureView.text}
               </Text>
-              <CustomButton mode="text" onPress={viewModel.retry}>
-                {t('common.retry')}
+              <CustomButton mode="text" onPress={() => failureView.onAction?.()}>
+                {failureView.action}
               </CustomButton>
             </View>
           ) : null}
