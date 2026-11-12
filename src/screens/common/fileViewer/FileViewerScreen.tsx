@@ -145,8 +145,11 @@ export const FileViewerScreen = () => {
   }, [typeFromServer, served, url]);
 
   const canRender = Boolean(url) && Boolean(source) && kind !== 'other' && !hasFailed;
-  // A file that would not load would not download either.
-  const canSave = canDownload && Boolean(url) && !hasFailed && !isFetching;
+  // A file that would not load would not download either; one still loading is
+  // offered once it has, as the portal disables its Download meanwhile. A kind
+  // the viewer cannot draw is offered at once — saving it is the only way in.
+  const isRendering = canRender && isLoading;
+  const canSave = canDownload && Boolean(url) && !hasFailed && !isFetching && !isRendering;
 
   const handleDownload = useCallback(async () => {
     if (!url || isDownloading) return;

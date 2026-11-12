@@ -443,7 +443,7 @@
     "uploadSuccess": "Document uploaded.",
     "viewFile": "View file",
     "deleteFile": "Delete file",
-    "noDocuments": "No reports or documents attached yet",
+    "noDocuments": "No documents for this patient yet",
     "uploadFirstDocument": "Upload first document",
     "noPrescriptions": "No prescriptions yet.",
     "filterTitle": "Filter Prescriptions",

@@ -113,13 +113,23 @@ export const useMyPrescriptionsViewModel = () => {
     }
   }, []);
 
-  /** Documents belong to the patient, not to one prescription — `patientCode` is the key. */
+  /** Bumped by every documents read, so only the newest one lands. */
+  const attachmentsReadRef = useRef(0);
+
+  /**
+   * Documents belong to the patient, not to one prescription — `patientCode` is the key.
+   * Only the newest read lands: opening one member's documents and then
+   * another's quickly must never show the first member's under the second.
+   */
   const fetchAttachments = useCallback(async (patientCode: string) => {
+    const read = ++attachmentsReadRef.current;
     setAttachmentsRequest({ isLoading: true, data: [], error: null });
     try {
       const response = await PatientPrescriptionRepository.getDocuments(patientCode);
+      if (read !== attachmentsReadRef.current) return;
       setAttachmentsRequest({ isLoading: false, data: response ?? [], error: null });
     } catch (error: any) {
+      if (read !== attachmentsReadRef.current) return;
       console.log('getDocuments error ==>', error?.message);
       setAttachmentsRequest({ isLoading: false, data: [], error: serverMessageOf(error) });
     }

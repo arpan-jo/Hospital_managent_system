@@ -9,6 +9,7 @@ import {
   PrescriptionAttachment,
 } from '@app/core';
 import { fontFamilies } from '@app/ui';
+import { CATEGORY_LABEL_KEY } from '../reports/reportsUi';
 
 interface AttachmentRowProps {
   attachment: PrescriptionAttachment;
@@ -70,7 +71,10 @@ const AttachmentRow = memo<AttachmentRowProps>(function AttachmentRow({
           </Text>
           <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>
-              {attachment?.category}
+              {/* The backend stores the English name; shown in the app's language, as the upload sheet's choices are. */}
+              {CATEGORY_LABEL_KEY[attachment?.category ?? '']
+                ? t(CATEGORY_LABEL_KEY[attachment?.category ?? ''])
+                : attachment?.category}
             </Text>
           </View>
         </View>
