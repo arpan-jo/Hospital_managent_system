@@ -307,6 +307,8 @@ export const NotificationsScreen = observer(() => {
       <CustomDialog
         visible={showClearDialog}
         title={t('notifications.clearReadTitle')}
+        tone="danger"
+        icon="bell-remove-outline"
         message={t('notifications.clearReadMessage', { count: viewModel.readCount })}
         confirmText={t('notifications.clearReadConfirm')}
         cancelText={t('common.cancel')}

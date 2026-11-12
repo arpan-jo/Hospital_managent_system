@@ -484,6 +484,8 @@ export const AppointmentDetailsScreen = observer(() => {
       <CustomDialog
         visible={isConfirmingCancel}
         title={t('appointmentDetails.cancelTitle')}
+        tone="danger"
+        icon="calendar-remove-outline"
         message={t('appointmentDetails.cancelMessage')}
         confirmText={t('appointmentDetails.cancel')}
         cancelText={t('appointmentDetails.keep')}

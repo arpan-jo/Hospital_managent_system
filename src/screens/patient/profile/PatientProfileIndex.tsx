@@ -254,6 +254,8 @@ export const PatientProfileIndex = observer(() => {
       <CustomDialog
         visible={showLogoutDialog}
         title={t('profile.logoutButton')}
+        tone="danger"
+        icon="logout"
         message={t('profile.logoutConfirm')}
         confirmText={t('profile.logoutButton')}
         cancelText={t('common.cancel')}

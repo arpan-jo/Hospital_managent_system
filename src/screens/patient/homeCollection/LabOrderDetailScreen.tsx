@@ -231,6 +231,8 @@ export const LabOrderDetailScreen = () => {
           <CustomDialog
             visible={asking}
             title={t('homeCollection.cancelTitle')}
+            tone="danger"
+            icon="close-circle-outline"
             message={t('homeCollection.cancelMessage')}
             confirmText={t('homeCollection.cancelOrder')}
             cancelText={t('common.cancel')}

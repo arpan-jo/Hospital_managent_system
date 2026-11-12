@@ -156,6 +156,7 @@ export const ResetPasswordScreen = observer(() => {
       <CustomDialog
         visible={errorDialog.visible}
         title={t('resetPassword.errorTitle')}
+        tone="error"
         message={errorDialog.message}
         confirmText={t('common.ok')}
         onConfirm={errorDialog.dismiss}

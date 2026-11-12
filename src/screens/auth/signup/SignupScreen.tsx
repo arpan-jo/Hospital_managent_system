@@ -147,6 +147,7 @@ export const SignupScreen = observer(() => {
       <CustomDialog
         visible={errorDialog.visible}
         title={t('signup.errorTitle')}
+        tone="error"
         message={errorDialog.message}
         confirmText={t('common.ok')}
         onConfirm={errorDialog.dismiss}

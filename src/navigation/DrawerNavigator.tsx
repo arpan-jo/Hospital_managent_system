@@ -445,6 +445,8 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
       <CustomDialog
         visible={confirmingLogout}
         title={t('profile.logoutButton')}
+        tone="danger"
+        icon="logout"
         message={t('profile.logoutConfirm')}
         confirmText={t('profile.logoutButton')}
         cancelText={t('common.cancel')}

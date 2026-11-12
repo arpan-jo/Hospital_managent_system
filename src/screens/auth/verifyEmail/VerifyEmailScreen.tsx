@@ -139,6 +139,7 @@ export const VerifyEmailScreen = observer(() => {
       <CustomDialog
         visible={errorDialog.visible}
         title={t('verifyEmail.errorTitle')}
+        tone="error"
         message={errorDialog.message}
         confirmText={t('common.ok')}
         onConfirm={errorDialog.dismiss}

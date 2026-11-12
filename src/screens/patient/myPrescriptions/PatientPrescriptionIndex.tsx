@@ -535,6 +535,8 @@ export const PatientPrescriptionIndex = observer(() => {
       <CustomDialog
         visible={!!attachmentToDelete}
         title={t('myPrescriptions.deleteTitle')}
+        tone="danger"
+        icon="trash-can-outline"
         message={t('myPrescriptions.deleteMessage', {
           name: attachmentToDelete?.title || attachmentToDelete?.name || '',
         })}

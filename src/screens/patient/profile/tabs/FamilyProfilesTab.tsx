@@ -498,6 +498,8 @@ export const FamilyProfilesTab = memo<FamilyProfilesTabProps>(function FamilyPro
       <CustomDialog
         visible={!!removeTarget}
         title={t('patientProfile.removeProfile')}
+        tone="danger"
+        icon="account-remove-outline"
         message={t('patientProfile.removeProfileConfirm', {
           name: removeTarget?.fullName || removeTarget?.patientCode || '',
         })}

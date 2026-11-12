@@ -306,6 +306,8 @@ const LabTestsSection = ({
       <CustomDialog
         visible={!!removeTarget}
         title={t('reports.removeUploadTitle')}
+        tone="danger"
+        icon="trash-can-outline"
         message={t('reports.removeUploadMessage', { name: removeTarget?.testName || t(text.fallbackTitle) })}
         confirmText={t('reports.remove')}
         cancelText={t('common.cancel')}
@@ -458,6 +460,8 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal 
       <CustomDialog
         visible={!!removeTarget}
         title={t('reports.removeUploadTitle')}
+        tone="danger"
+        icon="trash-can-outline"
         // Named by its doctor, else "Uploaded prescription" — as the portal asks, never by its URX code.
         message={t('reports.removeUploadMessage', {
           name: doctorTitle(removeTarget?.doctorName) || t('reports.uploadedPrescription'),

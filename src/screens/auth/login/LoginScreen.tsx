@@ -145,6 +145,7 @@ export const LoginScreen = observer(() => {
       <CustomDialog
         visible={errorDialog.visible}
         title={t('login.errorTitle')}
+        tone="error"
         message={errorDialog.message}
         confirmText={t('common.ok')}
         onConfirm={errorDialog.dismiss}

@@ -171,6 +171,7 @@ export const ForgotPasswordScreen = observer(() => {
       <CustomDialog
         visible={errorDialog.visible}
         title={t('forgotPassword.errorTitle')}
+        tone="error"
         message={errorDialog.message}
         confirmText={t('common.ok')}
         onConfirm={errorDialog.dismiss}

@@ -305,6 +305,8 @@ export const PatientReportIndex = observer(() => {
       <CustomDialog
         visible={!!deleteTarget}
         title={t('reports.deleteTitle')}
+        tone="danger"
+        icon="trash-can-outline"
         message={t('reports.deleteMessage', { title: deleteTarget?.title ?? '' })}
         confirmText={t('reports.delete')}
         cancelText={t('common.cancel')}
