@@ -47,6 +47,12 @@ export type UploadRead =
     };
 
 /**
+ * Where an upload the AI will read has got to — what the progress modal shows.
+ * Null when no such upload runs (a plain document shows no modal).
+ */
+export type UploadProgress = { stage: 'uploading' | 'reading'; kind: 'rx' | 'lab' };
+
+/**
  * My Uploads, as the portal's Reports page has it: the account's own
  * documents, narrowed on the phone by category and by a search over title and
  * category, with upload and delete.
@@ -63,6 +69,7 @@ export const useUploadsViewModel = () => {
   const [category, setCategory] = useState<string>(ALL_CATEGORIES);
   const [search, setSearch] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   /** A read waiting for the screen to open its review. */
   const [read, setRead] = useState<UploadRead | null>(null);
@@ -181,7 +188,9 @@ export const useUploadsViewModel = () => {
       const forWhom = input?.forWhom ?? null;
       const registrationId = forWhom?.registrationId ?? 0;
       const reads = READ_CATEGORIES.includes(input?.category ?? '') && registrationId > 0;
+      const kind = input?.category === 'Lab Report' ? 'lab' : 'rx';
       setIsUploading(true);
+      if (reads) setProgress({ stage: 'uploading', kind });
       try {
         const fileUrl = await PatientReportRepository.uploadFile(input?.file);
         const documentId = await PatientReportRepository.createReport({
@@ -197,6 +206,7 @@ export const useUploadsViewModel = () => {
         toastStore.show(t('reports.uploadSuccess'), 'success');
         await load('quiet');
         if (reads && documentId > 0) {
+          setProgress({ stage: 'reading', kind });
           const result = await readUpload(input, documentId, registrationId);
           if (result) setRead(result);
         }
@@ -207,6 +217,7 @@ export const useUploadsViewModel = () => {
         return false;
       } finally {
         setIsUploading(false);
+        setProgress(null);
       }
     },
     [load, readUpload, toastStore, t],
@@ -248,6 +259,7 @@ export const useUploadsViewModel = () => {
     retry: () => load('initial'),
     refresh: () => load('refresh'),
     isUploading,
+    progress,
     upload,
     deletingId,
     remove,

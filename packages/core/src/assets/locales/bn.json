@@ -903,7 +903,13 @@
     },
     "dueLocked": "বকেয়া {{amount}} — পরিশোধ করে দেখুন",
     "dueLockedMessage": "রিপোর্টটি দেখতে বিল {{bill}}-এর {{amount}} বকেয়া পরিশোধ করুন।",
-    "dueLockedMessageNoBill": "রিপোর্টটি দেখতে এর বিলের {{amount}} বকেয়া পরিশোধ করুন।"
+    "dueLockedMessageNoBill": "রিপোর্টটি দেখতে এর বিলের {{amount}} বকেয়া পরিশোধ করুন।",
+    "progress": {
+      "uploading": "আপলোড হচ্ছে…",
+      "readingRx": "প্রেসক্রিপশন পড়া হচ্ছে…",
+      "readingLab": "রিপোর্ট পড়া হচ্ছে…",
+      "slow": "একটু সময় লাগছে…"
+    }
   },
   "drawer": {
     "appointments": "অ্যাপয়েন্টমেন্ট",

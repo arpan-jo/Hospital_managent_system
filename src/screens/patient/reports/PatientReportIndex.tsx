@@ -15,6 +15,7 @@ import { useMonthNames } from '../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
 import { PathologySection, RadiologySection, VisitPrescriptionsSection } from './RecordSections';
+import UploadProgressModal from './UploadProgressModal';
 import UploadReportSheet from './UploadReportSheet';
 import UploadsSection from './UploadsSection';
 import { formatBytes } from './reportsUi';
@@ -301,6 +302,8 @@ export const PatientReportIndex = observer(() => {
       ) : null}
 
       <UploadReportSheet visible={isUploadVisible} onClose={closeUpload} onUpload={uploads.upload} />
+      {/* After the sheet, so it opens over it — a prescription or lab report uploading and being read. */}
+      <UploadProgressModal progress={uploads?.progress ?? null} />
 
       <CustomDialog
         visible={!!deleteTarget}

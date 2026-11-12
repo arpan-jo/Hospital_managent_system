@@ -903,7 +903,13 @@
     },
     "dueLocked": "Due {{amount}} — pay to view",
     "dueLockedMessage": "Please clear the due of {{amount}} on bill {{bill}} to view this report.",
-    "dueLockedMessageNoBill": "Please clear the due of {{amount}} on its bill to view this report."
+    "dueLockedMessageNoBill": "Please clear the due of {{amount}} on its bill to view this report.",
+    "progress": {
+      "uploading": "Uploading…",
+      "readingRx": "Reading prescription…",
+      "readingLab": "Reading report…",
+      "slow": "Taking a little longer…"
+    }
   },
   "drawer": {
     "appointments": "Appointments",
