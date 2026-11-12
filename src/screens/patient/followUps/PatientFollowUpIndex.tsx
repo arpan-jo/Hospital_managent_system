@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -31,6 +31,16 @@ export const PatientFollowUpIndex = observer(() => {
   const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const insets = useSafeAreaInsets();
   const viewModel = useFollowUpsViewModel();
+  const route = useRoute<RouteProp<DrawerParamList, 'FollowUps'>>();
+
+  // Opened from the menu or a notification: Upcoming, as the portal's page
+  // starts — where a newly scheduled follow-up is. Back from a doctor's page
+  // carries no `openedAt`, so the tab the patient was on stays.
+  const openedAt = route?.params?.openedAt ?? 0;
+  const { setActiveTab } = viewModel;
+  useEffect(() => {
+    if (openedAt) setActiveTab?.('upcoming');
+  }, [openedAt, setActiveTab]);
   const { ensureProfile } = useRequirePatientProfile();
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 

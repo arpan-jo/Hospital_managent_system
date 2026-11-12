@@ -68,7 +68,8 @@ export const NotificationsScreen = observer(() => {
           });
           break;
         case 'followUps':
-          navigation.navigate('FollowUps');
+          // On Upcoming, where a newly scheduled follow-up is — not the tab left open last time.
+          navigation.navigate('FollowUps', { openedAt: Date.now() });
           break;
         case 'messages':
           navigation.navigate('Messages', { screen: 'MessagesList' });

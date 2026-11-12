@@ -39,7 +39,8 @@ export type DrawerParamList = {
   MainTabs: NavigatorScreenParams<TabParamList> | undefined;
   Settings: undefined;
   Notifications: undefined;
-  FollowUps: undefined;
+  /** `openedAt` — opened from the menu or a notification: it starts on Upcoming, as the portal's page does. */
+  FollowUps: { openedAt?: number } | undefined;
   Messages: NavigatorScreenParams<MessagesStackParamList> | undefined;
   Prescriptions:
     | NavigatorScreenParams<MyPrescriptionsStackParamList>
@@ -60,6 +61,8 @@ type MenuItem = {
    * file left open there is not reopened.
    */
   screen?: string;
+  /** A one-screen section that starts afresh each time the row opens it (Follow-ups on Upcoming). */
+  fresh?: boolean;
   /** Starts a new group under this heading — sets the app's own entries apart from the portal's menu. */
   sectionKey?: string;
   /** A count beside the label — unread messages, as on the portal's menu, or unread notifications. */
@@ -97,6 +100,7 @@ const MENU_ITEMS: MenuItem[] = [
     name: 'FollowUps',
     labelKey: 'drawer.followUps',
     icon: 'calendar-refresh-outline',
+    fresh: true,
   },
   {
     name: 'Messages',
@@ -294,7 +298,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
     if (item?.tab) {
       props?.navigation?.navigate?.('MainTabs', { screen: item.tab, params: nested });
     } else if (item?.name) {
-      props?.navigation?.navigate?.(item.name, nested);
+      props?.navigation?.navigate?.(item.name, nested ?? (item?.fresh ? { openedAt: Date.now() } : undefined));
     }
   };
 
