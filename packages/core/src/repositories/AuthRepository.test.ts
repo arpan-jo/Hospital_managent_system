@@ -69,3 +69,31 @@ describe('AuthRepository.login', () => {
     );
   });
 });
+
+describe('AuthRepository — calls that send a code or a link', () => {
+  beforeEach(() => request.mockReset());
+
+  it('give the server 30 seconds, since it answers only once the SMS or email is out', async () => {
+    request.mockResolvedValue({});
+
+    await AuthRepository.sendOtp({ phone: '01711000000' }, 'Patient');
+    await AuthRepository.sendResetOtp('01711000000');
+    await AuthRepository.forgotPassword('a@b.com');
+
+    for (const url of [ENDPOINTS.sendOtp, ENDPOINTS.sendResetOtp, ENDPOINTS.forgotPassword]) {
+      expect(request).toHaveBeenCalledWith(expect.objectContaining({ url, timeout: 30_000 }));
+    }
+  });
+});
+
+describe('AuthRepository.login — an answer without a token', () => {
+  beforeEach(() => request.mockReset());
+
+  it("fails in the patient's words, not a developer's", async () => {
+    request.mockResolvedValueOnce({ userId: 18, role: 'Patient' });
+
+    await expect(AuthRepository.login({ email: 'a@b.com' }, 'secret1')).rejects.toThrow(
+      "Sign-in didn't complete. Please try again.",
+    );
+  });
+});

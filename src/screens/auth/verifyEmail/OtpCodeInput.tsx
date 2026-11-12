@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { fontFamilies } from '@app/ui';
+import { readOtpBox } from './otpUtils';
 
 interface OtpCodeInputProps {
   digits: string[];
@@ -28,27 +29,25 @@ export const OtpCodeInput = memo<OtpCodeInputProps>(function OtpCodeInput({
 
   const handleChangeText = useCallback(
     (index: number, text: string) => {
-      const typed = text.replace(/[^0-9]/g, '');
       const length = digits?.length ?? 0;
+      const read = readOtpBox(digits?.[index], text, length);
 
-      // A paste: the boxes take no length limit, so the whole code lands here.
-      // Past the code's length the box's own old digit is in front of it.
-      if (typed.length >= length) {
-        typed
-          .slice(-length)
-          .split('')
-          .forEach((digit, position) => onChangeDigit(position, digit));
-        inputRefs.current[length - 1]?.focus();
+      // A paste: the boxes take no length limit, so the whole of it lands
+      // here — a bare code or the SMS itself. Its first digits fill the boxes
+      // from the first, as the portal's paste does.
+      if (read?.pasted) {
+        read.pasted.forEach((digit, position) => onChangeDigit(position, digit));
+        inputRefs.current[Math.min(read.pasted.length, length - 1)]?.focus();
         return;
       }
 
-      const digit = typed.slice(-1);
+      const digit = read?.digit ?? '';
       onChangeDigit(index, digit);
       if (digit && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [digits?.length, onChangeDigit],
+    [digits, onChangeDigit],
   );
 
   const handleKeyPress = useCallback(

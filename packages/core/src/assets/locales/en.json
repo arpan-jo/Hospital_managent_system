@@ -18,7 +18,8 @@
     "createAccount": "Create new account",
     "googleButton": "Sign in with Google",
     "googleFailed": "Could not sign in with Google. Please try again.",
-    "googlePending": "Google account {{email}} selected. Signing in with Google will be available soon."
+    "googlePending": "Google account {{email}} selected. Signing in with Google will be available soon.",
+    "noToken": "Sign-in didn't complete. Please try again."
   },
   "forgotPassword": {
     "title": "Forgot your password?",
@@ -36,7 +37,8 @@
     "tryAgain": "try again",
     "backToSignInButton": "Back to Sign In",
     "errorTitle": "Reset Link Failed",
-    "sendFailed": "Something went wrong. Please try again."
+    "sendFailed": "Something went wrong. Please try again.",
+    "codeErrorTitle": "Couldn't Send Code"
   },
   "resetPassword": {
     "title": "Reset Password",
@@ -1201,7 +1203,8 @@
     "somethingWentWrong": "Something went wrong",
     "back": "Back",
     "sessionEndedRelogin": "Your session has ended. Please log out and sign in again.",
-    "sessionEndedTitle": "Session ended"
+    "sessionEndedTitle": "Session ended",
+    "noConnection": "Couldn't reach the server. Check your internet connection and try again."
   },
   "photoPicker": {
     "title": "Profile photo",

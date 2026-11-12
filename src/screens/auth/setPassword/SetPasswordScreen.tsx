@@ -43,8 +43,13 @@ export const SetPasswordScreen = observer(() => {
       errorDialog.show(message || t('setPassword.accountFailed'));
     } else if (status === 'createdNeedsLogin') {
       // Account exists but the auto-login didn't take, so they are told to
-      // sign in themselves.
-      toastStore.show(t('setPassword.accountCreatedSignIn'), 'success');
+      // sign in themselves — with the server's reason when it gave one.
+      const reason = message?.trim();
+      toastStore.show(
+        reason ? `${t('setPassword.accountCreated')} ${reason}` : t('setPassword.accountCreatedSignIn'),
+        reason ? 'info' : 'success',
+        reason ? 6000 : undefined,
+      );
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } else if (status === 'created') {
       // Signed in already — the root navigator swaps to the app stack, so

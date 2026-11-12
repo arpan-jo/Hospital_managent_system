@@ -18,7 +18,8 @@
     "createAccount": "নতুন অ্যাকাউন্ট তৈরি করুন",
     "googleButton": "Google দিয়ে সাইন ইন",
     "googleFailed": "Google দিয়ে সাইন ইন করা যায়নি। আবার চেষ্টা করুন।",
-    "googlePending": "Google অ্যাকাউন্ট {{email}} বাছাই হয়েছে। Google দিয়ে সাইন ইন শীঘ্রই চালু হবে।"
+    "googlePending": "Google অ্যাকাউন্ট {{email}} বাছাই হয়েছে। Google দিয়ে সাইন ইন শীঘ্রই চালু হবে।",
+    "noToken": "সাইন ইন সম্পন্ন হয়নি। আবার চেষ্টা করুন।"
   },
   "forgotPassword": {
     "title": "পাসওয়ার্ড ভুলে গেছেন?",
@@ -36,7 +37,8 @@
     "tryAgain": "আবার চেষ্টা করুন",
     "backToSignInButton": "সাইন ইনে ফিরে যান",
     "errorTitle": "রিসেট লিংক পাঠানো যায়নি",
-    "sendFailed": "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।"
+    "sendFailed": "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।",
+    "codeErrorTitle": "কোড পাঠানো যায়নি"
   },
   "resetPassword": {
     "title": "পাসওয়ার্ড রিসেট",
@@ -1201,7 +1203,8 @@
     "somethingWentWrong": "কিছু একটা সমস্যা হয়েছে",
     "back": "পিছনে",
     "sessionEndedRelogin": "আপনার সেশন শেষ হয়েছে। লগআউট করে আবার সাইন ইন করুন।",
-    "sessionEndedTitle": "সেশন শেষ হয়েছে"
+    "sessionEndedTitle": "সেশন শেষ হয়েছে",
+    "noConnection": "সার্ভারে পৌঁছানো যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।"
   },
   "photoPicker": {
     "title": "প্রোফাইল ছবি",

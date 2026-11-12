@@ -31,6 +31,8 @@ export interface ForgotPasswordSubmitResult {
    * the caller runs before React has re-rendered with the new state.
    */
   error?: string;
+  /** Which way the reset was asked for — a failed SMS code is not a failed link. */
+  channel?: 'email' | 'phone';
 }
 
 /**
@@ -76,12 +78,14 @@ export const useForgotPasswordViewModel = () => {
 
     let result: ForgotPasswordResult | null = null;
     let error: string | undefined;
+    let channel: 'email' | 'phone' = 'email';
 
     inFlightRef.current = true;
     setIsLoading(true);
     try {
       await handleSubmit(async data => {
         const text = data?.identifier?.trim() ?? '';
+        channel = text.includes('@') ? 'email' : 'phone';
         if (text.includes('@')) {
           const res = await AuthRepository.forgotPassword(text);
           result = { email: text, message: res?.message };
@@ -98,7 +102,7 @@ export const useForgotPasswordViewModel = () => {
       setIsLoading(false);
     }
 
-    return { data: result, error };
+    return { data: result, error, channel };
   };
 
   return { control, rules, isLoading, submit };

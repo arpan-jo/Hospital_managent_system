@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { authErrorMessageOf, AuthRepository } from '@app/core';
 import { SIGNUP_ROLE } from '../signup/useSignupViewModel';
+import { otpDeadline, secondsUntil } from './otpUtils';
 
 export const CODE_LENGTH = 6;
-const DEFAULT_EXPIRY_SECONDS = 284; // 04:44, used when the send-OTP response didn't carry one
 
 /** `incomplete`: fewer than six digits, nothing sent. `rejected`: the server said no. */
 export type VerifyEmailStatus = 'verified' | 'incomplete' | 'rejected';
@@ -36,16 +37,24 @@ export const useVerifyEmailViewModel = (
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(
-    initialExpiresInSeconds ?? DEFAULT_EXPIRY_SECONDS,
-  );
+  /** When the code runs out (wall clock) — the countdown is read off it, never counted down by itself. */
+  const [deadline, setDeadline] = useState(() => otpDeadline(initialExpiresInSeconds));
+  const [secondsLeft, setSecondsLeft] = useState(() => secondsUntil(deadline));
 
+  // Re-read each second and on coming back to the app: Android stops an app's
+  // timers while it is away, and the patient leaves to read the SMS or email.
   useEffect(() => {
-    const id = setInterval(() => {
-      setSecondsLeft(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    const tick = () => setSecondsLeft(secondsUntil(deadline));
+    tick();
+    const id = setInterval(tick, 1000);
+    const subscription = AppState?.addEventListener?.('change', state => {
+      if (state === 'active') tick();
+    });
+    return () => {
+      clearInterval(id);
+      subscription?.remove?.();
+    };
+  }, [deadline]);
 
   const setDigit = useCallback((index: number, value: string) => {
     setDigits(prev => {
@@ -63,7 +72,7 @@ export const useVerifyEmailViewModel = (
     try {
       const res = await AuthRepository.sendOtp({ email, phone }, SIGNUP_ROLE);
       setDigits(Array(CODE_LENGTH).fill(''));
-      setSecondsLeft(res?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS);
+      setDeadline(otpDeadline(res?.expiresInSeconds));
       return { ok: true, message: res?.message };
     } catch (e: any) {
       return { ok: false, message: authErrorMessageOf(e) };

@@ -32,6 +32,8 @@ export const ForgotPasswordScreen = observer(() => {
   const [sentTo, setSentTo] = useState<string | null>(null);
   /** The server's own confirmation; '' when it sent none. */
   const [sentMessage, setSentMessage] = useState('');
+  /** The failed request's way — the dialog names a link for an email, a code for a number. */
+  const [failedChannel, setFailedChannel] = useState<'email' | 'phone'>('email');
 
   const goBack = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -40,9 +42,10 @@ export const ForgotPasswordScreen = observer(() => {
   }, [navigation]);
 
   const handleSend = useCallback(async () => {
-    const { data, error } = await viewModel.submit();
+    const { data, error, channel } = await viewModel.submit();
     if (!data) {
       if (error) {
+        setFailedChannel(channel === 'phone' ? 'phone' : 'email');
         errorDialog.show(error);
       }
       return;
@@ -170,7 +173,7 @@ export const ForgotPasswordScreen = observer(() => {
 
       <CustomDialog
         visible={errorDialog.visible}
-        title={t('forgotPassword.errorTitle')}
+        title={t(failedChannel === 'phone' ? 'forgotPassword.codeErrorTitle' : 'forgotPassword.errorTitle')}
         tone="error"
         message={errorDialog.message}
         confirmText={t('common.ok')}

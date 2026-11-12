@@ -16,6 +16,14 @@ describe('authErrorMessageOf', () => {
     expect(authErrorMessageOf(answer(429))).toBe('Too many attempts. Please wait a minute and try again.');
   });
 
+  it('names the connection when no answer came at all — not a wrong password', () => {
+    // As apiClient rejects a call that never reached the server: no status, an axios error without a response.
+    const offline = Object.assign(new Error('Network error'), { originalError: { request: {} } });
+    expect(authErrorMessageOf(offline)).toBe(
+      "Couldn't reach the server. Check your internet connection and try again.",
+    );
+  });
+
   it('leaves any other wordless failure to the screen', () => {
     expect(authErrorMessageOf(answer(500))).toBe('');
     expect(authErrorMessageOf(null)).toBe('');

@@ -2,6 +2,7 @@ import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
 import { toLocalBdMobile } from '../utils/bdPhone';
+import i18n from '../utils/i18n';
 
 /**
  * The shortest password a new account or a reset may set — the backend's
@@ -12,6 +13,14 @@ export const NEW_PASSWORD_MIN_LENGTH = 8;
 
 /** How long a sign-in may take — longer than the client's 10s default. */
 const LOGIN_TIMEOUT_MS = 30_000;
+
+/**
+ * How long a call that sends a code or a link may take. The server answers
+ * only once the SMS or email is out, and gives the SMS gateway 20s: at the
+ * client's 10s the code arrives while the app says it failed, and asking again
+ * then meets the 60s resend wait.
+ */
+const SEND_CODE_TIMEOUT_MS = 30_000;
 
 /** Who the auth calls are about: an email, or a BD mobile number. Exactly one. */
 export interface AuthContact {
@@ -99,6 +108,7 @@ export const AuthRepository = {
       method: 'POST',
       data: { ...contactBody(contact), role: role?.toLowerCase() },
       baseUrl: API_URL,
+      timeout: SEND_CODE_TIMEOUT_MS,
     };
 
     return apiRequest<SendOtpResponse>(api_params);
@@ -140,6 +150,7 @@ export const AuthRepository = {
       method: 'POST',
       data: { email: email?.trim() },
       baseUrl: API_URL,
+      timeout: SEND_CODE_TIMEOUT_MS,
     };
 
     return apiRequest<ForgotPasswordResponse>(api_params);
@@ -155,6 +166,7 @@ export const AuthRepository = {
       method: 'POST',
       data: { phone: toLocalBdMobile(phone) },
       baseUrl: API_URL,
+      timeout: SEND_CODE_TIMEOUT_MS,
     };
 
     return apiRequest<SendOtpResponse>(api_params);
@@ -202,8 +214,10 @@ export const AuthRepository = {
     };
     const res = await apiRequest<LoginResponse>(api_params);
 
+    // An answer with no token cannot start a session. Its words reach the
+    // sign-in dialog as they are, so they are the patient's, not a developer's.
     if (!res?.token) {
-      throw new Error('Login failed: no token in response');
+      throw new Error(i18n.t('login.noToken'));
     }
 
     return res;

@@ -19,7 +19,10 @@ export type SetPasswordStatus =
 
 export interface SetPasswordResult {
   status: SetPasswordStatus;
-  /** Why it failed, in the backend's words. */
+  /**
+   * Why it failed, in the backend's words — the sign-up, or for
+   * `createdNeedsLogin` the sign-in after it (a lockout, a rate limit).
+   */
   message?: string;
 }
 
@@ -67,8 +70,8 @@ export const useSetPasswordViewModel = (params: SetPasswordParams) => {
         try {
           await signIn(contact, data?.password);
           result = { status: 'created' };
-        } catch {
-          result = { status: 'createdNeedsLogin' };
+        } catch (signInError: any) {
+          result = { status: 'createdNeedsLogin', message: authErrorMessageOf(signInError) };
         }
       } catch (e: any) {
         result = { status: 'failed', message: authErrorMessageOf(e) };
