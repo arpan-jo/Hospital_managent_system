@@ -130,7 +130,7 @@ export const AppointmentCard = memo<AppointmentCardProps>(function AppointmentCa
               numberOfLines={1}
               style={[styles.whereText, styles.whereShrink, { color: theme.colors.onSurfaceVariant }]}
             >
-              {appointment.locationName}
+              {appointment?.locationName}
             </Text>
           </View>
         ) : null}

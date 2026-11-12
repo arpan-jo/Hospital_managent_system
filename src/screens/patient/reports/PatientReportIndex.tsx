@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { observer } from 'mobx-react-lite';
@@ -112,6 +112,19 @@ export const PatientReportIndex = observer(() => {
     setReloadSignals(previous => ({ ...previous, [savedSection]: savedAt }));
   }, [savedAt, savedSection, openSection]);
   const closeUpload = useCallback(() => setUploadVisible(false), []);
+
+  // Asked for from a bill: its lab section opens, both lab sections searched by the bill's code.
+  const billAt = route?.params?.bill?.at ?? 0;
+  const billCode = route?.params?.bill?.code ?? '';
+  const billSection = route?.params?.bill?.section;
+  const presetSearch = useMemo(
+    () => (billAt && billCode ? { text: billCode, at: billAt } : undefined),
+    [billAt, billCode],
+  );
+  useEffect(() => {
+    if (!billAt || !billCode) return;
+    openSection(billSection === 'radiology' ? 'radiology' : 'pathology');
+  }, [billAt, billCode, billSection, openSection]);
 
   /** Opened in the app — a PDF or an image is drawn, anything else gets a message there. */
   const previewDocument = useCallback(
@@ -259,12 +272,22 @@ export const PatientReportIndex = observer(() => {
       </View>
       {opened.includes('pathology') ? (
         <View style={[styles.body, section !== 'pathology' && styles.hidden]}>
-          <PathologySection months={months} bottomPadding={bottomPadding} reloadSignal={reloadSignals.pathology} />
+          <PathologySection
+            months={months}
+            bottomPadding={bottomPadding}
+            reloadSignal={reloadSignals.pathology}
+            presetSearch={presetSearch}
+          />
         </View>
       ) : null}
       {opened.includes('radiology') ? (
         <View style={[styles.body, section !== 'radiology' && styles.hidden]}>
-          <RadiologySection months={months} bottomPadding={bottomPadding} reloadSignal={reloadSignals.radiology} />
+          <RadiologySection
+            months={months}
+            bottomPadding={bottomPadding}
+            reloadSignal={reloadSignals.radiology}
+            presetSearch={presetSearch}
+          />
         </View>
       ) : null}
       {opened.includes('prescriptions') ? (

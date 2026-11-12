@@ -55,12 +55,11 @@ export const NextAppointmentCard = memo<NextAppointmentCardProps>(function NextA
   const head = (
     <View style={styles.head}>
       <Text style={[styles.headTitle, { color: muted }]}>{t('dashboard.nextAppointment')}</Text>
-      {next ? (
-        <Pressable onPress={onSeeAll} hitSlop={8} accessibilityRole="button" style={styles.seeAll}>
-          <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>{t('dashboard.seeAll')}</Text>
-          <Icon name="chevron-right" size={16} color={theme.colors.primary} />
-        </Pressable>
-      ) : null}
+      {/* Always, as on the portal — with nothing upcoming it still leads to past appointments. */}
+      <Pressable onPress={onSeeAll} hitSlop={8} accessibilityRole="button" style={styles.seeAll}>
+        <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>{t('dashboard.seeAll')}</Text>
+        <Icon name="chevron-right" size={16} color={theme.colors.primary} />
+      </Pressable>
     </View>
   );
 

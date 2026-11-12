@@ -919,7 +919,8 @@
     "bills": "Bills",
     "dashboard": "Dashboard",
     "messages": "Messages",
-    "homeCollection": "Home Collection"
+    "homeCollection": "Home Collection",
+    "notifications": "Notifications"
   },
   "settings": {
     "title": "Settings",

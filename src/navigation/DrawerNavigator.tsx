@@ -55,8 +55,8 @@ type MenuItem = {
   tab?: keyof TabParamList;
   /** Starts a new group under this heading — sets the app's own entries apart from the portal's menu. */
   sectionKey?: string;
-  /** A count beside the label — the unread messages, as on the portal's menu. */
-  badge?: 'messages';
+  /** A count beside the label — unread messages, as on the portal's menu, or unread notifications. */
+  badge?: 'messages' | 'notifications';
 };
 
 /**
@@ -128,11 +128,18 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'account-circle-outline',
     tab: 'ProfileTab',
   },
+  // The portal's bell sits in every page's header; here it is one tap away from any screen.
+  {
+    name: 'Notifications',
+    labelKey: 'drawer.notifications',
+    icon: 'bell-outline',
+    sectionKey: 'drawer.sectionGeneral',
+    badge: 'notifications',
+  },
   {
     name: 'Settings',
     labelKey: 'settings.title',
     icon: 'cog-outline',
-    sectionKey: 'drawer.sectionGeneral',
   },
 ];
 
@@ -397,7 +404,13 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
               icon={item.icon}
               label={t(item.labelKey)}
               active={isActive(item)}
-              badge={item.badge === 'messages' ? notificationStore?.unreadMessages ?? 0 : 0}
+              badge={
+                item?.badge === 'messages'
+                  ? notificationStore?.unreadMessages ?? 0
+                  : item?.badge === 'notifications'
+                    ? notificationStore?.unreadCount ?? 0
+                    : 0
+              }
               onPress={() =>
                 item.tab
                   ? props.navigation.navigate('MainTabs', {

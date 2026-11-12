@@ -12,8 +12,14 @@ import ReviewLabReportScreen from '../screens/patient/reports/review/ReviewLabRe
 /** A section of the Reports page something was just saved to — it opens and reads again. */
 export type ReportsSavedTo = { section: 'prescriptions' | 'pathology' | 'radiology'; at: number };
 
+/**
+ * A bill's tests, asked for from the bill — the lab sections open searched by
+ * its code, the portal's "Reports" link from a bill.
+ */
+export type ReportsForBill = { code: string; section: 'pathology' | 'radiology'; at: number };
+
 export type ReportsStackParamList = {
-  ReportsHome: { saved?: ReportsSavedTo } | undefined;
+  ReportsHome: { saved?: ReportsSavedTo; bill?: ReportsForBill } | undefined;
   /** One visit prescription, as the Reports page shows it. */
   VisitPrescription: { prescriptionId: number; title?: string };
   /** An uploaded document or a test report PDF, drawn in the app. */

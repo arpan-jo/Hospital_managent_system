@@ -27,6 +27,8 @@ interface SectionProps {
   bottomPadding: number;
   /** Bumped when something was just saved here — a reviewed upload — so the list is read again. */
   reloadSignal?: number;
+  /** Put in the search box — a bill's code, asked for from the bill. Again each time `at` changes. */
+  presetSearch?: { text: string; at: number };
 }
 
 /** Calls `reload` each time `signal` changes after the first render. */
@@ -92,7 +94,13 @@ const uploadMatches = (report: UploadedLabReport, term: string): boolean =>
  * radiology test also offers its images, as the portal does. Above them sit
  * the patient's own confirmed uploads, marked "Uploaded", each removable.
  */
-const LabTestsSection = ({ type, months, bottomPadding, reloadSignal }: SectionProps & { type: LabTestType }) => {
+const LabTestsSection = ({
+  type,
+  months,
+  bottomPadding,
+  reloadSignal,
+  presetSearch,
+}: SectionProps & { type: LabTestType }) => {
   const { t } = useTranslation();
   const navigation = useNavigation<ReportsNavigation>();
   const { toastStore } = useStores();
@@ -106,6 +114,14 @@ const LabTestsSection = ({ type, months, bottomPadding, reloadSignal }: SectionP
     uploads?.reload?.();
     viewModel?.refresh?.();
   });
+
+  // Opened from a bill: only that bill's tests, by its code — the search matches it.
+  const setSearch = viewModel?.setSearch;
+  const presetText = presetSearch?.text ?? '';
+  const presetAt = presetSearch?.at ?? 0;
+  useEffect(() => {
+    if (presetAt && presetText) setSearch?.(presetText);
+  }, [presetAt, presetText, setSearch]);
 
   // The same family chip and search narrow the uploads as the hospital's tests.
   const { patientCode, search } = viewModel;

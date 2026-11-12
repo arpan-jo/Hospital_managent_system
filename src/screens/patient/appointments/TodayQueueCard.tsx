@@ -83,7 +83,7 @@ export const TodayQueueCard = memo<TodayQueueCardProps>(function TodayQueueCard(
                   {/* 0 is a started queue (the one in the room has no token) — "#0", as on the portal. */}
                   {entry?.nowServingToken === null || entry?.nowServingToken === undefined
                     ? '—'
-                    : `#${entry.nowServingToken}`}
+                    : `#${entry?.nowServingToken}`}
                 </Text>
               </View>
               <Text
