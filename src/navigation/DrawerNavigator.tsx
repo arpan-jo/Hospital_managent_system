@@ -54,6 +54,12 @@ type MenuItem = {
   labelKey: string;
   icon: string;
   tab?: keyof TabParamList;
+  /**
+   * The section's list, for a section that is a stack: the row always opens it,
+   * as the portal's sidebar opens the page itself — a doctor, a thread or a
+   * file left open there is not reopened.
+   */
+  screen?: string;
   /** Starts a new group under this heading — sets the app's own entries apart from the portal's menu. */
   sectionKey?: string;
   /** A count beside the label — unread messages, as on the portal's menu, or unread notifications. */
@@ -77,12 +83,14 @@ const MENU_ITEMS: MenuItem[] = [
     labelKey: 'drawer.findDoctors',
     icon: 'stethoscope',
     tab: 'HomeTab',
+    screen: 'PatientFindDoctorIndex',
   },
   {
     name: 'MainTabs',
     labelKey: 'drawer.appointments',
     icon: 'calendar-month-outline',
     tab: 'ActivityTab',
+    screen: 'AppointmentsList',
   },
 
   {
@@ -94,12 +102,14 @@ const MENU_ITEMS: MenuItem[] = [
     name: 'Messages',
     labelKey: 'drawer.messages',
     icon: 'message-text-outline',
+    screen: 'MessagesList',
     badge: 'messages',
   },
   {
     name: 'Prescriptions',
     labelKey: 'drawer.prescriptions',
     icon: 'clipboard-text-outline',
+    screen: 'MyPrescriptionsList',
   },
 
   {
@@ -107,6 +117,7 @@ const MENU_ITEMS: MenuItem[] = [
     labelKey: 'drawer.reports',
     icon: 'file-chart-outline',
     tab: 'ReportsTab',
+    screen: 'ReportsHome',
   },
   {
     name: 'Vitals',
@@ -117,17 +128,20 @@ const MENU_ITEMS: MenuItem[] = [
     name: 'HomeCollection',
     labelKey: 'drawer.homeCollection',
     icon: 'home-plus-outline',
+    screen: 'HomeCollectionList',
   },
   {
     name: 'Bills',
     labelKey: 'drawer.bills',
     icon: 'cash-multiple',
+    screen: 'BillsList',
   },
   {
     name: 'MainTabs',
     labelKey: 'drawer.profile',
     icon: 'account-circle-outline',
     tab: 'ProfileTab',
+    screen: 'ProfileMain',
   },
   // The portal's bell sits in every page's header; here it is one tap away from any screen.
   {
@@ -274,6 +288,16 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
   const isActive = (item: MenuItem): boolean =>
     item.tab ? focusedTab === item.tab : activeRoute?.name === item.name;
 
+  /** A row opens its section — at the section's list when the section is a stack. */
+  const openMenuItem = (item: MenuItem) => {
+    const nested = item?.screen ? { screen: item.screen } : undefined;
+    if (item?.tab) {
+      props?.navigation?.navigate?.('MainTabs', { screen: item.tab, params: nested });
+    } else if (item?.name) {
+      props?.navigation?.navigate?.(item.name, nested);
+    }
+  };
+
   const patientProfile = profileStore?.patientProfileData;
 
   const displayName =
@@ -309,7 +333,10 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
       >
         <Pressable
           onPress={() =>
-            props.navigation.navigate('MainTabs', { screen: 'ProfileTab' })
+            props.navigation.navigate('MainTabs', {
+              screen: 'ProfileTab',
+              params: { screen: 'ProfileMain' },
+            })
           }
           accessibilityRole="button"
           accessibilityLabel={t('drawer.viewProfile')}
@@ -412,13 +439,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
                     ? notificationStore?.unreadCount ?? 0
                     : 0
               }
-              onPress={() =>
-                item.tab
-                  ? props.navigation.navigate('MainTabs', {
-                      screen: item.tab,
-                    })
-                  : props.navigation.navigate(item.name)
-              }
+              onPress={() => openMenuItem(item)}
             />
           </React.Fragment>
         ))}

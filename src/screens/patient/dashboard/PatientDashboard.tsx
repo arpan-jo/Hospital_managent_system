@@ -131,7 +131,13 @@ export const PatientDashboard = observer(() => {
   const today = `${t(`days.${now.getDay()}`)}, ${formatLongDate(toISODate(now), months)}`;
 
   const openMenu = useCallback(() => navigation.dispatch(DrawerActions.openDrawer()), [navigation]);
-  const openFindDoctors = useCallback(() => drawer()?.navigate?.('MainTabs', { screen: 'HomeTab' }), [drawer]);
+  // Every shortcut names its section's list, as the portal's links open the
+  // page itself: a section left on an inner screen (a doctor, a thread, a
+  // file) is taken back to its list instead of reopening that screen.
+  const openFindDoctors = useCallback(
+    () => drawer()?.navigate?.('MainTabs', { screen: 'HomeTab', params: { screen: 'PatientFindDoctorIndex' } }),
+    [drawer],
+  );
   const openAppointments = useCallback(
     () => drawer()?.navigate?.('MainTabs', { screen: 'ActivityTab', params: { screen: 'AppointmentsList' } }),
     [drawer],
@@ -146,13 +152,25 @@ export const PatientDashboard = observer(() => {
     },
     [drawer],
   );
-  const openReports = useCallback(() => drawer()?.navigate?.('MainTabs', { screen: 'ReportsTab' }), [drawer]);
-  const openBills = useCallback(() => drawer()?.navigate?.('Bills'), [drawer]);
-  const openMessages = useCallback(() => drawer()?.navigate?.('Messages'), [drawer]);
-  const openPrescriptions = useCallback(() => drawer()?.navigate?.('Prescriptions'), [drawer]);
+  const openReports = useCallback(
+    () => drawer()?.navigate?.('MainTabs', { screen: 'ReportsTab', params: { screen: 'ReportsHome' } }),
+    [drawer],
+  );
+  const openBills = useCallback(() => drawer()?.navigate?.('Bills', { screen: 'BillsList' }), [drawer]);
+  const openMessages = useCallback(() => drawer()?.navigate?.('Messages', { screen: 'MessagesList' }), [drawer]);
+  const openPrescriptions = useCallback(
+    () => drawer()?.navigate?.('Prescriptions', { screen: 'MyPrescriptionsList' }),
+    [drawer],
+  );
   const openVitals = useCallback(() => drawer()?.navigate?.('Vitals'), [drawer]);
-  const openHomeCollection = useCallback(() => drawer()?.navigate?.('HomeCollection'), [drawer]);
-  const openProfile = useCallback(() => drawer()?.navigate?.('MainTabs', { screen: 'ProfileTab' }), [drawer]);
+  const openHomeCollection = useCallback(
+    () => drawer()?.navigate?.('HomeCollection', { screen: 'HomeCollectionList' }),
+    [drawer],
+  );
+  const openProfile = useCallback(
+    () => drawer()?.navigate?.('MainTabs', { screen: 'ProfileTab', params: { screen: 'ProfileMain' } }),
+    [drawer],
+  );
   const openNotifications = useCallback(() => drawer()?.navigate?.('Notifications'), [drawer]);
 
   const { pendingReports, readyReports, dueTotal, unreadMessages } = viewModel;
