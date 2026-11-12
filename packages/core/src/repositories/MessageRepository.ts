@@ -9,6 +9,9 @@ import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
 
+/** How long a message may take to send — see `send`. */
+const SEND_TIMEOUT_MS = 30_000;
+
 /** The backend refuses a longer message. */
 export const MESSAGE_MAX_LENGTH = 2000;
 
@@ -161,6 +164,9 @@ export const MessageRepository = {
         doctorEmployeeId: toNumber(input?.doctorEmployeeId),
         message: String(input?.message ?? '').trim(),
       },
+      // Longer than the client's 10s: given up early on a slow line, a message the
+      // server did save reads as failed, and sending it again posts it twice.
+      timeout: SEND_TIMEOUT_MS,
     };
     const response = await apiRequest<any>(api_params);
     return toPortalMessage(response);

@@ -148,6 +148,14 @@ describe('MessageRepository.send', () => {
     );
     expect(sent).toMatchObject({ messageId: 11, senderType: 'patient' });
   });
+
+  it('gives a send 30 seconds, so a slow line does not read a saved message as failed', async () => {
+    request.mockResolvedValueOnce({ messageId: 12, senderType: 'patient', message: 'Hi' });
+
+    await MessageRepository.send({ patientRegistrationId: 1, doctorEmployeeId: 2, message: 'Hi' });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ timeout: 30_000 }));
+  });
 });
 
 describe('unreadMessagesOf', () => {

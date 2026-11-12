@@ -77,6 +77,8 @@ export const MessageThreadScreen = () => {
   const viewModel = useMessageThread(params?.patientRegistrationId ?? 0, params?.doctorEmployeeId ?? 0);
   const [text, setText] = useState('');
   const rootRef = useRef<View>(null);
+  /** The list runs newest at the bottom (inverted), so offset 0 is the latest message. */
+  const listRef = useRef<FlatList<ConversationItem>>(null);
   const { overlap, isKeyboardOpen, remeasure } = useKeyboardOverlap(rootRef);
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
@@ -104,7 +106,11 @@ export const MessageThreadScreen = () => {
   const send = useCallback(async () => {
     if (!canSend) return;
     const sent = await viewModel.send(text);
-    if (sent) setText('');
+    if (sent) {
+      setText('');
+      // The message just sent comes into view, even from far up the conversation, as on the portal.
+      listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+    }
   }, [canSend, viewModel, text]);
 
   const renderItem = useCallback(
@@ -174,6 +180,7 @@ export const MessageThreadScreen = () => {
           </View>
         ) : (
           <FlatList
+            ref={listRef}
             inverted
             data={items}
             keyExtractor={item => item.key}

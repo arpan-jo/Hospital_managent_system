@@ -25,7 +25,13 @@ const Stack = createNativeStackNavigator<MessagesStackParamList>();
 export const MessagesStackNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="MessagesList" component={MessagesListScreen} />
-    <Stack.Screen name="MessageThread" component={MessageThreadScreen} />
+    {/* One screen per conversation: opening another (say, a reply from Notifications
+        while one is open) gives it its own screen, never this one's messages or draft. */}
+    <Stack.Screen
+      name="MessageThread"
+      component={MessageThreadScreen}
+      getId={({ params }) => `${params?.patientRegistrationId ?? 0}-${params?.doctorEmployeeId ?? 0}`}
+    />
   </Stack.Navigator>
 );
 

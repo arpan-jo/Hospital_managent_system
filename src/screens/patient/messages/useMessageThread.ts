@@ -48,6 +48,15 @@ export const useMessageThread = (patientRegistrationId: number, doctorEmployeeId
     };
   }, []);
 
+  // Another conversation: nothing of the last one stands in for it while it is read.
+  useEffect(() => {
+    readRef.current += 1;
+    threadRef.current = null;
+    setThread(null);
+    setError(null);
+    setIsLoading(true);
+  }, [regId, doctorId]);
+
   const load = useCallback(async () => {
     if (!regId || !doctorId) {
       setIsLoading(false);
