@@ -21,6 +21,26 @@ export const RESCHEDULE_DAYS = 14;
 export const isSlotFull = (slot?: AvailableSlot | null): boolean =>
   Boolean(slot) && (slot?.availableSlots ?? 0) <= 0;
 
+/**
+ * What of a pick still stands against the day's windows as they are now — after
+ * a refused submit re-reads them, a window may have filled or gone, or the
+ * picked time been taken or passed. A gone or full window clears the pick; a
+ * time no longer free goes back to Auto. So the sheet never keeps a choice the
+ * server will refuse again.
+ */
+export const keptPick = (
+  slots: AvailableSlot[] | null | undefined,
+  slotId: number | null,
+  time: string,
+): { slotId: number | null; time: string } => {
+  if (!slotId) return { slotId: null, time: '' };
+  const slot = (slots ?? []).find(item => item?.slotId === slotId);
+  if (!slot || isSlotFull(slot)) return { slotId: null, time: '' };
+  if (!time) return { slotId, time: '' };
+  const sub = (slot?.subSlots ?? []).find(item => item?.startTime === time);
+  return sub && !sub?.isBooked && !sub?.isPast ? { slotId, time } : { slotId, time: '' };
+};
+
 /** Today, or the appointment's own day when that is still ahead — where the picker opens. */
 export const startDateFor = (detail?: AppointmentDetail | null, today = toISODate(new Date())): string => {
   const own = String(detail?.date ?? '').trim();
@@ -93,6 +113,14 @@ export const useReschedule = (
   useEffect(() => {
     loadSlots();
   }, [loadSlots]);
+
+  // The day's windows read again (after a refused submit, say): a pick they no
+  // longer allow is let go, rather than left on screen to be refused again.
+  useEffect(() => {
+    const kept = keptPick(slots, slotId, time);
+    if (kept.slotId !== slotId) setSlotId(kept.slotId);
+    if (kept.time !== time) setTime(kept.time);
+  }, [slots, slotId, time]);
 
   const pickDate = useCallback((next: string) => {
     setDate(next);

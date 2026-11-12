@@ -78,9 +78,13 @@ export const toISODateFromApi = (value: string | undefined | null): string => {
   return `${match[3]}-${pad2(month + 1)}-${pad2(Number(match[1]))}`;
 };
 
-/** "14:00" -> "2:00 PM". Returns the input untouched if it is not HH:mm. */
+/**
+ * "14:00" -> "2:00 PM", and "09:00:00" -> "9:00 AM": older rows carry seconds,
+ * which the portal drops the same way. Returns the input untouched if it is
+ * not HH:mm or HH:mm:ss.
+ */
 export const to12Hour = (time: string): string => {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(time ?? '');
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(time ?? '');
   if (!match) return time ?? '';
   const hours = Number(match[1]);
   if (hours > 23) return time;

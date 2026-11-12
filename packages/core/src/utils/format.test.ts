@@ -73,6 +73,11 @@ describe('to12Hour', () => {
     expect(to12Hour('09:05')).toBe('9:05 AM');
   });
 
+  it('drops the seconds older rows carry, as the portal does', () => {
+    expect(to12Hour('09:00:00')).toBe('9:00 AM');
+    expect(to12Hour('14:30:45')).toBe('2:30 PM');
+  });
+
   it('passes through anything that is not HH:mm', () => {
     expect(to12Hour('')).toBe('');
     expect(to12Hour('nope')).toBe('nope');
