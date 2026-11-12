@@ -104,24 +104,26 @@ export const SectionCard = memo<{
   );
 });
 
-/** "3 conditions on record" on the left, a compact add pill on the right. */
-export const ListHeader = memo<{ title: string; actionLabel: string; onAction: () => void }>(
+/** "3 conditions on record" on the left, a compact add pill on the right — none without an action. */
+export const ListHeader = memo<{ title: string; actionLabel?: string; onAction?: () => void }>(
   function ListHeader({ title, actionLabel, onAction }) {
     const theme = useTheme();
 
     return (
       <View style={styles.listHeaderRow}>
         <Text style={[styles.listCount, { color: theme.colors.onSurfaceVariant }]}>{title}</Text>
-        <Pressable
-          onPress={onAction}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel={actionLabel}
-          style={[styles.addPill, { backgroundColor: theme.colors.primary }]}
-        >
-          <Icon name="plus" size={13} color={theme.colors.onPrimary} />
-          <Text style={[styles.addPillText, { color: theme.colors.onPrimary }]}>{actionLabel}</Text>
-        </Pressable>
+        {actionLabel && onAction ? (
+          <Pressable
+            onPress={onAction}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={actionLabel}
+            style={[styles.addPill, { backgroundColor: theme.colors.primary }]}
+          >
+            <Icon name="plus" size={13} color={theme.colors.onPrimary} />
+            <Text style={[styles.addPillText, { color: theme.colors.onPrimary }]}>{actionLabel}</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   },

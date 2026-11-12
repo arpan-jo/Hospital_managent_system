@@ -408,7 +408,11 @@ export const FamilyProfilesTab = memo<FamilyProfilesTabProps>(function FamilyPro
     if (code) removeMember(code);
   }, [removeTarget, removeMember]);
 
-  const openAdd = useCallback(() => setMemberSheet({ target: null }), []);
+  // Adding a family member is off for now: the backend cannot create one yet —
+  // `POST /hms/patient/profile` answers 500 (`CreateProfileAsync` throws
+  // NotSupported), on the web as well. Uncomment `openAdd`, the header action
+  // and the add card below once the backend does.
+  // const openAdd = useCallback(() => setMemberSheet({ target: null }), []);
 
   return (
     <>
@@ -417,8 +421,8 @@ export const FamilyProfilesTab = memo<FamilyProfilesTabProps>(function FamilyPro
       </Text>
       <ListHeader
         title={t('patientProfile.familyProfilesCount', { count: profiles?.length ?? 0 })}
-        actionLabel={t('patientProfile.addFamilyMember')}
-        onAction={openAdd}
+        // actionLabel={t('patientProfile.addFamilyMember')}
+        // onAction={openAdd}
       />
 
       {isLoading && !profiles?.length ? (
@@ -458,6 +462,7 @@ export const FamilyProfilesTab = memo<FamilyProfilesTabProps>(function FamilyPro
             );
           })}
 
+          {/* Off until the backend can add a family member — see `openAdd` above.
           <Pressable
             onPress={openAdd}
             accessibilityRole="button"
@@ -470,6 +475,7 @@ export const FamilyProfilesTab = memo<FamilyProfilesTabProps>(function FamilyPro
               {t('patientProfile.addFamilyMember')}
             </Text>
           </Pressable>
+          */}
         </>
       )}
 

@@ -8,6 +8,7 @@
 import { API_URL } from '@env';
 import apiRequest from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
+import { toLocalBdMobile } from '../utils/bdPhone';
 import FileRepository, { UploadFile } from './FileRepository';
 
 /** One profile as `GET /hms/patient/profile` returns it. */
@@ -341,7 +342,9 @@ const toRegistrationFields = (form: PatientProfileForm) => {
       identificationType === GENERAL_ID ? null : orNull(form?.identificationNumber),
     patientName: form?.fullName?.trim() ?? '',
     dateOfBirth: orNull(form?.dateOfBirth),
-    mobileNumber: form?.phone?.trim() ?? '',
+    // In its local form, 01XXXXXXXXX, as the portal lets it be saved: "+880 1712-345678"
+    // is the same number, and the hospital finds and texts it by that form.
+    mobileNumber: toLocalBdMobile(form?.phone),
     bloodGroup: orNull(form?.bloodType),
     gender: orNull(form?.gender),
     division: orNull(form?.division),
@@ -353,7 +356,7 @@ const toRegistrationFields = (form: PatientProfileForm) => {
     coMobileNumber: orNull(form?.coMobileNumber),
     emergencyName: orNull(form?.emergencyContact),
     emergencyRelationship: orNull(form?.emergencyRelationship),
-    emergencyMobile: orNull(form?.emergencyPhone),
+    emergencyMobile: orNull(toLocalBdMobile(form?.emergencyPhone)),
     emergencyAddress: orNull(form?.emergencyAddress),
     occupation: orNull(form?.occupation),
     nationality: orNull(form?.nationality),
