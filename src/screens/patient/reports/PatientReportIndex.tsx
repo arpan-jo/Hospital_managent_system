@@ -32,10 +32,6 @@ import { useUploadsViewModel } from './useUploadsViewModel';
 
 type Section = 'uploads' | 'pathology' | 'radiology' | 'prescriptions';
 
-/**
- * The portal's four sections, in its order: what the hospital issued, then the
- * patient's own files. The first is the one the page opens on.
- */
 /** One lab list, or null when it could not be read — only to tell which section a bill's tests are in. */
 const readLabTests = async (type: LabTestType) => {
   try {
@@ -45,6 +41,10 @@ const readLabTests = async (type: LabTestType) => {
   }
 };
 
+/**
+ * The portal's four sections, in its order: what the hospital issued, then the
+ * patient's own files. The first is the one the page opens on.
+ */
 const SECTIONS: { key: Section; labelKey: string; subtitleKey: string; icon: string }[] = [
   {
     key: 'prescriptions',

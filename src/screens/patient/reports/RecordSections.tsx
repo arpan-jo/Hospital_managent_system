@@ -19,7 +19,7 @@ import { doctorTitle, prescribedOn, prescriptionKindKey, prescriptionTitle } fro
 import RecordCard from './RecordCard';
 import RecordListSection, { BadgeTone, RecordAction, RecordBadge } from './RecordListSection';
 import { formatRecordDate, formatRecordDateTime } from './reportsUi';
-import { useRecordList } from './useRecordList';
+import { EVERYONE, useRecordList } from './useRecordList';
 import { useUploadedLabReports } from './useUploadedLabReports';
 
 interface SectionProps {
@@ -116,12 +116,17 @@ const LabTestsSection = ({
   });
 
   // Opened from a bill: only that bill's tests, by its code — the search matches it.
+  // A family member chosen here before is let go too: the bill can be another's,
+  // and its tests must not be hidden behind that chip.
   const setSearch = viewModel?.setSearch;
+  const setPatientCode = viewModel?.setPatientCode;
   const presetText = presetSearch?.text ?? '';
   const presetAt = presetSearch?.at ?? 0;
   useEffect(() => {
-    if (presetAt && presetText) setSearch?.(presetText);
-  }, [presetAt, presetText, setSearch]);
+    if (!presetAt || !presetText) return;
+    setPatientCode?.(EVERYONE);
+    setSearch?.(presetText);
+  }, [presetAt, presetText, setSearch, setPatientCode]);
 
   // The same family chip and search narrow the uploads as the hospital's tests.
   const { patientCode, search } = viewModel;

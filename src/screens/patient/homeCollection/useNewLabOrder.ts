@@ -93,6 +93,12 @@ export const useNewLabOrder = () => {
     }
   }, [activeReg, term]);
 
+  // Another profile can be another hospital's list: the old one goes at once, as
+  // on the portal, so none of its tests can be picked while the new one is read.
+  useEffect(() => {
+    setCatalogue([]);
+  }, [activeReg]);
+
   useEffect(() => {
     loadCatalogue();
   }, [loadCatalogue]);

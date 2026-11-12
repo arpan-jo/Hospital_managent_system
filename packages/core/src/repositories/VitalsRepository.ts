@@ -1,8 +1,9 @@
 /**
  * The patient's vitals, as the portal's Vitals page reads them from
- * `GET /hms/portal/medical-records/GetMyVitals`: every reading taken at the
- * desk or the ward — and, since 2026-11-08, read off a prescription the patient
- * uploaded — for the account's patients, oldest first, as the backend sorts them.
+ * `GET /hms/portal/medical-records/GetMyVitals`: every reading recorded against
+ * the patients' appointments (not the ward's nursing charts) — and, since
+ * 2026-11-08, read off a prescription the patient uploaded — for the account's
+ * patients, oldest first, as the backend sorts them.
  */
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';

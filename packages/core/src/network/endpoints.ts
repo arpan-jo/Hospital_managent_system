@@ -71,7 +71,7 @@ export const ENDPOINTS = {
   portalLabReportPdf: '/hms/portal/medical-records/lab-reports',
   /** Every bill raised at the hospital for the account, with items and payments. */
   portalBills: '/hms/portal/medical-records/GetMyBills',
-  /** Every vitals reading for the account's patients, newest first. */
+  /** Every vitals reading for the account's patients, oldest first. */
   portalVitals: '/hms/portal/medical-records/GetMyVitals',
   /** One final radiology test's own images, as a link to the PACS viewer. */
   portalRadiologyImages: '/hms/portal/medical-records/GetRadiologyImages',

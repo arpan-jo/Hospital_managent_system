@@ -10,7 +10,7 @@ import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
 import { RecordPatient, toRecordPatient } from './MedicalRecordRepository';
 
-/** As the backend names them, lower-cased; another value is kept as sent. */
+/** As the backend names them, lower-cased; another value is kept too, lower-cased as well. */
 export type BillPaymentStatus = 'paid' | 'partial' | 'unpaid' | string;
 
 export interface BillItem {
@@ -38,7 +38,7 @@ export interface PortalBill extends RecordPatient {
   billId: number;
   /** "BILL-2611-0084"; '' when the bill has none. */
   billCode: string;
-  /** "OPD", "Pathology", … as the counter raised it. */
+  /** The visit the bill was raised for — "OPD", "IPD", "Consultation" — not the lab; as the counter raised it. */
   billType: string;
   /** 'YYYY-MM-DD'. */
   billDate: string;
