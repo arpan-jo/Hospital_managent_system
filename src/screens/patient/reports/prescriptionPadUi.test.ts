@@ -1,6 +1,7 @@
 import { PrescriptionSection } from '@app/core';
 import {
   ageOnDay,
+  arrangePadSections,
   formatDose,
   medicineForm,
   medicineTitle,
@@ -104,5 +105,37 @@ describe('prescriptionPadUi', () => {
     expect(withAlpha('8A90A6', 0.3)).toBe('rgba(138, 144, 166, 0.3)');
     expect(withAlpha('red', 0.3)).toBe('red');
     expect(withAlpha(undefined, 0.3)).toBe('transparent');
+  });
+
+  it("follows the doctor's own section setup, medicines where the setup puts them", () => {
+    const sections = [
+      section('physicalExamination', ['a']),
+      section('chiefComplaint', ['b']),
+      section('diagnosis', ['c']),
+      section('advice', ['d']),
+      section('followUp', ['e']),
+    ];
+    const { left, right } = arrangePadSections(sections, {
+      left: ['diagnosis', 'physicalExamination', 'chiefComplaint', 'allergy'],
+      right: ['followUp', 'rx', 'advice'],
+    });
+    expect(left.map(s => s.key)).toEqual(['diagnosis', 'physicalExamination', 'chiefComplaint']);
+    expect(right.map(item => (item === 'rx' ? 'rx' : item.key))).toEqual(['followUp', 'rx', 'advice']);
+  });
+
+  it('still shows a section the setup leaves out, and puts the medicines first when it has no "rx"', () => {
+    const { left, right } = arrangePadSections(
+      [section('diagnosis', ['a']), section('allergy', ['b']), section('referred', ['c'])],
+      { left: ['diagnosis'], right: ['advice'] },
+    );
+    expect(left.map(s => s.key)).toEqual(['diagnosis', 'allergy']);
+    expect(right.map(item => (item === 'rx' ? 'rx' : item.key))).toEqual(['rx', 'referred']);
+  });
+
+  it('falls back to the fixed split without a setup', () => {
+    const { left, right } = arrangePadSections([section('advice', ['a']), section('diagnosis', ['b'])], null);
+    expect(left.map(s => s.key)).toEqual(['diagnosis']);
+    expect(right.map(item => (item === 'rx' ? 'rx' : item.key))).toEqual(['rx', 'advice']);
+    expect(arrangePadSections(undefined, { left: [], right: [] })).toEqual({ left: [], right: ['rx'] });
   });
 });

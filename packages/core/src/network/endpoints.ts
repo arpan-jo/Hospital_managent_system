@@ -65,6 +65,12 @@ export const ENDPOINTS = {
   portalPrescriptionPdf: '/hms/portal/medical-records/GetPrescriptionPdf',
   /** One prescription in full — the Reports page's structured view. */
   portalPrescriptionDetail: '/hms/portal/medical-records/GetPrescription',
+  /**
+   * Everything the printed sheet is drawn from — patient, hospital, the doctor's
+   * page layout and section setup, signatory — as JSON for the app's own sheet.
+   * Staff route: takes accountId + branchId + prescriptionId.
+   */
+  prescriptionPrintData: '/hms/Prescription/GetPrescriptionPrintData',
   /** Every lab or imaging test billed to the account, at any stage. */
   portalLabTests: '/hms/portal/medical-records/GetMyLabTests',
   /** `/{billRowId}/pdf` — one final test report as the printed sheet (outside the API's encryption). */

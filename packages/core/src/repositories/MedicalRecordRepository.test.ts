@@ -5,6 +5,7 @@ import { MedicalRecordRepository, parsePacsViewerLink } from './MedicalRecordRep
 
 jest.mock('../network/apiRequest', () => ({ __esModule: true, default: jest.fn() }));
 jest.mock('axios', () => ({ __esModule: true, default: { get: jest.fn() } }));
+jest.mock('./FileRepository', () => ({ __esModule: true, default: { upload: jest.fn() } }));
 
 const request = apiRequest as jest.MockedFunction<typeof apiRequest>;
 
@@ -183,5 +184,80 @@ describe('MedicalRecordRepository.getLabTests', () => {
 
     expect(tests.map(test => test.isLockedByDue)).toEqual([true, true, false, false, false]);
     expect(tests.map(test => test.billDueAmount)).toEqual([500, 120.5, 0, 0, 0]);
+  });
+});
+
+describe('MedicalRecordRepository.getPrescriptionPrintData', () => {
+  beforeEach(() => request.mockReset());
+
+  /** The shape the live API answered for one prescription (trimmed). */
+  const printData = {
+    prescription: { id: 2315, accountId: 20401, branchId: 40709, doctorName: 'Khairul Bashar' },
+    isPatientUpload: false,
+    patient: { patientName: 'Al Amin', mobile: '01711000000', age: '29', gender: 'Male', address: '', patientId: 'REG-2026-0107' },
+    hospital: { logoUrl: null, name: 'Another Organisation', address: 'Elsewhere', officeName: 'HQ' },
+    layout: {
+      header: { enabled: true, contents: ['<p>Dr. Someone Else</p><p>MBBS</p>'] },
+      footer: { enabled: true, contents: ['<p style="text-align: center;"><b>আপনার সুস্থতা ও নিরাপদ চিকিৎসার বিশ্বস্ত ঠিকানা।</b></p>', '', ''] },
+      notice: { enabled: true, text: 'Another doctor\'s hours' },
+    },
+    leftSections: [{ key: 'physicalExamination', label: 'Physical Examination' }, { key: 'diagnosis', label: 'Diagnosis' }],
+    rightSections: [{ key: 'rx', label: 'Rx' }, { key: 'followUp', label: 'Follow-up' }, { key: 'advice', label: 'Advice' }],
+    sectionData: { rx: [] },
+    signatoryHtml: '',
+    signatureImageId: '',
+  };
+
+  it("asks under the patient's own registration's account and branch", async () => {
+    request.mockResolvedValueOnce({ accountId: 20401, branchId: 40709 }).mockResolvedValueOnce(printData);
+
+    const data = await MedicalRecordRepository.getPrescriptionPrintData(2315, 2367);
+
+    expect(request.mock.calls?.[0]?.[0]).toMatchObject({ url: `${ENDPOINTS.patientRegistration}/2367`, method: 'GET' });
+    expect(request.mock.calls?.[1]?.[0]).toMatchObject({
+      url: ENDPOINTS.prescriptionPrintData,
+      method: 'GET',
+      params: { accountId: 20401, branchId: 40709, prescriptionId: 2315 },
+    });
+    expect(data).toEqual({
+      isPatientUpload: false,
+      patient: { name: 'Al Amin', mobile: '01711000000', age: '29', gender: 'Male', address: '', patientId: 'REG-2026-0107' },
+      leftSectionKeys: ['physicalExamination', 'diagnosis'],
+      rightSectionKeys: ['rx', 'followUp', 'advice'],
+      footerLines: ['আপনার সুস্থতা ও নিরাপদ চিকিৎসার বিশ্বস্ত ঠিকানা।'],
+      signatoryLines: [],
+    });
+  });
+
+  it('falls back to the static live Mediplex pair when the registration cannot be read', async () => {
+    request.mockRejectedValueOnce(new Error('Network Error')).mockResolvedValueOnce(printData);
+
+    await MedicalRecordRepository.getPrescriptionPrintData(2315, 2367);
+
+    expect(request.mock.calls?.[1]?.[0]).toMatchObject({
+      params: { accountId: 20402, branchId: 40710, prescriptionId: 2315 },
+    });
+  });
+
+  it('does not read a registration it was not given, and copes with an empty answer', async () => {
+    request.mockResolvedValueOnce({});
+
+    const data = await MedicalRecordRepository.getPrescriptionPrintData(2315, null);
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls?.[0]?.[0]).toMatchObject({ params: { accountId: 20402, branchId: 40710 } });
+    expect(data).toEqual({
+      isPatientUpload: false,
+      patient: { name: '', mobile: '', age: '', gender: '', address: '', patientId: '' },
+      leftSectionKeys: [],
+      rightSectionKeys: [],
+      footerLines: [],
+      signatoryLines: [],
+    });
+  });
+
+  it('fails on an answer that is not the print data', async () => {
+    request.mockResolvedValueOnce({ accountId: 20401, branchId: 40709 }).mockResolvedValueOnce([]);
+    await expect(MedicalRecordRepository.getPrescriptionPrintData(2315, 2367)).rejects.toThrow();
   });
 });

@@ -33,6 +33,45 @@ export const splitPadSections = (sections: PrescriptionSection[] | null | undefi
   };
 };
 
+/** An item of the right-hand column: a section, or "rx" — the medicines. */
+export type PadRightItem = PrescriptionSection | 'rx';
+
+/**
+ * The sheet's two columns in the doctor's own order when their section setup is
+ * known (the print data's left and right keys, "rx" marking the medicines),
+ * else the fixed split above with the medicines first on the right. A section
+ * the setup does not list still shows — with the findings or the instructions,
+ * as the fixed split would put it.
+ */
+export const arrangePadSections = (
+  sections: PrescriptionSection[] | null | undefined,
+  setup?: { left?: string[] | null; right?: string[] | null } | null,
+): { left: PrescriptionSection[]; right: PadRightItem[] } => {
+  const list = sections ?? [];
+  const leftKeys = setup?.left ?? [];
+  const rightKeys = setup?.right ?? [];
+
+  if (!leftKeys.length && !rightKeys.length) {
+    const { findings, instructions } = splitPadSections(list);
+    return { left: findings, right: ['rx', ...instructions] };
+  }
+
+  const withKey = (key: string) => list.filter(section => section?.key === key);
+  const left = leftKeys.flatMap(withKey);
+  const right: PadRightItem[] = rightKeys.flatMap<PadRightItem>(key => (key === 'rx' ? ['rx'] : withKey(key)));
+  if (!rightKeys.includes('rx')) right.unshift('rx');
+
+  const placed = new Set([...leftKeys, ...rightKeys]);
+  list
+    .filter(section => !placed.has(section?.key ?? ''))
+    .forEach(section => {
+      if (FINDINGS_KEYS.includes(section?.key ?? '')) left.push(section);
+      else right.push(section);
+    });
+
+  return { left, right };
+};
+
 /** "Pulse (R): 33" — a name, a colon, a reading. */
 const VITAL_LINE = /^([^:]{1,40}):\s*(.+)$/;
 /** "Height Unit" — the unit of another reading, not a reading itself. */

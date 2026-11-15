@@ -4,7 +4,12 @@ import { useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { MedicalRecordRepository, PatientProfile, PatientRepository } from '@app/core';
+import {
+  MedicalRecordRepository,
+  PatientProfile,
+  PatientRepository,
+  PrescriptionPrintData,
+} from '@app/core';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
 import {
@@ -27,7 +32,7 @@ import {
   PadSignature,
   PadVitals,
 } from './PrescriptionPad';
-import { ageOnDay, splitPadSections, takeVitals } from './prescriptionPadUi';
+import { ageOnDay, arrangePadSections, takeVitals } from './prescriptionPadUi';
 import PrescriptionZoomModal from './PrescriptionZoomModal';
 import { formatRecordDate, formatRecordTime } from './reportsUi';
 
@@ -57,6 +62,35 @@ const usePrescriptionPatient = (registrationId?: number | null): PatientProfile 
 };
 
 /**
+ * The rest of what the printed sheet is drawn from — the patient's mobile and
+ * address, the doctor's own section order, the hospital's footer line and the
+ * signatory (GetPrescriptionPrintData). Read once the prescription is, since it
+ * asks under the patient's registration; nothing when it cannot be read, and
+ * the sheet is drawn from the prescription alone.
+ */
+const usePrescriptionPrintData = (
+  prescriptionId?: number | null,
+  registrationId?: number | null,
+): PrescriptionPrintData | null => {
+  const [data, setData] = useState<PrescriptionPrintData | null>(null);
+
+  useEffect(() => {
+    if (!prescriptionId || !registrationId) return;
+    let isCurrent = true;
+    MedicalRecordRepository.getPrescriptionPrintData(prescriptionId, registrationId)
+      .then(result => {
+        if (isCurrent) setData(result ?? null);
+      })
+      .catch((e: any) => console.log('getPrescriptionPrintData error ==>', e?.message));
+    return () => {
+      isCurrent = false;
+    };
+  }, [prescriptionId, registrationId]);
+
+  return data;
+};
+
+/**
  * One visit prescription in full, as the portal's Reports page opens it — the
  * same API and the same content, drawn as the pad a patient is handed:
  * letterhead, the patient's lines, vitals and findings in the left margin
@@ -78,9 +112,10 @@ export const VisitPrescriptionScreen = () => {
   const detail = useRecordDetail(MedicalRecordRepository.getPrescription, prescriptionId);
   const rx = detail?.data;
   const patient = usePrescriptionPatient(rx?.patientRegistrationId);
+  const print = usePrescriptionPrintData(prescriptionId, rx?.patientRegistrationId);
 
-  // The detail call leaves these unset; the list said which it is.
-  const isUploaded = !!rx?.isUploaded || !!params?.isUploaded;
+  // The detail call leaves these unset; the list and the print data say which it is.
+  const isUploaded = !!rx?.isUploaded || !!params?.isUploaded || !!print?.isPatientUpload;
   const sourceHospitalName = rx?.sourceHospitalName || params?.sourceHospitalName || '';
   const sheet = rx ? { ...rx, isUploaded, sourceHospitalName } : null;
 
@@ -88,10 +123,15 @@ export const VisitPrescriptionScreen = () => {
   const fallbackName = t(isUploaded ? 'reports.uploadedPrescription' : 'reports.prescription');
   const medicines = rx?.medicines ?? [];
 
-  const { vitals, findings, instructions } = useMemo(() => {
+  // The doctor's own order when the print data has it; the fixed split until then.
+  const leftKeys = print?.leftSectionKeys;
+  const rightKeys = print?.rightSectionKeys;
+  const { vitals, findings, rightItems } = useMemo(() => {
     const read = takeVitals(rx?.sections);
-    return { vitals: read?.vitals ?? [], ...splitPadSections(read?.sections) };
-  }, [rx?.sections]);
+    const arranged = arrangePadSections(read?.sections, { left: leftKeys, right: rightKeys });
+    return { vitals: read?.vitals ?? [], findings: arranged?.left ?? [], rightItems: arranged?.right ?? ['rx'] };
+  }, [rx?.sections, leftKeys, rightKeys]);
+  const instructions = rightItems.filter(item => item !== 'rx');
 
   const title = prescriptionTitle(sheet, fallbackName);
   // An upload's sheet names its hospital or chamber; a visit, the department.
@@ -101,8 +141,12 @@ export const VisitPrescriptionScreen = () => {
       : ''
     : rx?.departmentName ?? '';
 
+  // The age on the day it was written; the server's age today when there is no birth date.
   const age = ageOnDay(patient?.dateOfBirth, prescriptionDay(rx?.prescribedAt));
-  const gender = (patient?.gender ?? '').trim();
+  const serverAge = Number(print?.patient?.age ?? '') || 0;
+  const gender = (patient?.gender || print?.patient?.gender || '').trim();
+  const mobile = print?.patient?.mobile || patient?.phone || '';
+  const address = print?.patient?.address || patient?.address || '';
   const isEmpty = !medicines.length && !vitals.length && !findings.length && !instructions.length;
   // An upload was not signed by an HMS doctor — there is no place for a signature on it.
   const signer = isUploaded ? '' : doctorTitle(rx?.doctorName);
@@ -113,7 +157,9 @@ export const VisitPrescriptionScreen = () => {
     ? age.years > 0
       ? t('reports.pad.ageYears', { count: age.years })
       : t('reports.pad.ageMonths', { count: age.months })
-    : '';
+    : serverAge > 0
+      ? t('reports.pad.ageYears', { count: serverAge })
+      : '';
   const sexText = gender ? t(`patientProfile.gender_${gender.toLowerCase()}`, { defaultValue: gender }) : '';
   // An upload's date is when it was saved — it has no time worth showing.
   const time = isUploaded ? '' : formatRecordTime(rx?.prescribedAt);
@@ -142,6 +188,10 @@ export const VisitPrescriptionScreen = () => {
               flex: 1.2,
             },
           ],
+          [
+            { label: t('reports.pad.mobile'), value: mobile, flex: 1.2 },
+            { label: t('reports.pad.address'), value: address, flex: 1.8 },
+          ],
         ]}
       />
 
@@ -159,17 +209,20 @@ export const VisitPrescriptionScreen = () => {
         }
         right={
           <>
-            <PadRx medicines={medicines} />
-            {instructions.map((section, index) => (
-              <PadSection key={`${section?.key ?? ''}-${index}`} section={section} />
-            ))}
+            {rightItems.map((item, index) =>
+              item === 'rx' ? (
+                <PadRx key="rx" medicines={medicines} />
+              ) : (
+                <PadSection key={`${item?.key ?? ''}-${index}`} section={item} />
+              ),
+            )}
             {isEmpty ? <PadEmpty>{t('reports.noPrescriptionDetails')}</PadEmpty> : null}
-            <PadSignature name={signer} meta={rx?.departmentName ?? ''} />
+            <PadSignature name={signer} meta={rx?.departmentName ?? ''} lines={print?.signatoryLines ?? []} />
           </>
         }
       />
 
-      <PadFooter code={rx?.code ?? ''} count={medicines.length} />
+      <PadFooter code={rx?.code ?? ''} count={medicines.length} lines={print?.footerLines ?? []} />
     </PadPaper>
   ) : null;
 

@@ -24,6 +24,7 @@ export * from './utils/format';
 export * from './utils/fileUrl';
 export * from './utils/fileType';
 export * from './utils/bdPhone';
+export * from './utils/htmlText';
 export * from './repositories/AuthRepository';
 export * from './repositories/FindDoctorsRepository';
 export * from './repositories/SpeechToTextRepository';

@@ -252,33 +252,65 @@ export const PadRx = ({ medicines }: { medicines: PrescriptionMedicine[] }) => {
 };
 
 /** The doctor's name under a line, where the printed sheet is signed — at the foot of the column. */
-export const PadSignature = ({ name, meta }: { name?: string; meta?: string }) => {
+export const PadSignature = ({
+  name,
+  meta,
+  lines,
+}: {
+  name?: string;
+  meta?: string;
+  /** The doctor's own signatory block, as text — said once, without repeating the name. */
+  lines?: string[];
+}) => {
   if (!name) return null;
+  const extra = (lines ?? []).filter(line => line && line !== name && line !== meta);
   return (
     <View style={styles.signature}>
       <View style={styles.signatureLine} />
       <Text style={styles.signatureName}>{name}</Text>
       {meta ? <Text style={styles.signatureMeta}>{meta}</Text> : null}
+      {extra.map((line, index) => (
+        <Text key={`${line}-${index}`} style={styles.signatureMeta}>
+          {line}
+        </Text>
+      ))}
     </View>
   );
 };
 
-/** The foot: the prescription number and how many medicines, under a rule in the brand colour. */
-export const PadFooter = ({ code, count }: { code?: string; count: number }) => {
+/**
+ * The foot: the hospital's own line (its layout's footer, centred), then the
+ * prescription number and how many medicines, under a rule in the brand colour.
+ */
+export const PadFooter = ({
+  code,
+  count,
+  lines,
+}: {
+  code?: string;
+  count: number;
+  lines?: string[];
+}) => {
   const { t } = useTranslation();
-  if (!code && !count) return null;
+  const note = (lines ?? []).filter(Boolean);
+  if (!code && !count && !note.length) return null;
   return (
     <View style={styles.footer}>
-      <View style={styles.footerCode}>
-        {code ? <Icon name="barcode" size={15} color={MUTED} /> : null}
-        <Text selectable numberOfLines={1} style={styles.footerText}>
-          {code ? `${t('reports.pad.rxNo')} ${code}` : ''}
-        </Text>
-      </View>
-      {count > 0 ? (
-        <View style={styles.footerCount}>
-          <Icon name="pill" size={14} color={MUTED} />
-          <Text style={styles.footerText}>{t('reports.medicineCount', { count })}</Text>
+      {note.length ? <Text style={styles.footerNote}>{note.join('\n')}</Text> : null}
+      {code || count > 0 ? (
+        <View style={styles.footerRow}>
+          <View style={styles.footerCode}>
+            {code ? <Icon name="barcode" size={15} color={MUTED} /> : null}
+            <Text selectable numberOfLines={1} style={styles.footerText}>
+              {code ? `${t('reports.pad.rxNo')} ${code}` : ''}
+            </Text>
+          </View>
+          {count > 0 ? (
+            <View style={styles.footerCount}>
+              <Icon name="pill" size={14} color={MUTED} />
+              <Text style={styles.footerText}>{t('reports.medicineCount', { count })}</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -600,14 +632,24 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderTopWidth: 2,
     borderTopColor: BRAND,
+  },
+  footerNote: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 12,
+    lineHeight: 18,
+    color: INK,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
   },
   footerCode: {
     flex: 1,

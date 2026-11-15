@@ -796,6 +796,8 @@
       "age": "Age",
       "sex": "Sex",
       "date": "Date",
+      "mobile": "Mobile",
+      "address": "Address",
       "blood": "Blood",
       "ageYears": "{{count}} Y",
       "ageMonths": "{{count}} M",

@@ -796,6 +796,8 @@
       "age": "বয়স",
       "sex": "লিঙ্গ",
       "date": "তারিখ",
+      "mobile": "মোবাইল",
+      "address": "ঠিকানা",
       "blood": "রক্তের গ্রুপ",
       "ageYears": "{{count}} বছর",
       "ageMonths": "{{count}} মাস",

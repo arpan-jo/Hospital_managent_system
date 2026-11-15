@@ -14,8 +14,18 @@ import { API_URL } from '@env';
 import axios from 'axios';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { ENDPOINTS } from '../network/endpoints';
-import { DicomFrameInfo, multipartBody, readFrameInfo } from '../utils/dicomPixels';
-import { PortalPrescription, toPortalPrescription } from './PatientPrescriptionRepository';
+import { MEDIPLEX_TENANT } from '../network/mediplexTenant';
+import {
+  DicomFrameInfo,
+  multipartBody,
+  readFrameInfo,
+} from '../utils/dicomPixels';
+import { htmlToLines } from '../utils/htmlText';
+import { PatientRepository } from './PatientRepository';
+import {
+  PortalPrescription,
+  toPortalPrescription,
+} from './PatientPrescriptionRepository';
 
 /** Who a record belongs to — shared by every list row. */
 export interface RecordPatient {
@@ -31,7 +41,12 @@ export type LabTestType = 'pathology' | 'radiology';
  * the lab) → result_pending (entered, not signed off) → final. Radiology has no
  * sample, so it is only ever pending, result_pending or final.
  */
-export type LabTestStatus = 'pending' | 'collected' | 'received' | 'result_pending' | 'final';
+export type LabTestStatus =
+  | 'pending'
+  | 'collected'
+  | 'received'
+  | 'result_pending'
+  | 'final';
 
 export const LAB_TEST_STATUSES: LabTestStatus[] = [
   'pending',
@@ -163,9 +178,63 @@ export interface PrescriptionDetail extends PortalPrescription {
   sections: PrescriptionSection[];
 }
 
+/**
+ * What GET hms/Prescription/GetPrescriptionPrintData adds to the prescription —
+ * only the parts that read true today. Its doctor header, notice and hospital
+ * name are left out: on live they come from another doctor's page layout and
+ * another organisation's account (the "wrong doctor on the PDF" backend bug).
+ */
+export interface PrescriptionPrintData {
+  /** The patient uploaded the sheet (no HMS doctor). */
+  isPatientUpload: boolean;
+  patient: {
+    name: string;
+    mobile: string;
+    /** Whole years, as the server words it ("29"); '' when unknown. */
+    age: string;
+    gender: string;
+    address: string;
+    patientId: string;
+  };
+  /** The doctor's own section setup, keys in order; the right column's "rx" is the medicines. */
+  leftSectionKeys: string[];
+  rightSectionKeys: string[];
+  /** The footer band's lines, as text — the hospital's own line at the foot of the sheet. */
+  footerLines: string[];
+  /** The signatory block's lines, as text; none when the doctor has set none. */
+  signatoryLines: string[];
+}
+
 const toText = (value: any): string => String(value ?? '').trim();
 const toNumber = (value: any): number => Number(value ?? 0) || 0;
 const toArray = (value: any): any[] => (Array.isArray(value) ? value : []);
+
+const toSectionKeys = (raw: any): string[] =>
+  toArray(raw)
+    .map(section => toText(section?.key))
+    .filter(Boolean);
+
+/** A layout band's lines, every column's in turn; none when the band is switched off. */
+const toBandLines = (band: any): string[] =>
+  band?.enabled === false
+    ? []
+    : toArray(band?.contents).flatMap(content => htmlToLines(toText(content)));
+
+export const toPrescriptionPrintData = (raw: any): PrescriptionPrintData => ({
+  isPatientUpload: Boolean(raw?.isPatientUpload),
+  patient: {
+    name: toText(raw?.patient?.patientName),
+    mobile: toText(raw?.patient?.mobile),
+    age: toText(raw?.patient?.age),
+    gender: toText(raw?.patient?.gender),
+    address: toText(raw?.patient?.address),
+    patientId: toText(raw?.patient?.patientId),
+  },
+  leftSectionKeys: toSectionKeys(raw?.leftSections),
+  rightSectionKeys: toSectionKeys(raw?.rightSections),
+  footerLines: toBandLines(raw?.layout?.footer),
+  signatoryLines: htmlToLines(toText(raw?.signatoryHtml)),
+});
 
 /** Who a record belongs to — every portal list row carries the same three fields. */
 export const toRecordPatient = (raw: any): RecordPatient => ({
@@ -216,7 +285,9 @@ const NON_IMAGE_MODALITIES = ['SR', 'PR', 'KO', 'DOC'];
  * The backend's viewer link — `{PACS}/ohif/viewer?StudyInstanceUIDs=1.2,3.4&token=<JWT>` —
  * read for the app's own viewer. Null when any part is missing or odd.
  */
-export const parsePacsViewerLink = (viewerUrl?: string | null): PacsViewerLink | null => {
+export const parsePacsViewerLink = (
+  viewerUrl?: string | null,
+): PacsViewerLink | null => {
   const url = toText(viewerUrl);
   const origin = /^https?:\/\/[^/?#]+/i.exec(url)?.[0] ?? '';
   const query: Record<string, string> = {};
@@ -228,9 +299,18 @@ export const parsePacsViewerLink = (viewerUrl?: string | null): PacsViewerLink |
       // A malformed escape leaves that value out; the checks below refuse the link.
     }
   });
-  const studyUids = (query.studyinstanceuids ?? '').split(',').map(uid => uid.trim()).filter(Boolean);
+  const studyUids = (query.studyinstanceuids ?? '')
+    .split(',')
+    .map(uid => uid.trim())
+    .filter(Boolean);
   const token = query.token?.trim() ?? '';
-  if (!origin || !token || !studyUids.length || !studyUids.every(uid => DICOM_UID.test(uid))) return null;
+  if (
+    !origin ||
+    !token ||
+    !studyUids.length ||
+    !studyUids.every(uid => DICOM_UID.test(uid))
+  )
+    return null;
   return { origin, studyUids, token };
 };
 
@@ -243,7 +323,10 @@ const dicomValue = (raw: any, tag: string): any => raw?.[tag]?.Value?.[0];
  */
 const getDicomJson = async (url: string, token: string): Promise<any[]> => {
   const response = await axios.get(url, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/dicom+json' },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/dicom+json',
+    },
     timeout: 20000,
   });
   return toArray(response?.data);
@@ -282,7 +365,9 @@ const INFO_TAGS: [string, string][] = [
 /** A value as text — a person's name is an object in DICOM JSON. */
 const tagText = (raw: any, tag: string): string =>
   toArray(raw?.[tag]?.Value)
-    .map(value => (typeof value === 'object' ? toText(value?.Alphabetic) : toText(value)))
+    .map(value =>
+      typeof value === 'object' ? toText(value?.Alphabetic) : toText(value),
+    )
     .filter(Boolean)
     .join(' \\ ');
 
@@ -293,7 +378,8 @@ const tagText = (raw: any, tag: string): string =>
 const readSeries = async (studyPath: string, raw: any, token: string) => {
   const uid = toText(dicomValue(raw, '0020000E'));
   const modality = toText(dicomValue(raw, '00080060')).toUpperCase();
-  if (!DICOM_UID.test(uid) || NON_IMAGE_MODALITIES.includes(modality)) return null;
+  if (!DICOM_UID.test(uid) || NON_IMAGE_MODALITIES.includes(modality))
+    return null;
 
   const seriesPath = `${studyPath}/series/${uid}`;
   const instances = (await getDicomJson(`${seriesPath}/metadata`, token))
@@ -303,15 +389,25 @@ const readSeries = async (studyPath: string, raw: any, token: string) => {
       number: toNumber(dicomValue(item, '00200013')),
     }))
     // An instance with no Rows holds no picture (a stray report or key-object note).
-    .filter(item => DICOM_UID.test(item.uid) && toNumber(dicomValue(item.raw, '00280010')) > 0)
+    .filter(
+      item =>
+        DICOM_UID.test(item.uid) &&
+        toNumber(dicomValue(item.raw, '00280010')) > 0,
+    )
     .sort((a, b) => a.number - b.number);
 
   const frames = instances.flatMap(item => {
     const info = readFrameInfo(item.raw);
     const count = Math.max(1, toNumber(dicomValue(item.raw, '00280008')));
     return Array.from({ length: count }, (_, index) => {
-      const framePath = `${seriesPath}/instances/${item.uid}/frames/${index + 1}`;
-      return { pixelUrl: framePath, renderedUrl: `${framePath}/rendered`, info };
+      const framePath = `${seriesPath}/instances/${item.uid}/frames/${
+        index + 1
+      }`;
+      return {
+        pixelUrl: framePath,
+        renderedUrl: `${framePath}/rendered`,
+        info,
+      };
     });
   });
 
@@ -323,9 +419,10 @@ const readSeries = async (studyPath: string, raw: any, token: string) => {
       modality,
       description: toText(dicomValue(raw, '0008103E')),
       frames,
-      tags: INFO_TAGS.map(([keyword, tag]) => ({ keyword, value: tagText(first, tag) })).filter(
-        line => line.value,
-      ),
+      tags: INFO_TAGS.map(([keyword, tag]) => ({
+        keyword,
+        value: tagText(first, tag),
+      })).filter(line => line.value),
     },
   };
 };
@@ -375,14 +472,28 @@ const getList = async <T>(
   map: (raw: any) => T,
   params?: Record<string, string>,
 ): Promise<T[]> => {
-  const api_params: ApiRequestOptions = { url, method: 'GET', baseUrl: API_URL, params };
+  const api_params: ApiRequestOptions = {
+    url,
+    method: 'GET',
+    baseUrl: API_URL,
+    params,
+  };
   const response = await apiRequest<any>(api_params);
   if (!Array.isArray(response)) throw new Error('Unexpected records response');
   return response?.map(map) ?? [];
 };
 
-const getOne = async <T>(url: string, params: Record<string, number>, map: (raw: any) => T): Promise<T> => {
-  const api_params: ApiRequestOptions = { url, method: 'GET', baseUrl: API_URL, params };
+const getOne = async <T>(
+  url: string,
+  params: Record<string, number>,
+  map: (raw: any) => T,
+): Promise<T> => {
+  const api_params: ApiRequestOptions = {
+    url,
+    method: 'GET',
+    baseUrl: API_URL,
+    params,
+  };
   const response = await apiRequest<any>(api_params);
   if (!response || typeof response !== 'object' || Array.isArray(response)) {
     throw new Error('Unexpected record response');
@@ -393,7 +504,9 @@ const getOne = async <T>(url: string, params: Record<string, number>, map: (raw:
 export const MedicalRecordRepository = {
   /** `GET GetMyLabTests?type=` — every test of that kind, any stage, newest bill first. */
   getLabTests: (type: LabTestType) =>
-    getList(ENDPOINTS.portalLabTests, toLabTest, { type: type === 'radiology' ? 'radiology' : 'pathology' }),
+    getList(ENDPOINTS.portalLabTests, toLabTest, {
+      type: type === 'radiology' ? 'radiology' : 'pathology',
+    }),
 
   /**
    * Where one final test report is served — the printed sheet as a PDF. The
@@ -402,14 +515,19 @@ export const MedicalRecordRepository = {
    * "Printed" time in the phone's own zone, as the portal does.
    */
   getLabReportPdfUrl: (billRowId: number): string =>
-    `${API_URL}${ENDPOINTS.portalLabReportPdf}/${toNumber(billRowId)}/pdf?tz=${-new Date().getTimezoneOffset()}`,
+    `${API_URL}${ENDPOINTS.portalLabReportPdf}/${toNumber(
+      billRowId,
+    )}/pdf?tz=${-new Date().getTimezoneOffset()}`,
 
   /**
    * The name a saved report gets, as the portal names it: `Report_CBC_BILL-2611-0084.pdf`.
    * The viewer swaps the extension when the report turns out to be an uploaded image.
    */
   getLabReportFileName: (test?: Partial<LabTest> | null): string => {
-    const name = [toFileNamePart(test?.itemName), toFileNamePart(test?.billCode)]
+    const name = [
+      toFileNamePart(test?.itemName),
+      toFileNamePart(test?.billCode),
+    ]
       .filter(Boolean)
       .join('_');
     return `Report_${name || toNumber(test?.billRowId)}.pdf`;
@@ -422,7 +540,11 @@ export const MedicalRecordRepository = {
    * when the PACS holds no images for it.
    */
   getRadiologyImages: (billRowId: number) =>
-    getOne(ENDPOINTS.portalRadiologyImages, { billRowId: toNumber(billRowId) }, toRadiologyImages),
+    getOne(
+      ENDPOINTS.portalRadiologyImages,
+      { billRowId: toNumber(billRowId) },
+      toRadiologyImages,
+    ),
 
   /**
    * The studies behind a viewer link, read over DICOMweb with the link's own token: every
@@ -438,7 +560,9 @@ export const MedicalRecordRepository = {
       link.studyUids.map(async studyUid => {
         const studyPath = `${link.origin}/dicom-web/studies/${studyUid}`;
         const rows = await getDicomJson(`${studyPath}/series`, link.token);
-        const series = await Promise.all(rows.map(raw => readSeries(studyPath, raw, link.token)));
+        const series = await Promise.all(
+          rows.map(raw => readSeries(studyPath, raw, link.token)),
+        );
         return series
           .filter(item => (item?.series?.frames?.length ?? 0) > 0)
           .sort((a, b) => (a?.number ?? 0) - (b?.number ?? 0))
@@ -448,7 +572,10 @@ export const MedicalRecordRepository = {
 
     return {
       token: link.token,
-      imageHeaders: { Authorization: `Bearer ${link.token}`, Accept: 'image/jpeg' },
+      imageHeaders: {
+        Authorization: `Bearer ${link.token}`,
+        Accept: 'image/jpeg',
+      },
       series: perStudy.flat(),
     };
   },
@@ -457,11 +584,15 @@ export const MedicalRecordRepository = {
    * One frame's stored pixels, uncompressed: the PACS transcodes whatever it holds (JPEG
    * lossless, JPEG 2000…) to Explicit VR Little Endian and answers it as one multipart part.
    */
-  getRadiologyFramePixels: async (pixelUrl: string, token: string): Promise<Uint8Array> => {
+  getRadiologyFramePixels: async (
+    pixelUrl: string,
+    token: string,
+  ): Promise<Uint8Array> => {
     const response = await axios.get(pixelUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Accept: 'multipart/related; type="application/octet-stream"; transfer-syntax=1.2.840.10008.1.2.1',
+        Accept:
+          'multipart/related; type="application/octet-stream"; transfer-syntax=1.2.840.10008.1.2.1',
       },
       responseType: 'arraybuffer',
       timeout: 60000,
@@ -472,7 +603,10 @@ export const MedicalRecordRepository = {
   },
 
   /** The JPEG the PACS renders of a frame — for thumbnails, and colour frames. */
-  getRadiologyRenderedFrame: async (renderedUrl: string, token: string): Promise<Uint8Array> => {
+  getRadiologyRenderedFrame: async (
+    renderedUrl: string,
+    token: string,
+  ): Promise<Uint8Array> => {
     const response = await axios.get(renderedUrl, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'image/jpeg' },
       responseType: 'arraybuffer',
@@ -481,6 +615,40 @@ export const MedicalRecordRepository = {
     const answer = new Uint8Array(response?.data ?? new ArrayBuffer(0));
     if (!answer.length) throw new Error('Empty image response');
     return answer;
+  },
+
+  /**
+   * The rest of what the printed sheet is drawn from (see PrescriptionPrintData).
+   * A staff-side route that wants the account and branch the prescription is
+   * under: read from the patient's own registration, the static live Mediplex
+   * pair when that cannot be read. 404 when they do not match the prescription.
+   */
+  getPrescriptionPrintData: async (
+    prescriptionId: number,
+    patientRegistrationId?: number | null,
+  ): Promise<PrescriptionPrintData> => {
+    const tenant =
+      (await PatientRepository.getRegistrationTenant(
+        toNumber(patientRegistrationId),
+      ).catch((e: any) => {
+        console.log('getRegistrationTenant error ==>', e?.message);
+        return null;
+      })) ?? MEDIPLEX_TENANT;
+
+    const response = await apiRequest<any>({
+      url: ENDPOINTS.prescriptionPrintData,
+      method: 'GET',
+      baseUrl: API_URL,
+      params: {
+        accountId: toNumber(tenant?.accountId),
+        branchId: toNumber(tenant?.branchId),
+        prescriptionId: toNumber(prescriptionId),
+      },
+    });
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      throw new Error('Unexpected print data response');
+    }
+    return toPrescriptionPrintData(response);
   },
 
   /** The list is the one My Prescriptions shows; this is one of them in full. */
