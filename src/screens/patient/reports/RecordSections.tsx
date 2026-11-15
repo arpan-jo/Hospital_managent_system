@@ -459,6 +459,8 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal 
           navigation.navigate('VisitPrescription', {
             prescriptionId: item?.id,
             title: item?.code,
+            isUploaded: !!item?.isUploaded,
+            sourceHospitalName: item?.sourceHospitalName ?? '',
           })
         }
         actionOf={actionOf}

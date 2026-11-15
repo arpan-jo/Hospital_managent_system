@@ -21,8 +21,17 @@ export type ReportsForBill = { code: string; at: number };
 
 export type ReportsStackParamList = {
   ReportsHome: { saved?: ReportsSavedTo; bill?: ReportsForBill } | undefined;
-  /** One visit prescription, as the Reports page shows it. */
-  VisitPrescription: { prescriptionId: number; title?: string };
+  /**
+   * One visit prescription, as the Reports page shows it. The list's own word on
+   * whether the patient uploaded it, and from where: the detail call does not
+   * fill those in (backend PortalMedicalRecordService.GetPrescriptionAsync).
+   */
+  VisitPrescription: {
+    prescriptionId: number;
+    title?: string;
+    isUploaded?: boolean;
+    sourceHospitalName?: string;
+  };
   /** An uploaded document or a test report PDF, drawn in the app. */
   FileViewer: FileViewerParams;
   /** A radiology test's images from the PACS, drawn in the app. */

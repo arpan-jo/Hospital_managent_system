@@ -68,6 +68,8 @@ interface RecordDetailScreenProps {
   errorFallback: string;
   onRetry: () => void;
   onRefresh: () => void;
+  /** An action at the right of the header — a button, say. */
+  headerRight?: ReactNode;
   children?: ReactNode;
 }
 
@@ -81,6 +83,7 @@ export const RecordDetailScreen = ({
   errorFallback,
   onRetry,
   onRefresh,
+  headerRight,
   children,
 }: RecordDetailScreenProps) => {
   const theme = useTheme();
@@ -93,7 +96,7 @@ export const RecordDetailScreen = ({
       edges={['top', 'left', 'right']}
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      <ScreenHeader title={title} subtitle={subtitle} leading="back" />
+      <ScreenHeader title={title} subtitle={subtitle} leading="back" right={headerRight} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}

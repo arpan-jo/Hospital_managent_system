@@ -28,6 +28,14 @@ export const formatRecordDateTime = (value: string | null | undefined, months: s
   return `${formatDayMonthYear(date, months)}, ${time}`;
 };
 
+/** "3:40 PM" — the time of an ISO time; '' for a bare date or one that cannot be read. */
+export const formatRecordTime = (value: string | null | undefined): string => {
+  const text = String(value ?? '').trim();
+  const date = new Date(text);
+  if (!text || /^\d{4}-\d{2}-\d{2}$/.test(text) || Number.isNaN(date.getTime())) return '';
+  return to12Hour(`${pad2(date.getHours())}:${pad2(date.getMinutes())}`);
+};
+
 /** The upload date as the server words it ("14 Oct 2026"), in the app's month names. */
 export const formatUploadDate = (value: string | null | undefined, months: string[]): string => {
   const iso = toISODateFromApi(value);

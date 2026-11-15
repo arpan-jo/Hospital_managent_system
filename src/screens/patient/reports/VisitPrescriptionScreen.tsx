@@ -1,214 +1,215 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { useTheme } from 'react-native-paper';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {
-  MedicalRecordRepository,
-  PrescriptionDose,
-  PrescriptionMedicine,
-  PrescriptionSection,
-} from '@app/core';
-import { fontFamilies } from '@app/ui';
+import { MedicalRecordRepository, PatientProfile, PatientRepository } from '@app/core';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
-import { prescribedOn, prescriptionKindKey, prescriptionTitle } from '../myPrescriptions/prescriptionUi';
 import {
-  DetailCard,
-  DetailFacts,
-  DetailHeading,
-  DetailNote,
-  RecordDetailScreen,
-  useRecordDetail,
-} from './RecordDetail';
-import { RECORD_TONE, formatRecordDate, formatRecordDateTime, recordTone } from './reportsUi';
+  doctorTitle,
+  prescribedOn,
+  prescriptionDay,
+  prescriptionKindKey,
+  prescriptionTitle,
+} from '../myPrescriptions/prescriptionUi';
+import { DetailNote, RecordDetailScreen, useRecordDetail } from './RecordDetail';
+import {
+  PadBody,
+  PadEmpty,
+  PadFooter,
+  PadLetterhead,
+  PadPaper,
+  PadPatient,
+  PadRx,
+  PadSection,
+  PadSignature,
+  PadVitals,
+} from './PrescriptionPad';
+import { ageOnDay, splitPadSections, takeVitals } from './prescriptionPadUi';
+import PrescriptionZoomModal from './PrescriptionZoomModal';
+import { formatRecordDate, formatRecordTime } from './reportsUi';
 
-/** One dose line: the dose, its note, then "Continue" or how long. */
-const DoseLine = ({ dose, isContinue }: { dose: PrescriptionDose; isContinue: boolean }) => {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  const duration = dose?.durationValue
-    ? `${dose.durationValue} ${dose?.durationUnit ?? ''}`.trim()
-    : '';
+/**
+ * The account's own profile for the prescription's patient — for the age, sex
+ * and blood group a printed sheet carries and the prescription API does not.
+ * Nothing when it cannot be read: the sheet is drawn without them.
+ */
+const usePrescriptionPatient = (registrationId?: number | null): PatientProfile | null => {
+  const [profile, setProfile] = useState<PatientProfile | null>(null);
 
-  return (
-    <View style={styles.doseLine}>
-      <Text style={[styles.dose, { color: theme.colors.onSurface }]}>{dose?.dose || '—'}</Text>
-      {dose?.note ? (
-        <Text style={[styles.doseNote, { color: theme.colors.onSurfaceVariant }]}>{dose.note}</Text>
-      ) : null}
-      {isContinue ? (
-        <Text style={[styles.continue, { color: theme.dark ? '#6FD3A0' : '#1B8A4B' }]}>
-          {t('reports.continue')}
-        </Text>
-      ) : duration ? (
-        <Text style={[styles.duration, { color: theme.colors.onSurfaceVariant }]}>{duration}</Text>
-      ) : null}
-    </View>
-  );
+  useEffect(() => {
+    if (!registrationId) return;
+    let isCurrent = true;
+    PatientRepository.getAllProfiles()
+      .then(rows => {
+        if (!isCurrent) return;
+        setProfile((rows ?? []).find(row => (row?.registrationId ?? 0) === registrationId) ?? null);
+      })
+      .catch((e: any) => console.log('getAllProfiles (prescription) error ==>', e?.message));
+    return () => {
+      isCurrent = false;
+    };
+  }, [registrationId]);
+
+  return profile;
 };
 
-const MedicineRow = ({ medicine, index }: { medicine: PrescriptionMedicine; index: number }) => {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  const muted = theme.colors.onSurfaceVariant;
-  const isMulti = (medicine?.multiDose?.length ?? 0) > 0;
-  const doses: PrescriptionDose[] = isMulti ? medicine.multiDose : [medicine];
+/**
+ * One visit prescription in full, as the portal's Reports page opens it — the
+ * same API and the same content, drawn as the pad a patient is handed:
+ * letterhead, the patient's lines, vitals and findings in the left margin
+ * column, ℞ and instructions on the right, and the doctor's name where it is
+ * signed. Below this width the two columns run one under the other.
+ */
+const TWO_COLUMN_MIN_WIDTH = 340;
 
-  return (
-    <View style={styles.medicine}>
-      <View style={[styles.number, { backgroundColor: theme.colors.primaryContainer }]}>
-        <Text style={[styles.numberText, { color: theme.colors.primary }]}>{index + 1}</Text>
-      </View>
-      <View style={styles.medicineBody}>
-        <Text style={[styles.medicineName, { color: muted }]}>
-          {medicine?.type ? `${medicine.type} ` : ''}
-          <Text style={[styles.brand, { color: theme.colors.onSurface }]}>{medicine?.brand}</Text>
-          {medicine?.generic ? ` ${medicine.generic}` : ''}
-          {medicine?.route ? ` · ${medicine.route}` : ''}
-        </Text>
-        {medicine?.isMixed ? (
-          <View style={styles.mixed}>
-            <Text style={styles.mixedText}>{t('reports.mixed')}</Text>
-          </View>
-        ) : null}
-        <View style={isMulti ? [styles.multi, { borderLeftColor: theme.colors.outlineVariant }] : undefined}>
-          {doses.map((dose, doseIndex) => (
-            <DoseLine
-              key={doseIndex}
-              dose={dose}
-              // "Continue" stands for a single dose only, as on the portal.
-              isContinue={!isMulti && !!medicine?.isContinue}
-            />
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-};
-
-const SectionBlock = ({ section }: { section: PrescriptionSection }) => {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  return (
-    <DetailCard>
-      <DetailHeading>{section?.label}</DetailHeading>
-      {section?.groups?.map((group, groupIndex) => (
-        <View key={groupIndex} style={groupIndex > 0 ? styles.groupGap : undefined}>
-          {group?.groupName ? (
-            <Text style={[styles.groupName, { color: theme.colors.onSurface }]}>{group.groupName}</Text>
-          ) : null}
-          {group?.lines?.map((line, lineIndex) => (
-            <View
-              key={lineIndex}
-              style={[styles.sectionLine, group?.groupName ? styles.indented : undefined]}
-            >
-              <Text style={[styles.bullet, { color: theme.colors.primary }]}>•</Text>
-              <Text selectable style={[styles.lineText, { color: theme.colors.onSurface }]}>
-                {line?.text}
-                {line?.isUrgent ? (
-                  <Text style={[styles.urgent, { color: theme.colors.error }]}>
-                    {`  ${t('reports.urgent')}`}
-                  </Text>
-                ) : null}
-                {line?.note ? (
-                  <Text style={[styles.lineNote, { color: theme.colors.onSurfaceVariant }]}>
-                    {` (${line.note})`}
-                  </Text>
-                ) : null}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ))}
-    </DetailCard>
-  );
-};
-
-/** One visit prescription in full, as the portal's Reports page opens it. */
 export const VisitPrescriptionScreen = () => {
-  const theme = useTheme();
   const { t } = useTranslation();
+  const theme = useTheme();
   const months = useMonthNames();
+  const { width } = useWindowDimensions();
+  /** The sheet opened on its own to pinch in on. */
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
   const route = useRoute<RouteProp<ReportsStackParamList, 'VisitPrescription'>>();
-  const prescriptionId = route?.params?.prescriptionId ?? 0;
+  const params = route?.params;
+  const prescriptionId = params?.prescriptionId ?? 0;
   const detail = useRecordDetail(MedicalRecordRepository.getPrescription, prescriptionId);
-  const rx = detail.data;
-  const tone = recordTone('prescriptions', theme.dark);
+  const rx = detail?.data;
+  const patient = usePrescriptionPatient(rx?.patientRegistrationId);
 
-  const hasMedicines = (rx?.medicines?.length ?? 0) > 0;
-  const hasSections = (rx?.sections?.length ?? 0) > 0;
+  // The detail call leaves these unset; the list said which it is.
+  const isUploaded = !!rx?.isUploaded || !!params?.isUploaded;
+  const sourceHospitalName = rx?.sourceHospitalName || params?.sourceHospitalName || '';
+  const sheet = rx ? { ...rx, isUploaded, sourceHospitalName } : null;
+
   // An upload may have no doctor (and before 2026-11-10 no code) — it is named for what it is.
-  const fallbackName = t(rx?.isUploaded ? 'reports.uploadedPrescription' : 'reports.prescription');
+  const fallbackName = t(isUploaded ? 'reports.uploadedPrescription' : 'reports.prescription');
+  const medicines = rx?.medicines ?? [];
+
+  const { vitals, findings, instructions } = useMemo(() => {
+    const read = takeVitals(rx?.sections);
+    return { vitals: read?.vitals ?? [], ...splitPadSections(read?.sections) };
+  }, [rx?.sections]);
+
+  const title = prescriptionTitle(sheet, fallbackName);
+  // An upload's sheet names its hospital or chamber; a visit, the department.
+  const subtitle = isUploaded
+    ? sourceHospitalName && sourceHospitalName !== title
+      ? sourceHospitalName
+      : ''
+    : rx?.departmentName ?? '';
+
+  const age = ageOnDay(patient?.dateOfBirth, prescriptionDay(rx?.prescribedAt));
+  const gender = (patient?.gender ?? '').trim();
+  const isEmpty = !medicines.length && !vitals.length && !findings.length && !instructions.length;
+  // An upload was not signed by an HMS doctor — there is no place for a signature on it.
+  const signer = isUploaded ? '' : doctorTitle(rx?.doctorName);
+  const hasLeft = vitals.length > 0 || findings.length > 0;
+  const twoColumns = hasLeft && (width ?? 0) >= TWO_COLUMN_MIN_WIDTH;
+
+  const ageText = age
+    ? age.years > 0
+      ? t('reports.pad.ageYears', { count: age.years })
+      : t('reports.pad.ageMonths', { count: age.months })
+    : '';
+  const sexText = gender ? t(`patientProfile.gender_${gender.toLowerCase()}`, { defaultValue: gender }) : '';
+  // An upload's date is when it was saved — it has no time worth showing.
+  const time = isUploaded ? '' : formatRecordTime(rx?.prescribedAt);
+
+  // Drawn twice from the one element: in the page, and alone in the zoom view.
+  const sheetView = rx ? (
+    <PadPaper>
+      <PadLetterhead title={title} subtitle={subtitle} />
+
+      <PadPatient
+        rows={[
+          [
+            { label: t('reports.pad.name'), value: rx?.patientName || patient?.fullName || '', flex: 2.3 },
+            { label: t('reports.pad.age'), value: ageText, flex: 1 },
+          ],
+          [
+            { label: t('reports.pad.sex'), value: sexText, flex: 1 },
+            { label: t('reports.pad.blood'), value: patient?.bloodType ?? '', flex: 1 },
+            { label: t('reports.pad.date'), value: formatRecordDate(prescribedOn(rx), months), flex: 1.6 },
+          ],
+          [
+            { label: t('reports.patientId'), value: rx?.patientCode ?? '', flex: 1.5 },
+            {
+              label: t('reports.visit'),
+              value: [t(prescriptionKindKey(sheet)), time].filter(Boolean).join(', '),
+              flex: 1.2,
+            },
+          ],
+        ]}
+      />
+
+      <PadBody
+        twoColumns={twoColumns}
+        left={
+          hasLeft ? (
+            <>
+              <PadVitals vitals={vitals} inline={!twoColumns} />
+              {findings.map((section, index) => (
+                <PadSection key={`${section?.key ?? ''}-${index}`} section={section} />
+              ))}
+            </>
+          ) : null
+        }
+        right={
+          <>
+            <PadRx medicines={medicines} />
+            {instructions.map((section, index) => (
+              <PadSection key={`${section?.key ?? ''}-${index}`} section={section} />
+            ))}
+            {isEmpty ? <PadEmpty>{t('reports.noPrescriptionDetails')}</PadEmpty> : null}
+            <PadSignature name={signer} meta={rx?.departmentName ?? ''} />
+          </>
+        }
+      />
+
+      <PadFooter code={rx?.code ?? ''} count={medicines.length} />
+    </PadPaper>
+  ) : null;
 
   return (
     <RecordDetailScreen
-      title={rx?.code || route?.params?.title || fallbackName}
+      title={rx?.code || params?.title || fallbackName}
       subtitle={[rx?.patientName, formatRecordDate(prescribedOn(rx), months)].filter(Boolean).join(' · ')}
-      isLoading={detail.isLoading}
-      isRefreshing={detail.isRefreshing}
-      error={detail.error}
+      isLoading={detail?.isLoading}
+      isRefreshing={detail?.isRefreshing}
+      error={detail?.error}
       errorFallback={t('reports.prescriptionOpenFailed')}
-      onRetry={detail.retry}
-      onRefresh={detail.refresh}
+      onRetry={detail?.retry}
+      onRefresh={detail?.refresh}
+      headerRight={
+        rx ? (
+          <Pressable
+            onPress={() => setIsZoomOpen(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('reports.pad.zoom')}
+            style={[styles.zoomButton, { backgroundColor: theme.colors.primaryContainer }]}
+          >
+            <Icon name="magnify-plus-outline" size={20} color={theme.colors.primary} />
+          </Pressable>
+        ) : null
+      }
     >
       {rx ? (
         <>
-          <DetailCard>
-            <View style={styles.summaryTop}>
-              <View style={[styles.iconTile, { backgroundColor: tone.tint }]}>
-                <Icon name={RECORD_TONE.prescriptions.icon} size={22} color={tone.color} />
-              </View>
-              <View style={styles.summaryText}>
-                <Text style={[styles.summaryTitle, { color: theme.colors.onSurface }]}>
-                  {prescriptionTitle(rx, fallbackName)}
-                </Text>
-                {rx?.departmentName ? (
-                  <Text style={[styles.summaryMeta, { color: theme.colors.onSurfaceVariant }]}>
-                    {rx.departmentName}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-            <DetailFacts
-              facts={[
-                {
-                  label: t('reports.prescribed'),
-                  // An upload's date is the day on its sheet — it has no time worth showing.
-                  value: rx?.isUploaded
-                    ? formatRecordDate(prescribedOn(rx), months)
-                    : formatRecordDateTime(rx?.prescribedAt, months),
-                },
-                // As the portal shows it: the name as stored, without a title added.
-                { label: t('reports.doctor'), value: rx?.doctorName },
-                { label: t('reports.department'), value: rx?.departmentName },
-                { label: t('reports.hospital'), value: rx?.isUploaded ? rx?.sourceHospitalName : '' },
-                // An upload was not written at a visit; an empty fact is left out.
-                { label: t('reports.visit'), value: rx?.isUploaded ? '' : t(prescriptionKindKey(rx)) },
-                { label: t('reports.patientId'), value: rx?.patientCode },
-              ]}
-            />
-          </DetailCard>
-
-          {hasMedicines ? (
-            <DetailCard>
-              <DetailHeading icon="pill">{t('reports.medicines')}</DetailHeading>
-              {rx.medicines.map((medicine, index) => (
-                <MedicineRow key={index} medicine={medicine} index={index} />
-              ))}
-            </DetailCard>
-          ) : null}
-
-          {rx?.sections?.map((section, index) => (
-            <SectionBlock key={`${section?.key}-${index}`} section={section} />
-          ))}
-
-          {!hasMedicines && !hasSections ? (
-            <DetailNote icon="information-outline">{t('reports.noPrescriptionDetails')}</DetailNote>
-          ) : null}
+          {sheetView}
 
           <DetailNote icon="stethoscope">{t('reports.prescriptionDisclaimer')}</DetailNote>
+
+          <PrescriptionZoomModal
+            visible={isZoomOpen}
+            title={rx?.code || params?.title || fallbackName}
+            onClose={() => setIsZoomOpen(false)}
+          >
+            {sheetView}
+          </PrescriptionZoomModal>
         </>
       ) : null}
     </RecordDetailScreen>
@@ -216,137 +217,12 @@ export const VisitPrescriptionScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  summaryTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconTile: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
+  zoomButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  summaryText: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  summaryTitle: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 16,
-  },
-  summaryMeta: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 12.5,
-    marginTop: 2,
-  },
-  medicine: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 8,
-  },
-  number: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-  },
-  numberText: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 11.5,
-  },
-  medicineBody: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  medicineName: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  brand: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 14,
-  },
-  mixed: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FEF3E0',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginTop: 4,
-  },
-  mixedText: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 10,
-    color: '#B27400',
-  },
-  multi: {
-    borderLeftWidth: 2,
-    paddingLeft: 10,
-    marginTop: 4,
-  },
-  doseLine: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'baseline',
-    columnGap: 8,
-    marginTop: 4,
-  },
-  dose: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    letterSpacing: 0.5,
-  },
-  doseNote: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 12.5,
-  },
-  continue: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12.5,
-  },
-  duration: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 12.5,
-  },
-  groupGap: {
-    marginTop: 10,
-  },
-  groupName: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 12.5,
-    marginBottom: 4,
-  },
-  sectionLine: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  indented: {
-    paddingLeft: 10,
-  },
-  bullet: {
-    width: 14,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  lineText: {
-    flex: 1,
-    fontFamily: fontFamilies.regular,
-    fontSize: 13.5,
-    lineHeight: 20,
-  },
-  urgent: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 11.5,
-  },
-  lineNote: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 12,
   },
 });
 
