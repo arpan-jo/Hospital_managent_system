@@ -284,6 +284,7 @@ describe('MedicalRecordRepository.getPrescriptionPrintData', () => {
       notice: 'রোগী দেখার সময়: সকাল ১০টা থেকে সন্ধ্যা ৭টা পর্যন্ত',
       footerLines: ['আপনার সুস্থতা ও নিরাপদ চিকিৎসার বিশ্বস্ত ঠিকানা।'],
       signatoryLines: [],
+      signatureImage: '',
     });
   });
 
@@ -334,6 +335,7 @@ describe('MedicalRecordRepository.getPrescriptionPrintData', () => {
       notice: '',
       footerLines: [],
       signatoryLines: [],
+      signatureImage: '',
     });
     expect(data?.prescription).toMatchObject({ id: 0, code: '', medicines: [], sections: [], medicineCount: 0 });
   });
@@ -361,6 +363,9 @@ describe('MedicalRecordRepository.getPrescriptionPrintData', () => {
       rightSections: [null, { key: 3 }, { key: { a: 1 } }],
       sectionData: 7,
       signatoryHtml: {},
+      signatureImageId: { id: 'x' },
+      signatureImageDataUri: ['data:image/png;base64,AAAA'],
+      signatureImageUrl: 42,
     });
 
     const data = await MedicalRecordRepository.getPrescriptionPrintData(2315);
@@ -385,6 +390,33 @@ describe('MedicalRecordRepository.getPrescriptionPrintData', () => {
       notice: '',
       footerLines: [],
       signatoryLines: [],
+      signatureImage: '',
     });
+  });
+
+  it("draws the signature picture once the server sends it — a data URI or url, never today's bare id", async () => {
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const read = async (extra: Record<string, unknown>) => {
+      request.mockResolvedValueOnce({ ...printData, ...extra });
+      return (await MedicalRecordRepository.getPrescriptionPrintData(2315))?.signatureImage;
+    };
+
+    // Today: an SME document id, which no patient route opens.
+    expect(await read({ signatureImageId: '8f1c2e7a-0b3d-4c5e-9f60-1a2b3c4d5e6f' })).toBe('');
+    expect(await read({ signatureImageId: null })).toBe('');
+    // A new field, or the id field carrying the picture itself.
+    expect(await read({ signatureImageDataUri: png })).toBe(png);
+    expect(await read({ signatureImageId: png })).toBe(png);
+    expect(await read({ signatureImageUrl: 'https://mgm.ibos.io/hms/files/sign.png' })).toBe(
+      'https://mgm.ibos.io/hms/files/sign.png',
+    );
+    // The first good one wins, even with a bare id beside it.
+    expect(await read({ signatureImageDataUri: png, signatureImageId: 'abc123' })).toBe(png);
+    // Anything that is not a drawable picture is none.
+    expect(await read({ signatureImageDataUri: 'data:image/svg+xml;base64,PHN2Zz4=' })).toBe('');
+    expect(await read({ signatureImageDataUri: 'data:text/html;base64,PGI+' })).toBe('');
+    // Built from parts so the linter does not read the test data as a script url.
+    expect(await read({ signatureImageUrl: ['javascript', 'alert(1)'].join(':') })).toBe('');
+    expect(await read({ signatureImageUrl: 'ftp://x/sign.png' })).toBe('');
   });
 });

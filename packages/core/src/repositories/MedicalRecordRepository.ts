@@ -217,6 +217,12 @@ export interface PrescriptionPrintData {
   footerLines: string[];
   /** The signatory block's lines, as text; none when the doctor has set none. */
   signatoryLines: string[];
+  /**
+   * The doctor's signature picture, ready to draw: a `data:image/…;base64,…` URI
+   * or an http(s) url. '' until the server sends the picture itself — today it
+   * sends only `signatureImageId`, an SME document id no patient route can open.
+   */
+  signatureImage: string;
 }
 
 const toText = (value: any): string => String(value ?? '').trim();
@@ -307,7 +313,25 @@ export const toPrescriptionPrintData = (raw: any): PrescriptionPrintData => ({
       : htmlToLines(toPlain(raw?.layout?.notice?.text)).join(' '),
   footerLines: toBandLines(raw?.layout?.footer),
   signatoryLines: htmlToLines(toPlain(raw?.signatoryHtml)),
+  // Bound ahead of the backend (2026-11-16): the picture shows as soon as it is sent
+  // as a data URI or url — in a new field, or in place of today's bare id.
+  signatureImage:
+    toImageSource(raw?.signatureImageDataUri) ||
+    toImageSource(raw?.signatureImageUrl) ||
+    toImageSource(raw?.signatureImageId),
 });
+
+/**
+ * A picture the sheet can draw as it is: a base64 `data:image/…` URI (png, jpeg,
+ * gif, webp, bmp) or an http(s) url. Anything else — a bare SME document id, an
+ * object, another scheme — is no picture, never a broken image.
+ */
+const toImageSource = (value: any): string => {
+  const text = toPlain(value);
+  if (/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(text)) return text;
+  if (/^https?:\/\/\S+$/i.test(text)) return text;
+  return '';
+};
 
 /** Who a record belongs to — every portal list row carries the same three fields. */
 export const toRecordPatient = (raw: any): RecordPatient => ({

@@ -232,7 +232,12 @@ export const VisitPrescriptionScreen = () => {
               ),
             )}
             {isEmpty ? <PadEmpty>{t('reports.noPrescriptionDetails')}</PadEmpty> : null}
-            <PadSignature name={signer} meta={rx?.departmentName ?? ''} lines={print?.signatoryLines ?? []} />
+            <PadSignature
+              name={signer}
+              meta={rx?.departmentName ?? ''}
+              lines={print?.signatoryLines ?? []}
+              image={print?.signatureImage ?? ''}
+            />
           </>
         }
       />

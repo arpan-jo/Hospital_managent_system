@@ -181,6 +181,18 @@ describe('VisitPrescriptionScreen — from GetPrescriptionPrintData alone', () =
     expect(text).not.toContain('Marie Stopes');
   });
 
+  it('draws the signature picture above the doctor\'s name when the server sends one, and none for a bare id', async () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo=';
+    await open(async () => toPrescriptionPrintData({ ...liveAnswer, signatureImageDataUri: png }));
+    const pictures = renderer?.root.findAll(node => String(node.type) === 'Image') ?? [];
+    expect(pictures.map(node => node.props?.source?.uri)).toContain(png);
+
+    act(() => renderer?.unmount());
+    await open(async () => toPrescriptionPrintData({ ...liveAnswer, signatureImageId: 'abc123' }));
+    expect(renderer?.root.findAll(node => String(node.type) === 'Image') ?? []).toHaveLength(0);
+    expect(drawnText()).toContain('Dr. Khairul Bashar');
+  });
+
   it('draws an empty answer without throwing', async () => {
     await open(async () => toPrescriptionPrintData({}));
     expect(renderer?.toJSON()).toBeTruthy();

@@ -1,5 +1,5 @@
-import React, { ReactNode } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import React, { ReactNode, useState } from 'react';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -324,16 +324,31 @@ export const PadSignature = ({
   name,
   meta,
   lines,
+  image,
 }: {
   name?: string;
   meta?: string;
   /** The doctor's own signatory block, as text — said once, without repeating the name. */
   lines?: string[];
+  /** The signature picture (a data URI or url); none drawn when empty or when it fails to load. */
+  image?: string;
 }) => {
+  // The picture that failed to load, so the block shows without it.
+  const [failedImage, setFailedImage] = useState('');
   if (!name) return null;
   const extra = (lines ?? []).map(asText).filter(line => line && line !== name && line !== meta);
+  const picture = asText(image).trim();
   return (
     <View style={styles.signature}>
+      {picture && picture !== failedImage ? (
+        <Image
+          source={{ uri: picture }}
+          resizeMode="contain"
+          onError={() => setFailedImage(picture)}
+          accessibilityIgnoresInvertColors
+          style={styles.signatureImage}
+        />
+      ) : null}
       <View style={styles.signatureLine} />
       <Text style={styles.signatureName}>{name}</Text>
       {meta ? <Text style={styles.signatureMeta}>{meta}</Text> : null}
@@ -667,6 +682,8 @@ const styles = StyleSheet.create({
   },
   rxSmall: {
     fontSize: 16,
+    // Its own colour: a nested Paper Text takes the theme's, which is light in dark mode.
+    color: BRAND,
   },
   medicine: {
     flexDirection: 'row',
@@ -757,6 +774,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingTop: 26,
     paddingBottom: 14,
+  },
+  signatureImage: {
+    // As the printed sheet: at most 36 high, centred over the line.
+    width: 130,
+    height: 36,
+    marginBottom: 2,
   },
   signatureLine: {
     width: 130,
