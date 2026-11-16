@@ -5,6 +5,7 @@ import {
   formatDose,
   medicineForm,
   medicineTitle,
+  sheetDate,
   splitHeaderColumns,
   splitPadSections,
   takeVitals,
@@ -153,5 +154,22 @@ describe('prescriptionPadUi', () => {
     expect(splitHeaderColumns(null)).toEqual({ bangla: [], english: [] });
     expect(splitHeaderColumns('x')).toEqual({ bangla: [], english: [] });
     expect(splitHeaderColumns([null, [' ', null, { a: 1 }, 'Dr. X ', 5]])).toEqual({ bangla: [], english: ['Dr. X', '5'] });
+  });
+
+  it("dates an upload by the paper's own date, a doctor's prescription by when it was written", () => {
+    // The live test upload: the paper says 14 Nov, it was uploaded on 16 Nov.
+    expect(sheetDate({ isUploaded: true, sourceDate: '2026-11-14T00:00:00', prescribedAt: '2026-11-16T16:56:10' })).toBe(
+      '2026-11-14T00:00:00',
+    );
+    // An upload with no readable date on the paper keeps the upload day.
+    expect(sheetDate({ isUploaded: true, sourceDate: null, prescribedAt: '2026-11-16T16:56:10' })).toBe('2026-11-16T16:56:10');
+    expect(sheetDate({ isUploaded: true, sourceDate: 'not a date', prescribedAt: '2026-11-16' })).toBe('2026-11-16');
+    expect(sheetDate({ isUploaded: true, sourceDate: { d: 1 }, prescribedAt: '2026-11-16' })).toBe('2026-11-16');
+    // A doctor's prescription is never re-dated.
+    expect(sheetDate({ isUploaded: false, sourceDate: '2026-11-14', prescribedAt: '2026-10-17T11:27:10' })).toBe(
+      '2026-10-17T11:27:10',
+    );
+    expect(sheetDate(null)).toBe('');
+    expect(sheetDate(undefined)).toBe('');
   });
 });

@@ -193,6 +193,31 @@ describe('VisitPrescriptionScreen — from GetPrescriptionPrintData alone', () =
     expect(drawnText()).toContain('Dr. Khairul Bashar');
   });
 
+  it("dates an uploaded prescription by the paper's date, not the upload day", async () => {
+    const upload = {
+      ...liveAnswer,
+      isPatientUpload: true,
+      prescription: { ...liveAnswer.prescription, doctorId: 0, createdAt: '2026-11-16T16:56:10', sourceDate: '2026-11-14T00:00:00' },
+    };
+    await open(async () => toPrescriptionPrintData(upload));
+    expect(textNodes()).toContain('14 months.10 2026');
+    expect(textNodes()).not.toContain('16 months.10 2026');
+
+    act(() => renderer?.unmount());
+    // No date on the paper: the upload day.
+    await open(async () =>
+      toPrescriptionPrintData({ ...upload, prescription: { ...upload.prescription, sourceDate: null } }),
+    );
+    expect(textNodes()).toContain('16 months.10 2026');
+
+    act(() => renderer?.unmount());
+    // A doctor's prescription keeps the day it was written.
+    await open(async () =>
+      toPrescriptionPrintData({ ...liveAnswer, prescription: { ...liveAnswer.prescription, sourceDate: '2026-11-14' } }),
+    );
+    expect(textNodes()).toContain('17 months.9 2026');
+  });
+
   it('draws an empty answer without throwing', async () => {
     await open(async () => toPrescriptionPrintData({}));
     expect(renderer?.toJSON()).toBeTruthy();
