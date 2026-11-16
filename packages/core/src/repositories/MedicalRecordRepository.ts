@@ -228,7 +228,8 @@ const toArray = (value: any): any[] => (Array.isArray(value) ? value : []);
  * object, an array, null) reads as missing — never "[object Object]" on the sheet.
  */
 const toPlain = (value: any): string =>
-  typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))
+  typeof value === 'string' ||
+  (typeof value === 'number' && Number.isFinite(value))
     ? String(value).trim()
     : '';
 
@@ -270,7 +271,8 @@ const toSheetPrescription = (raw: any): PrescriptionDetail => {
     medicineCount: medicines.length,
     // Not in the print data either.
     patientRegistrationId: 0,
-    patientName: toPlain(head?.patientName) || toPlain(raw?.patient?.patientName),
+    patientName:
+      toPlain(head?.patientName) || toPlain(raw?.patient?.patientName),
     patientCode: toPlain(head?.patientCode) || toPlain(raw?.patient?.patientId),
     isUploaded: raw?.isPatientUpload === true,
     sourceHospitalName: toPlain(head?.sourceHospitalName),
@@ -706,6 +708,8 @@ export const MedicalRecordRepository = {
         branchId: MEDIPLEX_TENANT.branchId,
         prescriptionId: toNumber(prescriptionId),
       },
+      // isConsole: true,
+      // isConsoleParams: true,
     });
     if (!response || typeof response !== 'object' || Array.isArray(response)) {
       throw new Error('Unexpected print data response');
