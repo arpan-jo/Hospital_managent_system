@@ -4,7 +4,7 @@ import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { serverMessageOf } from '@app/core';
+import { isServerUnreachable, serverMessageOf } from '@app/core';
 import { fontFamilies } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
@@ -17,6 +17,11 @@ export const useRecordDetail = <T,>(fetcher: (id: number) => Promise<T>, id: num
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** How the last read failed: the answer's status (null when none came), and whether no answer came at all. */
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  /** The answer's own status title ("Not Found") — words from the server, though not about this record. */
+  const [serverTitle, setServerTitle] = useState('');
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
 
@@ -28,12 +33,21 @@ export const useRecordDetail = <T,>(fetcher: (id: number) => Promise<T>, id: num
         const response = await fetcherRef.current(id);
         setData(response);
         setError(null);
+        setErrorStatus(null);
+        setIsOffline(false);
+        setServerTitle('');
       } catch (e: any) {
         console.log('getRecord error ==>', e?.message);
         // A failed pull keeps the record already on screen.
         if (mode === 'initial') {
+          const status = Number(e?.status);
           setData(null);
           setError(serverMessageOf(e));
+          setErrorStatus(Number.isFinite(status) && status > 0 ? status : null);
+          setIsOffline(isServerUnreachable(e));
+          const title = e?.data?.title;
+          // Only a short line of words — never a proxy's HTML page.
+          setServerTitle(typeof title === 'string' && !title.trim().startsWith('<') ? title.trim() : '');
         }
       } finally {
         setIsLoading(false);
@@ -52,6 +66,9 @@ export const useRecordDetail = <T,>(fetcher: (id: number) => Promise<T>, id: num
     isLoading,
     isRefreshing,
     error,
+    errorStatus,
+    isOffline,
+    serverTitle,
     retry: () => load('initial'),
     refresh: () => load('refresh'),
   };

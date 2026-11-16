@@ -780,6 +780,7 @@
     "medicineCount": "{{count}}টি ওষুধ",
     "medicineCount_plural": "{{count}}টি ওষুধ",
     "prescriptionOpenFailed": "এই প্রেসক্রিপশনটি খোলা যায়নি।",
+    "prescriptionNotOnServer": "সার্ভার থেকে এই প্রেসক্রিপশনের তথ্য পাওয়া যায়নি।",
     "department": "বিভাগ",
     "patientId": "রোগীর আইডি",
     "prescribed": "প্রেসক্রাইব করা হয়েছে",

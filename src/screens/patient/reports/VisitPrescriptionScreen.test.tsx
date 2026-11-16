@@ -7,6 +7,7 @@ let mockRouteParams: Record<string, unknown> = {};
 jest.mock('@app/core', () => ({
   ...jest.requireActual('../../../../packages/core/src/utils/format'),
   serverMessageOf: jest.requireActual('../../../../packages/core/src/network/serverMessage').serverMessageOf,
+  isServerUnreachable: jest.requireActual('../../../../packages/core/src/network/serverMessage').isServerUnreachable,
   MedicalRecordRepository: {
     getPrescriptionPrintData: (...args: unknown[]) => mockGetPrintData(...args),
   },
@@ -34,10 +35,22 @@ jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => () => null);
 jest.mock('./PrescriptionZoomModal', () => () => null);
 jest.mock('./RecordDetail', () => {
   const ReactActual = jest.requireActual('react');
-  const { View } = jest.requireActual('react-native');
+  const { Text, View } = jest.requireActual('react-native');
   return {
     ...jest.requireActual('./RecordDetail'),
-    RecordDetailScreen: ({ children, headerRight }: any) => ReactActual.createElement(View, null, headerRight, children),
+    // As the real frame: on a failure, the title (errorFallback) and the hint (error, when it has words).
+    RecordDetailScreen: ({ children, headerRight, isLoading, error, errorFallback }: any) =>
+      ReactActual.createElement(
+        View,
+        null,
+        headerRight,
+        !isLoading && error !== null && error !== undefined
+          ? [
+              ReactActual.createElement(Text, { key: 'title' }, errorFallback),
+              error ? ReactActual.createElement(Text, { key: 'hint' }, error) : null,
+            ]
+          : children,
+      ),
     DetailNote: ({ children }: any) => ReactActual.createElement(View, null, children),
   };
 });
@@ -204,6 +217,52 @@ describe('VisitPrescriptionScreen — from GetPrescriptionPrintData alone', () =
     });
     expect(renderer?.toJSON()).toBeTruthy();
     expect(drawnText()).not.toContain('reports.pad.name');
+  });
+
+  it('shows what the server answered on a bare 404 — its "Not Found" — and nothing of ours', async () => {
+    // The live 404 is a bare NotFound(): ASP.NET answers `{ title: "Not Found", status: 404 }`.
+    await open(async () => {
+      throw Object.assign(new Error('Not Found'), { status: 404, data: { title: 'Not Found', status: 404 } });
+    });
+    const lines = textNodes().filter(Boolean);
+    expect(lines).toContain('Not Found');
+    expect(lines).not.toContain('reports.prescriptionNotOnServer');
+    expect(lines).not.toContain('reports.prescriptionOpenFailed');
+  });
+
+  it('says ours on a 404 that came with nothing at all', async () => {
+    await open(async () => {
+      throw Object.assign(new Error('Error: 404'), { status: 404, data: '' });
+    });
+    const lines = textNodes().filter(Boolean);
+    expect(lines).toContain('reports.prescriptionNotOnServer');
+    expect(lines).not.toContain('Error: 404');
+  });
+
+  it("shows the server's own message instead of ours when it sends one", async () => {
+    await open(async () => {
+      throw Object.assign(new Error('Bad Request'), {
+        status: 400,
+        data: { message: 'accountId, branchId and prescriptionId are required.' },
+      });
+    });
+    const lines = textNodes().filter(Boolean);
+    expect(lines).toContain('accountId, branchId and prescriptionId are required.');
+    expect(lines).not.toContain('reports.prescriptionOpenFailed');
+    expect(lines).not.toContain('reports.prescriptionNotOnServer');
+  });
+
+  it('says the connection when no answer came, and ours for any other silent failure', async () => {
+    await open(async () => {
+      throw Object.assign(new Error('Network Error'), { originalError: { message: 'Network Error' } });
+    });
+    expect(textNodes()).toContain('common.noConnection');
+
+    act(() => renderer?.unmount());
+    await open(async () => {
+      throw Object.assign(new Error('Error: 500'), { status: 500, data: '' });
+    });
+    expect(textNodes()).toContain('reports.prescriptionOpenFailed');
   });
 
   it('does not throw with no route params at all', async () => {

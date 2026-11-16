@@ -780,6 +780,7 @@
     "medicineCount": "{{count}} medicine",
     "medicineCount_plural": "{{count}} medicines",
     "prescriptionOpenFailed": "This prescription couldn't be opened.",
+    "prescriptionNotOnServer": "The server didn't send this prescription's details.",
     "department": "Department",
     "patientId": "Patient ID",
     "prescribed": "Prescribed",

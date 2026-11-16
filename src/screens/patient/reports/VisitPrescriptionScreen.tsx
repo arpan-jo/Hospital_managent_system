@@ -256,8 +256,22 @@ export const VisitPrescriptionScreen = () => {
       // subtitle={[rx?.patientName, formatRecordDate(prescribedOn(rx), months)].filter(Boolean).join(' · ')}
       isLoading={detail?.isLoading}
       isRefreshing={detail?.isRefreshing}
-      error={detail?.error}
-      errorFallback={t('reports.prescriptionOpenFailed')}
+      // Off (2026-11-16): our text on top and the server's words under it —
+      // error={detail?.error}
+      // errorFallback={t('reports.prescriptionOpenFailed')}
+      // Now one message: the server's own words, else the title its answer carries (a bare
+      // 404 says "Not Found"), and ours only when it sent nothing at all — by how it failed.
+      // ('' keeps the failed state; the message itself goes in the title.)
+      error={detail?.error == null ? null : ''}
+      errorFallback={
+        detail?.error ||
+        detail?.serverTitle ||
+        (detail?.isOffline
+          ? t('common.noConnection')
+          : detail?.errorStatus === 404
+            ? t('reports.prescriptionNotOnServer')
+            : t('reports.prescriptionOpenFailed'))
+      }
       onRetry={detail?.retry}
       onRefresh={detail?.refresh}
       headerRight={

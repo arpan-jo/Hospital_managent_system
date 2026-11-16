@@ -12,5 +12,5 @@
  */
 
 // accountId 20401 / branchId 40709 (marie stops)
-export const MEDIPLEX_TENANT = { accountId: 20401, branchId: 40709 } as const;
+export const MEDIPLEX_TENANT = { accountId: 20402, branchId: 40710 } as const;
 //for akij mediplex jahed bhai said it will static
