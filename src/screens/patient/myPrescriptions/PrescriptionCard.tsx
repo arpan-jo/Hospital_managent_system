@@ -1,6 +1,6 @@
 import React, { memo, useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
+import { /* ActivityIndicator, */ Text, useTheme } from 'react-native-paper'; // ActivityIndicator: download icon, off for now
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -40,10 +40,10 @@ export const PrescriptionCard = memo<PrescriptionCardProps>(function Prescriptio
   isExpanded,
   attachments,
   isLoadingAttachments,
-  isDownloading,
+  // isDownloading, // download icon, off for now
   onToggleAttachments,
   onOpen,
-  onDownload,
+  // onDownload, // download icon, off for now
   onAddAttachment,
   onViewAttachment,
   onDownloadAttachment,
@@ -58,7 +58,8 @@ export const PrescriptionCard = memo<PrescriptionCardProps>(function Prescriptio
     [onToggleAttachments, prescription?.id],
   );
   const handleOpen = useCallback(() => onOpen(prescription), [onOpen, prescription]);
-  const handleDownload = useCallback(() => onDownload(prescription), [onDownload, prescription]);
+  // Download icon, off for now — uncomment with the icon below to bring it back.
+  // const handleDownload = useCallback(() => onDownload(prescription), [onDownload, prescription]);
   const handleAdd = useCallback(() => onAddAttachment(prescription), [onAddAttachment, prescription]);
 
   const muted = theme.colors.onSurfaceVariant;
@@ -136,6 +137,7 @@ export const PrescriptionCard = memo<PrescriptionCardProps>(function Prescriptio
         </View>
 
         <View style={styles.actions}>
+          {/* Download icon, off for now (2026-11-15) — uncomment to bring it back.
           <Pressable
             onPress={handleDownload}
             disabled={isDownloading}
@@ -150,6 +152,7 @@ export const PrescriptionCard = memo<PrescriptionCardProps>(function Prescriptio
               <Icon name="download-outline" size={17} color={theme.colors.primary} />
             )}
           </Pressable>
+          */}
           <Pressable
             onPress={handleToggle}
             hitSlop={8}

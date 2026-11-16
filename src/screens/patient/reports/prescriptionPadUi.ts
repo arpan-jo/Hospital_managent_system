@@ -5,6 +5,18 @@
  */
 import { PrescriptionMedicine, PrescriptionSection } from '@app/core';
 
+/**
+ * A value the sheet prints: text as it is, a finite number as text, anything
+ * else (null, an object, an array…) as nothing — so data of the wrong type
+ * reads as missing instead of breaking the screen.
+ */
+export const asText = (value: unknown): string =>
+  typeof value === 'string'
+    ? value
+    : typeof value === 'number' && Number.isFinite(value)
+      ? String(value)
+      : '';
+
 export interface PadVital {
   label: string;
   value: string;
@@ -97,14 +109,14 @@ export const takeVitals = (
         .map(group => {
           if (!/vital/i.test(group?.groupName ?? '')) return group;
           const kept = (group?.lines ?? []).filter(line => {
-            const match = VITAL_LINE.exec((line?.text ?? '').trim());
+            const match = VITAL_LINE.exec(asText(line?.text).trim());
             if (!match) return true;
             const name = match[1].trim();
             const reading = match[2].trim();
             if (UNIT_SUFFIX.test(name)) {
               units.push({ name: name.replace(UNIT_SUFFIX, '').toLowerCase(), unit: reading });
             } else {
-              vitals.push({ label: name, value: line?.note ? `${reading} (${line.note})` : reading });
+              vitals.push({ label: name, value: asText(line?.note) ? `${reading} (${asText(line?.note)})` : reading });
             }
             return false;
           });
@@ -143,17 +155,17 @@ const FORM_SHORT: Record<string, string> = {
 
 /** "Tablet" as "Tab.", as on paper; a form it does not know is kept as it came. */
 export const medicineForm = (type: string | null | undefined): string => {
-  const text = (type ?? '').trim();
+  const text = asText(type).trim();
   return FORM_SHORT[text.toLowerCase().replace(/\.$/, '')] ?? text;
 };
 
 /** "1+0+1" as "1 + 0 + 1", so the times of day read apart. */
 export const formatDose = (dose: string | null | undefined): string =>
-  (dose ?? '').trim().replace(/\s*\+\s*/g, ' + ');
+  asText(dose).trim().replace(/\s*\+\s*/g, ' + ');
 
 /** The medicine's form and name on one line: "Tab. Napa 500 mg". */
 export const medicineTitle = (medicine: Pick<PrescriptionMedicine, 'type' | 'brand'> | null | undefined) =>
-  [medicineForm(medicine?.type), (medicine?.brand ?? '').trim()].filter(Boolean).join(' ');
+  [medicineForm(medicine?.type), asText(medicine?.brand).trim()].filter(Boolean).join(' ');
 
 const DAY = /^(\d{4})-(\d{2})-(\d{2})/;
 
@@ -165,8 +177,8 @@ export const ageOnDay = (
   dateOfBirth: string | null | undefined,
   day: string | null | undefined,
 ): { years: number; months: number } | null => {
-  const birth = DAY.exec((dateOfBirth ?? '').trim());
-  const on = DAY.exec((day ?? '').trim());
+  const birth = DAY.exec(asText(dateOfBirth).trim());
+  const on = DAY.exec(asText(day).trim());
   if (!birth || !on) return null;
   let months = (Number(on[1]) - Number(birth[1])) * 12 + (Number(on[2]) - Number(birth[2]));
   if (Number(on[3]) < Number(birth[3])) months -= 1;
@@ -176,9 +188,26 @@ export const ageOnDay = (
 
 /** "#2F45E5" at the given opacity — for the sheet's hairlines and tints, drawn from the theme. */
 export const withAlpha = (hex: string | null | undefined, alpha: number): string => {
-  const match = /^#?([0-9a-f]{6})$/i.exec((hex ?? '').trim());
+  const match = /^#?([0-9a-f]{6})$/i.exec(asText(hex).trim());
   if (!match) return hex ?? 'transparent';
   const value = parseInt(match[1], 16);
   // eslint-disable-next-line no-bitwise
   return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+};
+
+/** Any Bangla letter. */
+const BANGLA = /[ঀ-৿]/;
+
+/**
+ * The doctor's page-layout header split by script, as the pad prints it: the
+ * first column written in Bangla, and the first one that is not. A column is
+ * judged by its own text, not its place, so the layout's order does not matter.
+ */
+export const splitHeaderColumns = (columns: unknown): { bangla: string[]; english: string[] } => {
+  const list = (Array.isArray(columns) ? columns : [])
+    .map(column => (Array.isArray(column) ? column.map(asText).map(line => line.trim()).filter(Boolean) : []))
+    .filter(column => column.length > 0);
+  const bangla = list.find(column => BANGLA.test(column.join(' '))) ?? [];
+  const english = list.find(column => column !== bangla && !BANGLA.test(column.join(' '))) ?? [];
+  return { bangla, english };
 };

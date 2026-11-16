@@ -1,6 +1,12 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ExtractedLabReport, ExtractedPrescription, LabReportType, UploadedLabReport } from '@app/core';
+import {
+  ExtractedLabReport,
+  ExtractedPrescription,
+  LabReportType,
+  PrescriptionVisitType,
+  UploadedLabReport,
+} from '@app/core';
 import PatientReportIndex from '../screens/patient/reports/PatientReportIndex';
 import VisitPrescriptionScreen from '../screens/patient/reports/VisitPrescriptionScreen';
 import FileViewerScreen, { FileViewerParams } from '../screens/common/fileViewer/FileViewerScreen';
@@ -31,6 +37,8 @@ export type ReportsStackParamList = {
     title?: string;
     isUploaded?: boolean;
     sourceHospitalName?: string;
+    /** The list's visit type — the print data the sheet is drawn from has none. */
+    visitType?: PrescriptionVisitType;
   };
   /** An uploaded document or a test report PDF, drawn in the app. */
   FileViewer: FileViewerParams;

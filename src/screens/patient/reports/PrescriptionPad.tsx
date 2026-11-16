@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { PrescriptionDose, PrescriptionMedicine, PrescriptionSection } from '@app/core';
 import { AppLightTheme, fontFamilies } from '@app/ui';
-import { PadVital, formatDose, medicineTitle, withAlpha } from './prescriptionPadUi';
+import { Code128Barcode } from '../../../components/Code128Barcode';
+import { PadVital, asText, formatDose, medicineTitle, withAlpha } from './prescriptionPadUi';
 
 /**
  * A visit prescription drawn as the printed pad a patient is handed: the
@@ -36,40 +37,98 @@ export const PadPaper = ({ children }: { children: ReactNode }) => (
   <View style={styles.paper}>{children}</View>
 );
 
-/** Who wrote it, ruled off underneath. */
-export const PadLetterhead = ({ title, subtitle }: { title: string; subtitle?: string }) => (
-  <View style={styles.letterhead}>
-    <View style={styles.letterheadMain}>
-      <Text selectable style={styles.doctor}>
-        {title}
+/** The hospital's name across the top of the sheet. */
+export const PadHospitalName = ({ name }: { name?: string }) => {
+  const text = asText(name).trim();
+  if (!text) return null;
+  return (
+    <View style={styles.hospitalTop}>
+      <Text selectable style={styles.hospitalTopName}>
+        {text}
       </Text>
-      {subtitle ? <Text style={styles.doctorMeta}>{subtitle}</Text> : null}
     </View>
-  </View>
-);
+  );
+};
+
+/** One side of the letterhead: the doctor's name, then degrees, designation, chamber. */
+const DoctorBlock = ({ lines, align }: { lines: string[]; align: 'left' | 'right' }) => {
+  const [name, ...rest] = (lines ?? []).map(asText).filter(Boolean);
+  if (!name) return null;
+  const alignStyle = align === 'right' ? styles.alignRight : undefined;
+  return (
+    <View style={styles.doctorBlock}>
+      <Text selectable style={[styles.doctor, alignStyle]}>
+        {name}
+      </Text>
+      {rest.map((line, index) => (
+        <Text
+          key={`${line}-${index}`}
+          selectable
+          style={[
+            styles.doctorLine,
+            // The last line — the chamber — reads as the strongest after the name.
+            index === rest.length - 1 && rest.length > 1 ? styles.doctorLineStrong : undefined,
+            alignStyle,
+          ]}
+        >
+          {line}
+        </Text>
+      ))}
+    </View>
+  );
+};
+
+/**
+ * Who wrote it, as the printed pad sets it out: the doctor in Bangla on the
+ * left and in English on the right (from the page layout's header), ruled off
+ * underneath. With no header, the name and department the prescription carries.
+ */
+export const PadLetterhead = ({
+  english,
+  bangla,
+  fallbackTitle,
+  fallbackSubtitle,
+}: {
+  english?: string[];
+  bangla?: string[];
+  fallbackTitle?: string;
+  fallbackSubtitle?: string;
+}) => {
+  const bn = (bangla ?? []).map(asText).filter(Boolean);
+  const en = (english ?? []).map(asText).filter(Boolean);
+  const right = en.length ? en : [asText(fallbackTitle), asText(fallbackSubtitle)].filter(Boolean);
+  if (!bn.length && !right.length) return null;
+  return (
+    <View style={styles.letterhead}>
+      {bn.length ? <DoctorBlock lines={bn} align="left" /> : null}
+      {right.length ? <DoctorBlock lines={right} align={bn.length ? 'right' : 'left'} /> : null}
+    </View>
+  );
+};
 
 export interface PadField {
   label: string;
   value?: string | null;
-  /** Its share of the row. */
-  flex?: number;
 }
 
-/** The form lines under the letterhead — "Name: ……  Age: ……" — a blank line where a value is missing. */
+/**
+ * The patient on one or two lines — "Name: …  Age: …  Sex: …  Date: …" —
+ * each part only when it has a value.
+ */
 export const PadPatient = ({ rows }: { rows: PadField[][] }) => {
-  const shown = (rows ?? []).filter(row => (row ?? []).length > 0);
+  const shown = (rows ?? [])
+    .map(row => (row ?? []).filter(field => asText(field?.value).trim()))
+    .filter(row => row.length > 0);
   if (!shown.length) return null;
   return (
     <View style={styles.patient}>
       {shown.map((row, rowIndex) => (
-        <View key={rowIndex} style={[styles.fieldRow, rowIndex > 0 ? styles.fieldRowGap : undefined]}>
-          {(row ?? []).map((field, fieldIndex) => (
-            <View key={`${field?.label ?? ''}-${fieldIndex}`} style={[styles.field, { flex: field?.flex ?? 1 }]}>
-              <Text style={styles.fieldLabel}>{`${field?.label ?? ''}:`}</Text>
-              <Text selectable numberOfLines={1} style={styles.fieldValue}>
-                {field?.value ?? ''}
-              </Text>
-            </View>
+        <View key={rowIndex} style={[styles.patientRow, rowIndex > 0 ? styles.patientRowGap : undefined]}>
+          {row.map((field, fieldIndex) => (
+            <Text key={`${asText(field?.label)}-${fieldIndex}`} selectable style={styles.patientPair}>
+              <Text style={styles.patientLabel}>{`${asText(field?.label)}: `}</Text>
+              <Text style={styles.patientValue}>{asText(field?.value).trim()}</Text>
+            </Text>
           ))}
         </View>
       ))}
@@ -128,9 +187,9 @@ export const PadVitals = ({ vitals, inline }: { vitals: PadVital[]; inline?: boo
       <Heading icon="heart-pulse">{t('reports.pad.vitals')}</Heading>
       <View style={inline ? styles.vitalsInline : undefined}>
         {(vitals ?? []).map((vital, index) => (
-          <Text key={`${vital?.label ?? ''}-${index}`} selectable style={styles.vital}>
-            <Text style={styles.vitalLabel}>{`${vital?.label ?? ''}: `}</Text>
-            <Text style={styles.vitalValue}>{vital?.value}</Text>
+          <Text key={`${asText(vital?.label)}-${index}`} selectable style={styles.vital}>
+            <Text style={styles.vitalLabel}>{`${asText(vital?.label)}: `}</Text>
+            <Text style={styles.vitalValue}>{asText(vital?.value)}</Text>
           </Text>
         ))}
       </View>
@@ -143,16 +202,16 @@ export const PadSection = ({ section }: { section: PrescriptionSection }) => {
   const { t } = useTranslation();
   return (
     <View style={styles.block}>
-      <Heading icon={SECTION_ICON[section?.key ?? '']}>{section?.label}</Heading>
+      <Heading icon={SECTION_ICON[asText(section?.key)]}>{asText(section?.label)}</Heading>
       {(section?.groups ?? []).map((group, groupIndex) => (
         <View key={groupIndex} style={groupIndex > 0 ? styles.groupGap : undefined}>
-          {group?.groupName ? <Text style={styles.groupName}>{group?.groupName}</Text> : null}
+          {asText(group?.groupName) ? <Text style={styles.groupName}>{asText(group?.groupName)}</Text> : null}
           {(group?.lines ?? []).map((line, lineIndex) => (
             <View key={lineIndex} style={styles.line}>
               <View style={styles.bullet} />
               <Text selectable style={styles.lineText}>
-                {line?.text}
-                {line?.note ? <Text style={styles.lineNote}>{` (${line?.note ?? ''})`}</Text> : null}
+                {asText(line?.text)}
+                {asText(line?.note) ? <Text style={styles.lineNote}>{` (${asText(line?.note)})`}</Text> : null}
                 {line?.isUrgent ? <Text style={styles.urgent}>{`  ${t('reports.urgent')}`}</Text> : null}
               </Text>
             </View>
@@ -180,7 +239,7 @@ const DoseLine = ({
   const { t } = useTranslation();
   const amount = formatDose(dose?.dose);
   const duration = [dose?.durationValue, dose?.durationUnit]
-    .map(part => (part ?? '').trim())
+    .map(part => asText(part).trim())
     .filter(Boolean)
     .join(' ');
 
@@ -188,7 +247,7 @@ const DoseLine = ({
     <View style={styles.doseLine}>
       {isThen ? <Text style={styles.then}>{t('reports.pad.then')}</Text> : null}
       <Text style={styles.doseAmount}>{amount || '—'}</Text>
-      {dose?.note ? <Text style={styles.doseNote}>{dose?.note}</Text> : null}
+      {asText(dose?.note) ? <Text style={styles.doseNote}>{asText(dose?.note)}</Text> : null}
       {isContinue ? (
         <Text style={styles.continue}>{t('reports.continue')}</Text>
       ) : duration ? (
@@ -206,7 +265,7 @@ const MedicineRow = ({ medicine, index }: { medicine: PrescriptionMedicine; inde
   const isMulti = (medicine?.multiDose?.length ?? 0) > 0;
   const doses: PrescriptionDose[] = isMulti ? medicine?.multiDose ?? [] : [medicine];
   const subtitle = [medicine?.generic, medicine?.route]
-    .map(part => (part ?? '').trim())
+    .map(part => asText(part).trim())
     .filter(Boolean)
     .join(' · ');
 
@@ -235,12 +294,21 @@ const MedicineRow = ({ medicine, index }: { medicine: PrescriptionMedicine; inde
 
 /** ℞ and the medicines under it. */
 export const PadRx = ({ medicines }: { medicines: PrescriptionMedicine[] }) => {
+  const { t } = useTranslation();
   if (!medicines?.length) return null;
+  const count = medicines?.length ?? 0;
   return (
     <View style={styles.rxBlock}>
-      <Text style={styles.rx}>
-        R<Text style={styles.rxSmall}>x</Text>
-      </Text>
+      {/* The count sat in the footer until the barcode took that line (2026-11-16). */}
+      <View style={styles.rxHead}>
+        <Text style={styles.rx}>
+          R<Text style={styles.rxSmall}>x</Text>
+        </Text>
+        <View style={styles.footerCount}>
+          <Icon name="pill" size={14} color={MUTED} />
+          <Text style={styles.footerText}>{t('reports.medicineCount', { count })}</Text>
+        </View>
+      </View>
       {(medicines ?? []).map((medicine, index) => (
         <View key={index}>
           {index > 0 ? <View style={styles.medicineDivider} /> : null}
@@ -263,7 +331,7 @@ export const PadSignature = ({
   lines?: string[];
 }) => {
   if (!name) return null;
-  const extra = (lines ?? []).filter(line => line && line !== name && line !== meta);
+  const extra = (lines ?? []).map(asText).filter(line => line && line !== name && line !== meta);
   return (
     <View style={styles.signature}>
       <View style={styles.signatureLine} />
@@ -279,24 +347,78 @@ export const PadSignature = ({
 };
 
 /**
- * The foot: the hospital's own line (its layout's footer, centred), then the
- * prescription number and how many medicines, under a rule in the brand colour.
+ * The foot of the pad: the hospital's address on the left and the doctor's
+ * visiting hours on the right, the hospital's own line under them, then the
+ * prescription number as a CODE 128 barcode — what the pharmacy and billing
+ * desks scan — on a line of its own.
  */
 export const PadFooter = ({
   code,
-  count,
   lines,
+  addressLines,
+  hours,
 }: {
   code?: string;
-  count: number;
+  // count: number; — off (2026-11-16): the count is drawn beside "Rx" now.
+  /** The layout's footer band — the hospital's own line. */
   lines?: string[];
+  /** The hospital's address (and tagline), from the page layout. */
+  addressLines?: string[];
+  /** The doctor's visiting hours, from the page layout's notice. */
+  hours?: string;
 }) => {
   const { t } = useTranslation();
-  const note = (lines ?? []).filter(Boolean);
-  if (!code && !count && !note.length) return null;
+  const note = (lines ?? []).map(asText).filter(Boolean);
+  const address = (addressLines ?? []).map(asText).filter(Boolean);
+  const visiting = asText(hours).trim();
+  const rxCode = asText(code).trim();
+  if (!rxCode && !note.length && !address.length && !visiting) return null;
   return (
     <View style={styles.footer}>
+      {address.length || visiting ? (
+        <View style={styles.footerInfo}>
+          <View style={styles.footerAddress}>
+            {address.map((line, index) => (
+              <Text
+                key={`${line}-${index}`}
+                selectable
+                style={index === 0 ? styles.footerAddressMain : styles.footerAddressLine}
+              >
+                {line}
+              </Text>
+            ))}
+          </View>
+          {visiting ? (
+            <View style={styles.footerHours}>
+              <Icon name="clock-outline" size={13} color={BRAND} />
+              <Text selectable style={styles.footerHoursText}>
+                {visiting}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       {note.length ? <Text style={styles.footerNote}>{note.join('\n')}</Text> : null}
+      {rxCode ? (
+        <View style={styles.footerBarcode}>
+          <Code128Barcode
+            value={rxCode}
+            height={28}
+            align="center"
+            color={INK}
+            accessibilityLabel={`${t('reports.pad.rxNo')} ${rxCode}`}
+            // A code CODE 128 cannot draw, or too long to fit, falls back to the text.
+            fallback={
+              <Text selectable numberOfLines={1} style={[styles.footerText, styles.footerCodeText]}>
+                {`${t('reports.pad.rxNo')} ${rxCode}`}
+              </Text>
+            }
+          />
+        </View>
+      ) : null}
+      {/* Off (2026-11-16): "Rx No. {code}" as text beside the medicine count. The
+          barcode above carries the code now, on a line of its own so it is wide
+          enough to scan; the count moved up beside "Rx".
       {code || count > 0 ? (
         <View style={styles.footerRow}>
           <View style={styles.footerCode}>
@@ -313,6 +435,7 @@ export const PadFooter = ({
           ) : null}
         </View>
       ) : null}
+      */}
     </View>
   );
 };
@@ -337,66 +460,84 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
 
+  hospitalTop: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: RULE,
+  },
+  hospitalTopName: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 14,
+    lineHeight: 18.5,
+    letterSpacing: 0.3,
+    color: BRAND,
+    textAlign: 'center',
+  },
   letterhead: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
     borderBottomWidth: 2,
     borderBottomColor: BRAND,
   },
-  letterheadMain: {
+  doctorBlock: {
     flex: 1,
     minWidth: 0,
   },
   doctor: {
     fontFamily: fontFamilies.bold,
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 13.5,
+    lineHeight: 18,
     color: BRAND,
   },
-  doctorMeta: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 12.5,
-    lineHeight: 17,
-    marginTop: 2,
+  doctorLine: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 1,
     color: MUTED,
+  },
+  doctorLineStrong: {
+    fontFamily: fontFamilies.semibold,
+    color: INK,
+  },
+  alignRight: {
+    textAlign: 'right',
   },
 
   patient: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: RULE,
   },
-  fieldRow: {
+  patientRow: {
     flexDirection: 'row',
-    gap: 14,
+    flexWrap: 'wrap',
+    columnGap: 14,
+    rowGap: 2,
   },
-  fieldRowGap: {
-    marginTop: 10,
+  patientRowGap: {
+    marginTop: 3,
   },
-  field: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 5,
-    minWidth: 0,
-    paddingBottom: 3,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: MUTED,
-  },
-  fieldLabel: {
-    fontFamily: fontFamilies.regular,
+  patientPair: {
     fontSize: 11.5,
+    lineHeight: 16.5,
+  },
+  patientLabel: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 10.5,
     color: MUTED,
   },
-  fieldValue: {
-    flex: 1,
+  patientValue: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 13,
+    fontSize: 11.5,
     color: INK,
   },
 
@@ -444,7 +585,7 @@ const styles = StyleSheet.create({
   heading: {
     flexShrink: 1,
     fontFamily: fontFamilies.bold,
-    fontSize: 10.5,
+    fontSize: 9.5,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     color: BRAND,
@@ -455,17 +596,17 @@ const styles = StyleSheet.create({
     columnGap: 14,
   },
   vital: {
-    fontSize: 12.5,
-    lineHeight: 19,
+    fontSize: 11.5,
+    lineHeight: 17,
   },
   vitalLabel: {
     fontFamily: fontFamilies.regular,
-    fontSize: 12,
+    fontSize: 11,
     color: MUTED,
   },
   vitalValue: {
     fontFamily: fontFamilies.bold,
-    fontSize: 12.5,
+    fontSize: 11.5,
     color: INK,
   },
   groupGap: {
@@ -473,7 +614,7 @@ const styles = StyleSheet.create({
   },
   groupName: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 12,
+    fontSize: 11,
     color: INK,
     marginBottom: 3,
   },
@@ -493,33 +634,39 @@ const styles = StyleSheet.create({
   lineText: {
     flex: 1,
     fontFamily: fontFamilies.regular,
-    fontSize: 12.5,
-    lineHeight: 19,
+    fontSize: 11.5,
+    lineHeight: 17,
     color: INK,
   },
   lineNote: {
-    fontSize: 11.5,
+    fontSize: 10.5,
     color: MUTED,
   },
   urgent: {
     fontFamily: fontFamilies.bold,
-    fontSize: 10.5,
+    fontSize: 9.5,
     color: PAPER.error,
   },
 
   rxBlock: {
     paddingTop: 10,
   },
+  rxHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   rx: {
     fontFamily: SERIF,
     fontStyle: 'italic',
     fontWeight: '700',
-    fontSize: 30,
-    lineHeight: 34,
+    fontSize: 26,
+    lineHeight: 30,
     color: BRAND,
   },
   rxSmall: {
-    fontSize: 19,
+    fontSize: 16,
   },
   medicine: {
     flexDirection: 'row',
@@ -534,8 +681,8 @@ const styles = StyleSheet.create({
   medicineNumber: {
     width: 20,
     fontFamily: fontFamilies.bold,
-    fontSize: 13.5,
-    lineHeight: 19,
+    fontSize: 12.5,
+    lineHeight: 17,
     color: BRAND,
   },
   medicineBody: {
@@ -544,20 +691,20 @@ const styles = StyleSheet.create({
   },
   medicineTitle: {
     fontFamily: fontFamilies.bold,
-    fontSize: 14,
-    lineHeight: 19,
+    fontSize: 12.5,
+    lineHeight: 17,
     color: INK,
   },
   mixed: {
     fontFamily: fontFamilies.bold,
-    fontSize: 10,
+    fontSize: 9,
     color: MIXED_AMBER,
   },
   medicineSubtitle: {
     fontFamily: fontFamilies.regular,
     fontStyle: 'italic',
-    fontSize: 11.5,
-    lineHeight: 16,
+    fontSize: 10.5,
+    lineHeight: 14.5,
     color: MUTED,
   },
   doseLine: {
@@ -570,26 +717,26 @@ const styles = StyleSheet.create({
   },
   doseAmount: {
     fontFamily: fontFamilies.bold,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16.5,
     letterSpacing: 0.3,
     color: INK,
   },
   doseNote: {
     fontFamily: fontFamilies.regular,
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 16.5,
     color: INK,
   },
   then: {
     fontFamily: fontFamilies.regular,
     fontStyle: 'italic',
-    fontSize: 12,
+    fontSize: 11,
     color: MUTED,
   },
   continue: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 12.5,
+    fontSize: 11.5,
     color: CONTINUE_GREEN,
   },
   duration: {
@@ -599,8 +746,8 @@ const styles = StyleSheet.create({
   },
   durationText: {
     fontFamily: fontFamilies.medium,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 16.5,
     color: MUTED,
   },
 
@@ -619,13 +766,13 @@ const styles = StyleSheet.create({
   },
   signatureName: {
     fontFamily: fontFamilies.bold,
-    fontSize: 12.5,
+    fontSize: 11.5,
     color: INK,
     textAlign: 'right',
   },
   signatureMeta: {
     fontFamily: fontFamilies.regular,
-    fontSize: 10.5,
+    fontSize: 10,
     color: MUTED,
     textAlign: 'right',
     marginTop: 1,
@@ -637,13 +784,56 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderTopColor: BRAND,
   },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 8,
+  },
+  footerAddress: {
+    flex: 1,
+    minWidth: 0,
+  },
+  footerAddressMain: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 10,
+    lineHeight: 14,
+    color: INK,
+  },
+  footerAddressLine: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 9.5,
+    lineHeight: 13.5,
+    color: MUTED,
+  },
+  footerHours: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 4,
+    maxWidth: '48%',
+  },
+  footerHoursText: {
+    flexShrink: 1,
+    fontFamily: fontFamilies.medium,
+    fontSize: 9.5,
+    lineHeight: 13.5,
+    color: INK,
+    textAlign: 'right',
+  },
   footerNote: {
     fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 16,
     color: INK,
     textAlign: 'center',
     marginBottom: 6,
+  },
+  footerBarcode: {
+    alignSelf: 'stretch',
+    marginTop: 2,
+  },
+  footerCodeText: {
+    textAlign: 'center',
   },
   footerRow: {
     flexDirection: 'row',
@@ -666,7 +856,7 @@ const styles = StyleSheet.create({
   footerText: {
     flexShrink: 1,
     fontFamily: fontFamilies.medium,
-    fontSize: 11.5,
+    fontSize: 10.5,
     color: MUTED,
   },
 
@@ -679,8 +869,8 @@ const styles = StyleSheet.create({
   emptyText: {
     flex: 1,
     fontFamily: fontFamilies.regular,
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 17,
     color: MUTED,
   },
 });

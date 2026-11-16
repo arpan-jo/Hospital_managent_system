@@ -5,7 +5,6 @@ import { MedicalRecordRepository, parsePacsViewerLink } from './MedicalRecordRep
 
 jest.mock('../network/apiRequest', () => ({ __esModule: true, default: jest.fn() }));
 jest.mock('axios', () => ({ __esModule: true, default: { get: jest.fn() } }));
-jest.mock('./FileRepository', () => ({ __esModule: true, default: { upload: jest.fn() } }));
 
 const request = apiRequest as jest.MockedFunction<typeof apiRequest>;
 
@@ -192,72 +191,200 @@ describe('MedicalRecordRepository.getPrescriptionPrintData', () => {
 
   /** The shape the live API answered for one prescription (trimmed). */
   const printData = {
-    prescription: { id: 2315, accountId: 20401, branchId: 40709, doctorName: 'Khairul Bashar' },
+    prescription: {
+      id: 2315,
+      accountId: 20401,
+      branchId: 40709,
+      prescriptionCode: 'PRS-20261017-000000001',
+      patientCode: 'REG-2026-0107',
+      patientName: 'Al Amin',
+      dateOfBirth: '1997-03-12',
+      departmentName: 'Gynaecology & Obstetrics',
+      doctorName: 'Khairul Bashar',
+      createdAt: '2026-10-17T11:27:10.59',
+      sourceHospitalName: null,
+      sourceDate: null,
+    },
     isPatientUpload: false,
     patient: { patientName: 'Al Amin', mobile: '01711000000', age: '29', gender: 'Male', address: '', patientId: 'REG-2026-0107' },
-    hospital: { logoUrl: null, name: 'Another Organisation', address: 'Elsewhere', officeName: 'HQ' },
+    hospital: { logoUrl: null, name: 'Marie Stopes Bangladesh', address: 'HQ', officeName: 'MSB HQ' },
     layout: {
-      header: { enabled: true, contents: ['<p>Dr. Someone Else</p><p>MBBS</p>'] },
+      hospitalInfo: {
+        enabled: true,
+        content: '<p><b><strong>Akij Mediplex Limited</strong></b></p><p><span>House No, 02, Road 05 Pallabi Rd, Dhaka 1216</span></p>',
+      },
+      header: {
+        enabled: true,
+        contents: ['<p>Dr. Tanjim Akter Tanha</p><p>MBBS, FCPS</p>', '<p>ডা. তানজিম আক্তার তানহা</p>', ''],
+      },
       footer: { enabled: true, contents: ['<p style="text-align: center;"><b>আপনার সুস্থতা ও নিরাপদ চিকিৎসার বিশ্বস্ত ঠিকানা।</b></p>', '', ''] },
-      notice: { enabled: true, text: 'Another doctor\'s hours' },
+      notice: { enabled: true, text: 'রোগী দেখার সময়: সকাল ১০টা থেকে সন্ধ্যা ৭টা পর্যন্ত' },
     },
     leftSections: [{ key: 'physicalExamination', label: 'Physical Examination' }, { key: 'diagnosis', label: 'Diagnosis' }],
     rightSections: [{ key: 'rx', label: 'Rx' }, { key: 'followUp', label: 'Follow-up' }, { key: 'advice', label: 'Advice' }],
-    sectionData: { rx: [] },
+    sectionData: {
+      rx: [
+        { type: 'Tablet', generic: 'Amiodarone Hydrochloride', brand: 'Pacet [100 mg]', route: 'Oral', dose: '০+০+১', durationValue: '2', durationUnit: 'Days', isContinue: false, isMixed: false, note: 'খাবারের আগে' },
+      ],
+      physicalExamination: { __vitals: { 'Pulse (R)': '33' }, __groups: [{ id: '__vitals', name: 'Vitals' }] },
+    },
     signatoryHtml: '',
     signatureImageId: '',
   };
 
-  it("asks under the patient's own registration's account and branch", async () => {
-    request.mockResolvedValueOnce({ accountId: 20401, branchId: 40709 }).mockResolvedValueOnce(printData);
+  it('asks under the static live Mediplex account and branch, and reads the whole sheet from the one answer', async () => {
+    request.mockResolvedValueOnce(printData);
 
-    const data = await MedicalRecordRepository.getPrescriptionPrintData(2315, 2367);
+    const data = await MedicalRecordRepository.getPrescriptionPrintData(2315);
 
-    expect(request.mock.calls?.[0]?.[0]).toMatchObject({ url: `${ENDPOINTS.patientRegistration}/2367`, method: 'GET' });
-    expect(request.mock.calls?.[1]?.[0]).toMatchObject({
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls?.[0]?.[0]).toMatchObject({
       url: ENDPOINTS.prescriptionPrintData,
       method: 'GET',
-      params: { accountId: 20401, branchId: 40709, prescriptionId: 2315 },
+      params: { accountId: 20402, branchId: 40710, prescriptionId: 2315 },
     });
-    expect(data).toEqual({
+    expect(request.mock.calls?.[0]?.[0]?.params).not.toHaveProperty('officeId');
+
+    expect(data?.prescription).toMatchObject({
+      id: 2315,
+      code: 'PRS-20261017-000000001',
+      prescribedAt: '2026-10-17T11:27:10.59',
+      departmentName: 'Gynaecology & Obstetrics',
+      doctorName: 'Khairul Bashar',
+      patientName: 'Al Amin',
+      patientCode: 'REG-2026-0107',
+      isUploaded: false,
+      sourceHospitalName: '',
+      medicineCount: 1,
+    });
+    expect(data?.prescription?.medicines?.map(medicine => medicine?.brand)).toEqual(['Pacet [100 mg]']);
+    expect(data?.prescription?.sections).toEqual([
+      {
+        key: 'physicalExamination',
+        label: 'Physical Examination',
+        groups: [{ groupName: 'Vitals', lines: [{ text: 'Pulse (R): 33', note: '', isUrgent: false }] }],
+      },
+    ]);
+
+    expect(data).toMatchObject({
       isPatientUpload: false,
-      patient: { name: 'Al Amin', mobile: '01711000000', age: '29', gender: 'Male', address: '', patientId: 'REG-2026-0107' },
+      patient: {
+        name: 'Al Amin',
+        mobile: '01711000000',
+        age: '29',
+        dateOfBirth: '1997-03-12',
+        gender: 'Male',
+        address: '',
+        patientId: 'REG-2026-0107',
+      },
       leftSectionKeys: ['physicalExamination', 'diagnosis'],
       rightSectionKeys: ['rx', 'followUp', 'advice'],
+      hospitalLines: ['Akij Mediplex Limited', 'House No, 02, Road 05 Pallabi Rd, Dhaka 1216'],
+      headerColumns: [['Dr. Tanjim Akter Tanha', 'MBBS, FCPS'], ['ডা. তানজিম আক্তার তানহা']],
+      notice: 'রোগী দেখার সময়: সকাল ১০টা থেকে সন্ধ্যা ৭টা পর্যন্ত',
       footerLines: ['আপনার সুস্থতা ও নিরাপদ চিকিৎসার বিশ্বস্ত ঠিকানা।'],
       signatoryLines: [],
     });
   });
 
-  it('falls back to the static live Mediplex pair when the registration cannot be read', async () => {
-    request.mockRejectedValueOnce(new Error('Network Error')).mockResolvedValueOnce(printData);
+  it('reads the sections out of the JSON copy when the parsed ones are missing', async () => {
+    request.mockResolvedValueOnce({
+      ...printData,
+      sectionData: null,
+      prescription: { ...printData.prescription, sectionDataJson: JSON.stringify(printData.sectionData) },
+    });
 
-    await MedicalRecordRepository.getPrescriptionPrintData(2315, 2367);
+    const data = await MedicalRecordRepository.getPrescriptionPrintData(2315);
 
-    expect(request.mock.calls?.[1]?.[0]).toMatchObject({
-      params: { accountId: 20402, branchId: 40710, prescriptionId: 2315 },
+    expect(data?.prescription?.medicines?.length).toBe(1);
+    expect(data?.prescription?.sections?.[0]?.key).toBe('physicalExamination');
+  });
+
+  it('leaves out a band the layout switches off', async () => {
+    request.mockResolvedValueOnce({
+      ...printData,
+      layout: {
+        hospitalInfo: { ...printData.layout.hospitalInfo, enabled: false },
+        header: { ...printData.layout.header, enabled: false },
+        footer: { ...printData.layout.footer, enabled: false },
+        notice: { ...printData.layout.notice, enabled: false },
+      },
+    });
+
+    await expect(MedicalRecordRepository.getPrescriptionPrintData(2315)).resolves.toMatchObject({
+      hospitalLines: [],
+      headerColumns: [],
+      notice: '',
+      footerLines: [],
     });
   });
 
-  it('does not read a registration it was not given, and copes with an empty answer', async () => {
+  it('copes with an empty answer', async () => {
     request.mockResolvedValueOnce({});
 
-    const data = await MedicalRecordRepository.getPrescriptionPrintData(2315, null);
+    const data = await MedicalRecordRepository.getPrescriptionPrintData(2315);
 
-    expect(request).toHaveBeenCalledTimes(1);
-    expect(request.mock.calls?.[0]?.[0]).toMatchObject({ params: { accountId: 20402, branchId: 40710 } });
-    expect(data).toEqual({
+    expect(data).toMatchObject({
       isPatientUpload: false,
-      patient: { name: '', mobile: '', age: '', gender: '', address: '', patientId: '' },
+      patient: { name: '', mobile: '', age: '', dateOfBirth: '', gender: '', address: '', patientId: '' },
       leftSectionKeys: [],
       rightSectionKeys: [],
+      hospitalLines: [],
+      headerColumns: [],
+      notice: '',
       footerLines: [],
       signatoryLines: [],
     });
+    expect(data?.prescription).toMatchObject({ id: 0, code: '', medicines: [], sections: [], medicineCount: 0 });
   });
 
-  it('fails on an answer that is not the print data', async () => {
-    request.mockResolvedValueOnce({ accountId: 20401, branchId: 40709 }).mockResolvedValueOnce([]);
-    await expect(MedicalRecordRepository.getPrescriptionPrintData(2315, 2367)).rejects.toThrow();
+  it('fails on an answer that is not the print data, and passes a 404 on', async () => {
+    request.mockResolvedValueOnce([]);
+    await expect(MedicalRecordRepository.getPrescriptionPrintData(2315)).rejects.toThrow();
+
+    request.mockRejectedValueOnce(Object.assign(new Error('Not Found'), { status: 404 }));
+    await expect(MedicalRecordRepository.getPrescriptionPrintData(2315)).rejects.toThrow('Not Found');
+  });
+
+  it('reads an answer of the wrong shape as missing, never as "[object Object]", and does not throw', async () => {
+    request.mockResolvedValueOnce({
+      prescription: { id: 'x', prescriptionCode: { a: 1 }, createdAt: 123, doctorName: ['Dr'], sectionDataJson: '{not json' },
+      isPatientUpload: 'yes',
+      patient: null,
+      layout: {
+        header: { enabled: true, contents: [null, 5, { x: 1 }, '<p>Dr. X</p>'] },
+        footer: 'not a band',
+        notice: { text: ['a'] },
+        hospitalInfo: { content: 42 },
+      },
+      leftSections: 'nope',
+      rightSections: [null, { key: 3 }, { key: { a: 1 } }],
+      sectionData: 7,
+      signatoryHtml: {},
+    });
+
+    const data = await MedicalRecordRepository.getPrescriptionPrintData(2315);
+
+    expect(JSON.stringify(data)).not.toContain('[object Object]');
+    expect(data?.prescription).toMatchObject({
+      id: 0,
+      code: '',
+      prescribedAt: '123',
+      doctorName: '',
+      isUploaded: false,
+      medicines: [],
+      sections: [],
+    });
+    expect(data).toMatchObject({
+      isPatientUpload: false,
+      patient: { name: '', mobile: '', age: '', dateOfBirth: '', gender: '', address: '', patientId: '' },
+      leftSectionKeys: [],
+      rightSectionKeys: ['3'],
+      headerColumns: [['5'], ['Dr. X']],
+      hospitalLines: ['42'],
+      notice: '',
+      footerLines: [],
+      signatoryLines: [],
+    });
   });
 });

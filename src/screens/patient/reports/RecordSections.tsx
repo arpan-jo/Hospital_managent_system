@@ -461,6 +461,7 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal 
             title: item?.code,
             isUploaded: !!item?.isUploaded,
             sourceHospitalName: item?.sourceHospitalName ?? '',
+            visitType: item?.visitType ?? 'opd',
           })
         }
         actionOf={actionOf}

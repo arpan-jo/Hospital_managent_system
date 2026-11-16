@@ -21,7 +21,10 @@ import {
   readFrameInfo,
 } from '../utils/dicomPixels';
 import { htmlToLines } from '../utils/htmlText';
-import { PatientRepository } from './PatientRepository';
+import {
+  flattenSectionData,
+  medicinesFromSectionData,
+} from '../utils/prescriptionSectionData';
 import {
   PortalPrescription,
   toPortalPrescription,
@@ -179,19 +182,24 @@ export interface PrescriptionDetail extends PortalPrescription {
 }
 
 /**
- * What GET hms/Prescription/GetPrescriptionPrintData adds to the prescription —
- * only the parts that read true today. Its doctor header, notice and hospital
- * name are left out: on live they come from another doctor's page layout and
- * another organisation's account (the "wrong doctor on the PDF" backend bug).
+ * GET hms/Prescription/GetPrescriptionPrintData — the whole sheet from one call:
+ * the prescription itself (its medicines and sections flattened out of the raw
+ * sectionData, as the backend does for GetPrescription), and the doctor's page
+ * layout as text. Only hospital.name is left out: it is the tenant's account
+ * name, not the hospital the sheet prints (layout.hospitalInfo is that).
  */
 export interface PrescriptionPrintData {
+  /** The prescription as GetPrescription gave it — but for visitType and patientRegistrationId, which the print data does not carry. */
+  prescription: PrescriptionDetail;
   /** The patient uploaded the sheet (no HMS doctor). */
   isPatientUpload: boolean;
   patient: {
     name: string;
     mobile: string;
-    /** Whole years, as the server words it ("29"); '' when unknown. */
+    /** Whole years, as the server words it ("29") — the age today; '' when unknown. */
     age: string;
+    /** 'YYYY-MM-DD', for the age on the day it was written; '' when unknown. */
+    dateOfBirth: string;
     gender: string;
     address: string;
     patientId: string;
@@ -199,6 +207,12 @@ export interface PrescriptionPrintData {
   /** The doctor's own section setup, keys in order; the right column's "rx" is the medicines. */
   leftSectionKeys: string[];
   rightSectionKeys: string[];
+  /** The hospital band's lines (layout.hospitalInfo) — name, address, tagline. */
+  hospitalLines: string[];
+  /** The doctor's header band, one list of lines per column (English, Bangla…); empty columns dropped. */
+  headerColumns: string[][];
+  /** The notice under the header — the doctor's visiting hours; '' when off. */
+  notice: string;
   /** The footer band's lines, as text — the hospital's own line at the foot of the sheet. */
   footerLines: string[];
   /** The signatory block's lines, as text; none when the doctor has set none. */
@@ -209,31 +223,88 @@ const toText = (value: any): string => String(value ?? '').trim();
 const toNumber = (value: any): number => Number(value ?? 0) || 0;
 const toArray = (value: any): any[] => (Array.isArray(value) ? value : []);
 
+/**
+ * Print-data text: a string or a finite number, trimmed; anything else (an
+ * object, an array, null) reads as missing — never "[object Object]" on the sheet.
+ */
+const toPlain = (value: any): string =>
+  typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))
+    ? String(value).trim()
+    : '';
+
 const toSectionKeys = (raw: any): string[] =>
   toArray(raw)
-    .map(section => toText(section?.key))
+    .map(section => toPlain(section?.key))
     .filter(Boolean);
 
 /** A layout band's lines, every column's in turn; none when the band is switched off. */
 const toBandLines = (band: any): string[] =>
   band?.enabled === false
     ? []
-    : toArray(band?.contents).flatMap(content => htmlToLines(toText(content)));
+    : toArray(band?.contents).flatMap(content => htmlToLines(toPlain(content)));
+
+/** A layout band's columns, each as its lines; none when the band is off, and no empty column. */
+const toBandColumns = (band: any): string[][] =>
+  band?.enabled === false
+    ? []
+    : toArray(band?.contents)
+        .map(content => htmlToLines(toPlain(content)))
+        .filter(lines => lines.length > 0);
+
+/**
+ * The prescription read off the print data: its header, and the medicines and
+ * sections flattened out of the raw sectionData (or, failing that, its JSON copy).
+ */
+const toSheetPrescription = (raw: any): PrescriptionDetail => {
+  const head = raw?.prescription;
+  const sectionData = raw?.sectionData ?? head?.sectionDataJson;
+  const medicines = medicinesFromSectionData(sectionData);
+  return {
+    id: toNumber(head?.id),
+    code: toPlain(head?.prescriptionCode),
+    prescribedAt: toPlain(head?.createdAt),
+    departmentName: toPlain(head?.departmentName),
+    doctorName: toPlain(head?.doctorName),
+    // Not in the print data — the list the sheet was opened from says which visit.
+    visitType: 'opd',
+    medicineCount: medicines.length,
+    // Not in the print data either.
+    patientRegistrationId: 0,
+    patientName: toPlain(head?.patientName) || toPlain(raw?.patient?.patientName),
+    patientCode: toPlain(head?.patientCode) || toPlain(raw?.patient?.patientId),
+    isUploaded: raw?.isPatientUpload === true,
+    sourceHospitalName: toPlain(head?.sourceHospitalName),
+    sourceDate: toPlain(head?.sourceDate),
+    medicines,
+    sections: flattenSectionData(sectionData),
+  };
+};
 
 export const toPrescriptionPrintData = (raw: any): PrescriptionPrintData => ({
-  isPatientUpload: Boolean(raw?.isPatientUpload),
+  prescription: toSheetPrescription(raw),
+  isPatientUpload: raw?.isPatientUpload === true,
   patient: {
-    name: toText(raw?.patient?.patientName),
-    mobile: toText(raw?.patient?.mobile),
-    age: toText(raw?.patient?.age),
-    gender: toText(raw?.patient?.gender),
-    address: toText(raw?.patient?.address),
-    patientId: toText(raw?.patient?.patientId),
+    name: toPlain(raw?.patient?.patientName),
+    mobile: toPlain(raw?.patient?.mobile),
+    age: toPlain(raw?.patient?.age),
+    dateOfBirth: toPlain(raw?.prescription?.dateOfBirth).slice(0, 10),
+    gender: toPlain(raw?.patient?.gender),
+    address: toPlain(raw?.patient?.address),
+    patientId: toPlain(raw?.patient?.patientId),
   },
   leftSectionKeys: toSectionKeys(raw?.leftSections),
   rightSectionKeys: toSectionKeys(raw?.rightSections),
+  hospitalLines:
+    raw?.layout?.hospitalInfo?.enabled === false
+      ? []
+      : htmlToLines(toPlain(raw?.layout?.hospitalInfo?.content)),
+  headerColumns: toBandColumns(raw?.layout?.header),
+  notice:
+    raw?.layout?.notice?.enabled === false
+      ? ''
+      : htmlToLines(toPlain(raw?.layout?.notice?.text)).join(' '),
   footerLines: toBandLines(raw?.layout?.footer),
-  signatoryLines: htmlToLines(toText(raw?.signatoryHtml)),
+  signatoryLines: htmlToLines(toPlain(raw?.signatoryHtml)),
 });
 
 /** Who a record belongs to — every portal list row carries the same three fields. */
@@ -619,29 +690,20 @@ export const MedicalRecordRepository = {
 
   /**
    * The rest of what the printed sheet is drawn from (see PrescriptionPrintData).
-   * A staff-side route that wants the account and branch the prescription is
-   * under: read from the patient's own registration, the static live Mediplex
-   * pair when that cannot be read. 404 when they do not match the prescription.
+   * A staff-side route that wants the account and branch: the static live
+   * Mediplex values (MEDIPLEX_TENANT). 404 for a prescription under another
+   * tenant.
    */
   getPrescriptionPrintData: async (
     prescriptionId: number,
-    patientRegistrationId?: number | null,
   ): Promise<PrescriptionPrintData> => {
-    const tenant =
-      (await PatientRepository.getRegistrationTenant(
-        toNumber(patientRegistrationId),
-      ).catch((e: any) => {
-        console.log('getRegistrationTenant error ==>', e?.message);
-        return null;
-      })) ?? MEDIPLEX_TENANT;
-
     const response = await apiRequest<any>({
       url: ENDPOINTS.prescriptionPrintData,
       method: 'GET',
       baseUrl: API_URL,
       params: {
-        accountId: toNumber(tenant?.accountId),
-        branchId: toNumber(tenant?.branchId),
+        accountId: MEDIPLEX_TENANT.accountId,
+        branchId: MEDIPLEX_TENANT.branchId,
         prescriptionId: toNumber(prescriptionId),
       },
     });

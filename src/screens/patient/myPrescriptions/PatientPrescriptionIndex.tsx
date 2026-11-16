@@ -22,7 +22,7 @@ import {
   PatientPrescriptionRepository,
   PortalPrescription,
   PrescriptionAttachment,
-  formatLongDate,
+  // formatLongDate, // used only by the server-PDF preview, off for now (see openPrescription)
   getFileUrl,
   stripHonorific,
   useDownload,
@@ -37,7 +37,7 @@ import {
 } from '@app/ui';
 import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
-import { useMonthNames } from '../../../hooks/useMonthNames';
+// import { useMonthNames } from '../../../hooks/useMonthNames'; // server-PDF preview, off for now
 import { MyPrescriptionsStackParamList } from '../../../navigation/MyPrescriptionsStackNavigator';
 import AlarmSheet from './AlarmSheet';
 import PrescriptionCard from './PrescriptionCard';
@@ -48,9 +48,9 @@ import {
   ALL_MEMBERS,
   useMyPrescriptionsViewModel,
 } from './useMyPrescriptionsViewModel';
-import { prescriptionDay, prescriptionKindKey } from './prescriptionUi';
+// import { prescriptionDay, prescriptionKindKey } from './prescriptionUi'; // server-PDF preview, off for now
 
-/** My Prescriptions: every prescription on the account, each opened as its PDF. */
+/** My Prescriptions: every prescription on the account, each opened as the app's own sheet. */
 export const PatientPrescriptionIndex = observer(() => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -59,7 +59,7 @@ export const PatientPrescriptionIndex = observer(() => {
   const navigation =
     useNavigation<NativeStackNavigationProp<MyPrescriptionsStackParamList>>();
   const viewModel = useMyPrescriptionsViewModel();
-  const monthNames = useMonthNames();
+  // const monthNames = useMonthNames(); // server-PDF preview, off for now
   const { download } = useDownload();
   useFocusedStatusBar(theme.dark ? 'light-content' : 'dark-content');
 
@@ -71,32 +71,52 @@ export const PatientPrescriptionIndex = observer(() => {
   const [showToday, setShowToday] = useState(false);
   const [showAlarm, setShowAlarm] = useState(false);
 
-  /** The prescription itself is the PDF the server draws, as on the portal. */
+  /**
+   * View opens the prescription as the app's own sheet — the screen the Reports
+   * page opens (GetPrescription + GetPrescriptionPrintData). The list's own word
+   * on an upload goes along, as the detail call leaves it unset.
+   */
   const openPrescription = useCallback(
     (prescription: PortalPrescription) => {
       if (!prescription?.id) return;
-      const day = prescriptionDay(prescription?.prescribedAt);
-      navigation.navigate('FileViewer', {
-        url: PatientPrescriptionRepository.getPdfUrl(prescription.id),
-        filename: PatientPrescriptionRepository.getPdfFileName(
-          prescription?.code,
-        ),
-        title: t('myPrescriptions.preview'),
-        subtitle: [
-          prescription?.code,
-          prescription?.patientName,
-          day ? formatLongDate(day, monthNames) : '',
-          // "Uploaded" for the patient's own sheet, as its card says — never "OPD".
-          t(prescriptionKindKey(prescription)),
-        ]
-          .filter(Boolean)
-          .join(' · '),
-        canDownload: true,
-        fresh: true,
+      navigation.navigate('VisitPrescription', {
+        prescriptionId: prescription.id,
+        title: prescription?.code ?? '',
+        isUploaded: !!prescription?.isUploaded,
+        sourceHospitalName: prescription?.sourceHospitalName ?? '',
+        visitType: prescription?.visitType ?? 'opd',
       });
     },
-    [navigation, t, monthNames],
+    [navigation],
   );
+
+  // Off for now (2026-11-15): View opened the PDF the server draws, as on the
+  // portal. Uncomment this (and its imports above) to bring it back.
+  // const openPrescription = useCallback(
+  //   (prescription: PortalPrescription) => {
+  //     if (!prescription?.id) return;
+  //     const day = prescriptionDay(prescription?.prescribedAt);
+  //     navigation.navigate('FileViewer', {
+  //       url: PatientPrescriptionRepository.getPdfUrl(prescription.id),
+  //       filename: PatientPrescriptionRepository.getPdfFileName(
+  //         prescription?.code,
+  //       ),
+  //       title: t('myPrescriptions.preview'),
+  //       subtitle: [
+  //         prescription?.code,
+  //         prescription?.patientName,
+  //         day ? formatLongDate(day, monthNames) : '',
+  //         // "Uploaded" for the patient's own sheet, as its card says — never "OPD".
+  //         t(prescriptionKindKey(prescription)),
+  //       ]
+  //         .filter(Boolean)
+  //         .join(' · '),
+  //       canDownload: true,
+  //       fresh: true,
+  //     });
+  //   },
+  //   [navigation, t, monthNames],
+  // );
 
   const downloadPrescription = useCallback(
     async (prescription: PortalPrescription) => {

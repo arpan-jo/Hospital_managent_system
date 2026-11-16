@@ -5,6 +5,7 @@ import {
   formatDose,
   medicineForm,
   medicineTitle,
+  splitHeaderColumns,
   splitPadSections,
   takeVitals,
   withAlpha,
@@ -137,5 +138,20 @@ describe('prescriptionPadUi', () => {
     expect(left.map(s => s.key)).toEqual(['diagnosis']);
     expect(right.map(item => (item === 'rx' ? 'rx' : item.key))).toEqual(['rx', 'advice']);
     expect(arrangePadSections(undefined, { left: [], right: [] })).toEqual({ left: [], right: ['rx'] });
+  });
+
+  it("splits the doctor's header into its Bangla and English columns, whatever their order", () => {
+    const english = ['Dr. Tanjim Akter Tanha', 'MBBS, FCPS'];
+    const bangla = ['ডা. তানজিম আক্তার তানহা', 'এমবিবিএস, এফসিপিএস'];
+    expect(splitHeaderColumns([english, bangla, []])).toEqual({ bangla, english });
+    expect(splitHeaderColumns([bangla, english])).toEqual({ bangla, english });
+    expect(splitHeaderColumns([english])).toEqual({ bangla: [], english });
+    expect(splitHeaderColumns([bangla])).toEqual({ bangla, english: [] });
+  });
+
+  it('reads a header of the wrong shape as empty, keeping only text lines', () => {
+    expect(splitHeaderColumns(null)).toEqual({ bangla: [], english: [] });
+    expect(splitHeaderColumns('x')).toEqual({ bangla: [], english: [] });
+    expect(splitHeaderColumns([null, [' ', null, { a: 1 }, 'Dr. X ', 5]])).toEqual({ bangla: [], english: ['Dr. X', '5'] });
   });
 });

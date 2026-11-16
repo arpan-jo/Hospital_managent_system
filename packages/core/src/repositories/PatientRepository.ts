@@ -508,25 +508,6 @@ export const PatientRepository = {
   /** Uploads an image picked before the profile exists; returns its stored file id. */
   uploadPhoto: (file: UploadFile): Promise<string> => FileRepository.upload(file),
 
-  /**
-   * The account and branch a registration belongs to — what the few staff-side
-   * routes the app calls ask for. Null when it cannot be read or carries none.
-   */
-  getRegistrationTenant: async (
-    registrationId: number,
-  ): Promise<{ accountId: number; branchId: number } | null> => {
-    const id = Number(registrationId ?? 0) || 0;
-    if (id <= 0) return null;
-    const stored = await apiRequest<any>({
-      url: `${ENDPOINTS.patientRegistration}/${id}`,
-      method: 'GET',
-      baseUrl: API_URL,
-    });
-    const accountId = Number(stored?.accountId ?? 0) || 0;
-    const branchId = Number(stored?.branchId ?? 0) || 0;
-    return accountId > 0 && branchId > 0 ? { accountId, branchId } : null;
-  },
-
   /** Every profile on the account. */
   getAllProfiles: async (): Promise<PatientProfile[]> => {
     const response = await apiRequest<any>({
