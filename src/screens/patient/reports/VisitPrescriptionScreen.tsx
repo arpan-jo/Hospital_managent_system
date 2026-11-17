@@ -14,7 +14,7 @@ import { useMonthNames } from '../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
 import {
   doctorTitle,
-  prescribedOn,
+  // prescribedOn, — off with the commented-out lines that used it (2026-11-16)
   prescriptionDay,
   prescriptionKindKey,
   prescriptionTitle,
@@ -33,7 +33,7 @@ import {
   PadSignature,
   PadVitals,
 } from './PrescriptionPad';
-import { ageOnDay, arrangePadSections, splitHeaderColumns, takeVitals } from './prescriptionPadUi';
+import { ageOnDay, arrangePadSections, sheetDate, splitHeaderColumns, takeVitals } from './prescriptionPadUi';
 import PrescriptionZoomModal from './PrescriptionZoomModal';
 import { formatRecordDate, formatRecordTime } from './reportsUi';
 
@@ -152,8 +152,11 @@ export const VisitPrescriptionScreen = () => {
       : ''
     : rx?.departmentName ?? '';
 
+  // The sheet's day: an upload's own date on the paper, else when it was written (2026-11-16).
+  // Off: the upload day for an upload too — prescribedOn(rx) / rx?.prescribedAt.
+  const writtenOn = sheetDate(sheet);
   // The age on the day it was written; the server's age today when there is no birth date.
-  const age = ageOnDay(print?.patient?.dateOfBirth, prescriptionDay(rx?.prescribedAt));
+  const age = ageOnDay(print?.patient?.dateOfBirth, prescriptionDay(writtenOn));
   const serverAge = Number(print?.patient?.age ?? '') || 0;
   const gender = (print?.patient?.gender ?? '').trim();
   const mobile = print?.patient?.mobile ?? '';
@@ -199,7 +202,8 @@ export const VisitPrescriptionScreen = () => {
             { label: t('reports.pad.name'), value: rx?.patientName || print?.patient?.name || '' },
             { label: t('reports.pad.age'), value: ageText },
             { label: t('reports.pad.sex'), value: sexText },
-            { label: t('reports.pad.date'), value: formatRecordDate(prescribedOn(rx), months) },
+            // Off (2026-11-16): { label: t('reports.pad.date'), value: formatRecordDate(prescribedOn(rx), months) },
+            { label: t('reports.pad.date'), value: formatRecordDate(writtenOn, months) },
           ],
           [
             { label: t('reports.patientId'), value: rx?.patientCode || print?.patient?.patientId || '' },

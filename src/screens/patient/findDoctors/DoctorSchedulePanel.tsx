@@ -357,7 +357,7 @@ export const DoctorSchedulePanel = memo<DoctorSchedulePanelProps>(
           </View>
         ) : null}
 
-        {/* ── Visit type: only the ones the doctor has priced ── */}
+        {/* ── Visit type: New Patient always (Free at ৳0), the others when priced ── */}
         {consultationOptions.length > 0 ? (
           <View>
             <Text style={[styles.label, styles.labelSpaced, { color: theme.colors.onSurface }]}>
@@ -397,7 +397,7 @@ export const DoctorSchedulePanel = memo<DoctorSchedulePanelProps>(
                     ) : null}
                   </View>
                   <Text style={[styles.optionFee, { color: theme.colors.primary }]}>
-                    {taka(option.fee)}
+                    {option.fee > 0 ? taka(option.fee) : t('doctorProfile.free')}
                   </Text>
                 </Pressable>
               );

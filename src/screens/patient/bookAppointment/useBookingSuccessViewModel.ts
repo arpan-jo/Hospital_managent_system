@@ -33,8 +33,9 @@ export const useBookingSuccessViewModel = (input: BookingSuccessInput) => {
     return [t('bookingSuccess.cash'), status]?.filter(Boolean)?.join(' · ');
   }, [paymentStatus, t]);
 
+  // Only a free consultation (a doctor set up at ৳0) is booked at 0.
   const amountLabel = useMemo(
-    () => (amount > 0 ? `৳${groupThousands(amount)}` : t('common.na')),
+    () => (amount > 0 ? `৳${groupThousands(amount)}` : t('doctorProfile.free')),
     [amount, t],
   );
 

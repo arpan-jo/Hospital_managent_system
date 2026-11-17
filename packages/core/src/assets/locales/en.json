@@ -345,6 +345,7 @@
     "date": "Date",
     "time": "Time",
     "price": "Price",
+    "free": "Free",
     "confirmBooking": "Confirm Booking",
     "booking": "Booking…",
     "selectDate": "Please select a date",

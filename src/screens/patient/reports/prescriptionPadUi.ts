@@ -211,3 +211,17 @@ export const splitHeaderColumns = (columns: unknown): { bangla: string[]; englis
   const english = list.find(column => column !== bangla && !BANGLA.test(column.join(' '))) ?? [];
   return { bangla, english };
 };
+
+/**
+ * The day the sheet carries. For a patient upload it is the date on the paper
+ * (`sourceDate` — read by the AI and checked on review), as the printed copy's
+ * "Prescription date"; the upload day only when it has none or it cannot be
+ * read. A doctor's prescription keeps the day it was written.
+ */
+export const sheetDate = (
+  rx?: { isUploaded?: boolean | null; sourceDate?: unknown; prescribedAt?: unknown } | null,
+): string => {
+  const source = asText(rx?.sourceDate).trim();
+  if (rx?.isUploaded && source && !Number.isNaN(new Date(source).getTime())) return source;
+  return asText(rx?.prescribedAt).trim();
+};

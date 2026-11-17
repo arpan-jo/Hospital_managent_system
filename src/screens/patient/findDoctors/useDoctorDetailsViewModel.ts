@@ -259,15 +259,19 @@ export const useDoctorDetailsViewModel = (employeeId: number) => {
 
   // ── What the choices are ────────────────────────────────────────────────────
 
-  /** Only a visit type with a fee set is offered. */
+  /**
+   * New Patient is always offered — a doctor set up at ৳0 is a free
+   * consultation, and dropping it left nothing to book with. Follow-up and
+   * Report Visit only when the doctor charges for them. As the portal has it.
+   */
   const consultationOptions = useMemo<ConsultationOption[]>(
     () =>
       detail
         ? CONSULTATION_TYPES.map(option => ({
             type: option.type,
             labelKey: option.labelKey,
-            fee: option.feeOf(detail),
-          })).filter(option => option.fee > 0)
+            fee: Number(option.feeOf(detail)) || 0,
+          })).filter(option => option.type === 'new_patient' || option.fee > 0)
         : [],
     [detail],
   );

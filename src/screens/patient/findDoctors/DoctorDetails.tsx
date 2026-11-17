@@ -157,6 +157,9 @@ export const DoctorDetails = observer(() => {
   const showFooter = activeTab === 'schedule' || !!viewModel.canBook;
   const experienceYears = doctor?.experienceYears ?? 0;
   const currentFee = viewModel.currentFee ?? 0;
+  // A chosen visit at ৳0 is a free consultation; with nothing chosen there is no price yet.
+  const feeLabel =
+    currentFee > 0 ? taka(currentFee) : viewModel.selectedOption ? t('doctorProfile.free') : '—';
 
   const stats = [
     {
@@ -166,7 +169,7 @@ export const DoctorDetails = observer(() => {
         : detail?.experience || '—',
     },
     { label: t('doctorProfile.office'), value: officeName || '—' },
-    { label: t('doctorProfile.fee'), value: currentFee > 0 ? taka(currentFee) : '—' },
+    { label: t('doctorProfile.fee'), value: feeLabel },
   ];
 
   const summary = [
@@ -371,7 +374,7 @@ export const DoctorDetails = observer(() => {
               {t('doctorProfile.price')}
             </Text>
             <Text style={[styles.priceValue, { color: theme.colors.primary }]}>
-              {currentFee > 0 ? taka(currentFee) : '—'}
+              {feeLabel}
             </Text>
           </View>
         </View>
