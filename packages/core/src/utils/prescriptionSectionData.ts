@@ -326,7 +326,7 @@ const buildTreatmentPlan = (value: Json): SummaryLine[] =>
     return { text: parts.join(' '), note: noteOf(item) };
   });
 
-// ── Physical Examination / History ───────────────────────────────────────────
+// ── Examination (key physicalExamination) / History ─────────────────────────
 //
 // { __groups: [{ id, name }], [groupId]: { [field]: value, [field + "_Note"]: string,
 //   __extraFields / __medicineItems / __investigationItems: string[],
@@ -482,7 +482,7 @@ const buildPhysicalExam = (value: Json): SummaryGroup<ExamLine>[] => {
  * list.
  */
 const SECTIONS: [string, string][] = [
-  ['physicalExamination', 'Physical Examination'],
+  ['physicalExamination', 'Examination'],
   ['history', 'History'],
   ['chiefComplaint', 'Chief Complaint'],
   ['investigation', 'Investigation'],

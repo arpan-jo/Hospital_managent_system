@@ -18,7 +18,7 @@ describe('the live sample', () => {
     expect(flattenSectionData(LIVE_SAMPLE)).toEqual([
       {
         key: 'physicalExamination',
-        label: 'Physical Examination',
+        label: 'Examination',
         groups: [
           {
             groupName: 'Vitals',
@@ -82,7 +82,7 @@ describe('section order', () => {
       somethingNew: 'not listed',
     };
     expect(flattenSectionData(data).map(s => [s.key, s.label])).toEqual([
-      ['physicalExamination', 'Physical Examination'],
+      ['physicalExamination', 'Examination'],
       ['history', 'History'],
       ['chiefComplaint', 'Chief Complaint'],
       ['investigation', 'Investigation'],

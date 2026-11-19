@@ -1,4 +1,4 @@
-import { AI_ASSIST_URL } from '@env';
+import { AI_ASSIST_URL, AI_STT_API_KEY } from '@env';
 import axios from 'axios';
 import { attachAiLogging } from '../network/aiLogging';
 import { ENDPOINTS } from '../network/endpoints';
@@ -13,11 +13,12 @@ import { AI_NO_SPEECH } from './SpeechToTextRepository';
  * pepobot is outside HMS, so it gets its own client rather than `apiRequest`:
  * no HMS token goes out with it, and its 401 must not sign the patient out. It
  * speaks plain JSON and asks for no login. Each ask stands alone, as on the
- * web: only the patient's words go up.
+ * web: only the patient's words go up. Every AI call carries the AI key
+ * (`x-api-key`), as the portal sends it — one key for pepobot and stt.ibos.io.
  */
 const finderClient = axios.create({
   baseURL: AI_ASSIST_URL || '',
-  headers: { Accept: 'application/json' },
+  headers: { Accept: 'application/json', 'x-api-key': AI_STT_API_KEY ?? '' },
 });
 
 attachAiLogging(finderClient);

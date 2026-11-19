@@ -91,7 +91,7 @@ const liveAnswer = {
     footer: { enabled: true, contents: ['<p><b>আপনার সুস্থতা ও নিরাপদ চিকিৎসার বিশ্বস্ত ঠিকানা।</b></p>', '', ''] },
     notice: { enabled: true, text: 'রোগী দেখার সময়: সকাল ১০টা থেকে সন্ধ্যা ৭টা পর্যন্ত' },
   },
-  leftSections: [{ key: 'physicalExamination', label: 'Physical Examination' }, { key: 'diagnosis', label: 'Diagnosis' }],
+  leftSections: [{ key: 'physicalExamination', label: 'Examination' }, { key: 'diagnosis', label: 'Diagnosis' }],
   rightSections: [{ key: 'rx', label: 'Rx' }, { key: 'followUp', label: 'Follow-up' }, { key: 'advice', label: 'Advice' }],
   sectionData: {
     rx: [

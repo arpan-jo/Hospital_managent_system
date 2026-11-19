@@ -38,7 +38,7 @@ describe('prescriptionPadUi', () => {
     const { vitals, sections } = takeVitals([
       {
         key: 'physicalExamination',
-        label: 'Physical Examination',
+        label: 'Examination',
         groups: [
           {
             groupName: 'Vitals',

@@ -5,16 +5,17 @@
  * saved — `POST /hms/patient/documents/{id}/prescription` or `…/lab-report`.
  * Nothing reaches the patient's records before that confirmation.
  */
-import { AI_ASSIST_URL, API_URL } from '@env';
+import { AI_ASSIST_URL, AI_STT_API_KEY, API_URL } from '@env';
 import axios from 'axios';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';
 import { attachAiLogging } from '../network/aiLogging';
 import { ENDPOINTS } from '../network/endpoints';
 import { UploadFile } from './FileRepository';
 
+// The AI key (`x-api-key`) goes with every AI call, as the portal sends it — one key for pepobot and stt.ibos.io.
 const readClient = axios.create({
   baseURL: AI_ASSIST_URL || '',
-  headers: { Accept: 'application/json' },
+  headers: { Accept: 'application/json', 'x-api-key': AI_STT_API_KEY ?? '' },
 });
 
 attachAiLogging(readClient);
