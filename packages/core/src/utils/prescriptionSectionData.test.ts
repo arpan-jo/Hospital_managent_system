@@ -1,4 +1,8 @@
-import { flattenSectionData, medicinesFromSectionData } from './prescriptionSectionData';
+import {
+  flattenSectionData,
+  followUpDatesFromSectionData,
+  medicinesFromSectionData,
+} from './prescriptionSectionData';
 
 const l = (text: string, note = '', isUrgent = false) => ({ text, note, isUrgent });
 const unnamed = (...lines: ReturnType<typeof l>[]) => [{ groupName: '', lines }];
@@ -546,5 +550,51 @@ describe('medicinesFromSectionData', () => {
   it('reads no medicines when rx is missing or not a list', () => {
     expect(medicinesFromSectionData({ advice: [] })).toEqual([]);
     expect(medicinesFromSectionData({ rx: { brand: 'Napa' } })).toEqual([]);
+  });
+});
+
+describe('followUpDatesFromSectionData', () => {
+  it('the Follow-up section\'s dates, each once, as written', () => {
+    const data = {
+      followUp: [
+        { name: 'Next Follow-up', durationValue: '7', durationUnit: 'Days', followupDate: '2026-11-25' },
+        { name: 'Review with reports', followUpDate: ' 2026-12-18 ' },
+        { name: 'Come again', followupDate: '2026-11-25' },
+      ],
+    };
+
+    expect(followUpDatesFromSectionData(data)).toEqual(['2026-11-25', '2026-12-18']);
+  });
+
+  it('skips a line the sheet does not show (no name) and one with no date', () => {
+    const data = {
+      followUp: [
+        { name: '', followupDate: '2026-11-25' },
+        { followupDate: '2026-11-26' },
+        { name: 'Next Follow-up', durationValue: '7', durationUnit: 'Days' },
+        { name: 'Next Follow-up', followupDate: 20261127 },
+      ],
+    };
+
+    expect(followUpDatesFromSectionData(data)).toEqual([]);
+  });
+
+  it('never reads another section — a physiotherapy course in advice or services is not a follow-up', () => {
+    const data = {
+      advice: [{ name: 'Physiotherapy', followupDate: '2026-11-25' }],
+      services: [{ name: 'Physiotherapy', date: '2026-11-25' }],
+      treatmentPlan: [{ name: 'Physiotherapy', followupDate: '2026-11-25' }],
+    };
+
+    expect(followUpDatesFromSectionData(data)).toEqual([]);
+  });
+
+  it('reads the JSON copy, and copes with nothing', () => {
+    expect(
+      followUpDatesFromSectionData(JSON.stringify({ followUp: [{ name: 'Next Follow-up', followupDate: '2026-11-25' }] })),
+    ).toEqual(['2026-11-25']);
+    expect(followUpDatesFromSectionData(null)).toEqual([]);
+    expect(followUpDatesFromSectionData('not json')).toEqual([]);
+    expect(followUpDatesFromSectionData({ followUp: 'x' })).toEqual([]);
   });
 });

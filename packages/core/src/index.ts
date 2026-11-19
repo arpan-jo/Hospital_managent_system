@@ -38,6 +38,8 @@ export * from './utils/medicineSlots';
 export * from './utils/followUps';
 export * from './utils/notifications';
 export * from './utils/alarm';
+export * from './utils/localNotifications';
+export * from './utils/followUpReminder';
 export * from './utils/googleSignIn';
 export * from './utils/appUpdate';
 export * from './utils/dicomPixels';

@@ -1,4 +1,4 @@
-import React, { /* useEffect, */ useMemo, useState } from 'react'; // useEffect: the old three-call hooks below
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import {
   MedicalRecordRepository,
+  scheduleFollowUpReminders,
   // PatientProfile, // the old three-call hooks below
   // PatientRepository,
   // PrescriptionPrintData,
@@ -162,6 +163,24 @@ export const VisitPrescriptionScreen = () => {
   const mobile = print?.patient?.mobile ?? '';
   const address = print?.patient?.address ?? '';
   const isEmpty = !medicines.length && !vitals.length && !findings.length && !instructions.length;
+
+  // The evening-before reminder for each follow-up date the doctor wrote — set
+  // once, whatever the number of opens (followUpReminder). Not for an upload (no
+  // HMS doctor wrote it), nor for a sheet that came back empty, whose missing
+  // dates would take away reminders already set.
+  const followUpDates = print?.followUpDates;
+  const reminderDoctor = rx?.doctorName ?? '';
+  const reminderPatient = print?.patient?.name || rx?.patientName || '';
+  useEffect(() => {
+    if (!followUpDates || isUploaded || isEmpty) return;
+    scheduleFollowUpReminders?.({
+      prescriptionId,
+      dates: followUpDates,
+      doctorName: reminderDoctor,
+      patientName: reminderPatient,
+    });
+  }, [followUpDates, isUploaded, isEmpty, prescriptionId, reminderDoctor, reminderPatient]);
+
   // An upload was not signed by an HMS doctor — there is no place for a signature on it.
   const signer = isUploaded ? '' : doctorTitle(rx?.doctorName);
   const hasLeft = vitals.length > 0 || findings.length > 0;

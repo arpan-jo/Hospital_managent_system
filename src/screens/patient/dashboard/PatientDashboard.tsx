@@ -77,7 +77,9 @@ export const PatientDashboard = observer(() => {
   const navigation = useNavigation();
   const { authStore, profileStore } = useStores();
   const viewModel = useDashboard();
-  const signOut = useSignOut();
+  // Only the session-ended banner below signs out here — ended elsewhere, not by
+  // this patient's Logout, so their follow-up reminders stay.
+  const signOut = useSignOut({ keepReminders: true });
 
   /**
    * When every read failed, the banner says why and what helps: an ended

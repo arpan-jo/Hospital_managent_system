@@ -580,6 +580,19 @@ export const flattenSectionData = (sectionData: unknown): PrescriptionSection[] 
   });
 };
 
+/**
+ * The dates in the Follow-up section, as written ('YYYY-MM-DD'), each once —
+ * for the follow-up reminders. Read as the sheet reads them: only the lines it
+ * shows (those with a name), "followupDate" in any case. Other sections
+ * (advice, treatment plan, services…) are never looked at.
+ */
+export const followUpDatesFromSectionData = (sectionData: unknown): string[] => {
+  const root = parse(sectionData);
+  if (!isObject(root)) return [];
+  const dates = named(items(own(root, 'followUp')), item => trimmed(str(item, 'followupDate')));
+  return [...new Set(dates.filter(Boolean))];
+};
+
 const toDose = (item: JsonObject): PrescriptionDose => ({
   dose: toText(str(item, 'dose')),
   durationValue: toText(str(item, 'durationValue')),

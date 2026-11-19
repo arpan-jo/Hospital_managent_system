@@ -2,6 +2,7 @@
 // live answer, with nothing, and with data of the wrong shape: it must draw
 // what it can and never throw.
 const mockGetPrintData = jest.fn();
+const mockScheduleFollowUpReminders = jest.fn();
 let mockRouteParams: Record<string, unknown> = {};
 
 jest.mock('@app/core', () => ({
@@ -11,6 +12,7 @@ jest.mock('@app/core', () => ({
   MedicalRecordRepository: {
     getPrescriptionPrintData: (...args: unknown[]) => mockGetPrintData(...args),
   },
+  scheduleFollowUpReminders: (...args: unknown[]) => mockScheduleFollowUpReminders(...args),
 }));
 // The real mapper is used; its module's network layer (and the stores behind it) is not.
 jest.mock('../../../../packages/core/src/network/apiRequest', () => ({ __esModule: true, default: jest.fn() }));
@@ -136,6 +138,7 @@ const open = async (answer: () => Promise<unknown>) => {
 describe('VisitPrescriptionScreen — from GetPrescriptionPrintData alone', () => {
   beforeEach(() => {
     mockGetPrintData.mockReset();
+    mockScheduleFollowUpReminders.mockReset();
     mockRouteParams = { prescriptionId: 2315, title: 'PRS-20261017-000000001', visitType: 'opd' };
   });
 
@@ -306,5 +309,53 @@ describe('VisitPrescriptionScreen — from GetPrescriptionPrintData alone', () =
     mockRouteParams = undefined as unknown as Record<string, unknown>;
     await open(async () => toPrescriptionPrintData(liveAnswer));
     expect(renderer?.toJSON()).toBeTruthy();
+  });
+});
+
+describe('VisitPrescriptionScreen — the follow-up reminder', () => {
+  const withFollowUp = {
+    ...liveAnswer,
+    sectionData: {
+      ...liveAnswer.sectionData,
+      followUp: [{ name: 'Next Follow-up', durationValue: '7', durationUnit: 'Days', followupDate: '2026-11-25' }],
+    },
+  };
+
+  beforeEach(() => {
+    mockGetPrintData.mockReset();
+    mockScheduleFollowUpReminders.mockReset();
+    mockRouteParams = { prescriptionId: 2315, title: 'PRS-20261017-000000001', visitType: 'opd' };
+  });
+
+  afterEach(() => {
+    act(() => renderer?.unmount());
+    renderer = undefined;
+  });
+
+  it("hands the prescription's follow-up dates, doctor and patient over once it has loaded", async () => {
+    await open(async () => toPrescriptionPrintData(withFollowUp));
+
+    expect(mockScheduleFollowUpReminders).toHaveBeenCalledWith({
+      prescriptionId: 2315,
+      dates: ['2026-11-25'],
+      doctorName: 'Khairul Bashar',
+      patientName: 'Al Amin',
+    });
+  });
+
+  it('not for an upload — no HMS doctor wrote it', async () => {
+    await open(async () => toPrescriptionPrintData({ ...withFollowUp, isPatientUpload: true }));
+
+    expect(mockScheduleFollowUpReminders).not.toHaveBeenCalled();
+  });
+
+  it('not for a sheet that came back empty, nor one that failed to load', async () => {
+    await open(async () => toPrescriptionPrintData({}));
+    act(() => renderer?.unmount());
+    await open(async () => {
+      throw Object.assign(new Error('Error: 500'), { status: 500, data: '' });
+    });
+
+    expect(mockScheduleFollowUpReminders).not.toHaveBeenCalled();
   });
 });

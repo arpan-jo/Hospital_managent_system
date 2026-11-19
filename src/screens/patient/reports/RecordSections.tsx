@@ -335,8 +335,12 @@ const prescriptionSearch = (item: PortalPrescription) => [item?.code, item?.doct
 
 /**
  * Prescriptions — written at a hospital visit. A row opens the prescription in
- * full, and its button previews the PDF the server draws, as the portal's row
- * does. One the patient uploaded can also be removed; a doctor's never can.
+ * full. One the patient uploaded can also be removed; a doctor's never can.
+ *
+ * Off (2026-11-18): the button on each row that previewed the PDF the server
+ * draws, as the portal's row does — a tap on the row already opens the app's
+ * own prescription sheet. Uncomment `previewPdf` and the `preview` action below
+ * to bring it back.
  */
 export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal }: SectionProps) => {
   const { t } = useTranslation();
@@ -356,37 +360,40 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal 
     [t],
   );
 
-  /** The PDF the server draws, opened in the app — the portal's preview button. */
-  const previewPdf = useCallback(
-    (item: PortalPrescription) => {
-      if (!item?.id) return;
-      navigation.navigate('FileViewer', {
-        url: PatientPrescriptionRepository.getPdfUrl(item.id),
-        filename: PatientPrescriptionRepository.getPdfFileName(item?.code),
-        title: t('myPrescriptions.preview'),
-        // Its code first, as the portal's preview shows it — the one quoted at the desk or the pharmacy.
-        subtitle: [item?.code, item?.patientName, formatRecordDate(prescribedOn(item), months), t(prescriptionKindKey(item))]
-          .filter(Boolean)
-          .join(' · '),
-        canDownload: true,
-        fresh: true,
-      });
-    },
-    [navigation, months, t],
-  );
+  // Off (2026-11-18) — the PDF preview button; see the section's comment above.
+  // /** The PDF the server draws, opened in the app — the portal's preview button. */
+  // const previewPdf = useCallback(
+  //   (item: PortalPrescription) => {
+  //     if (!item?.id) return;
+  //     navigation.navigate('FileViewer', {
+  //       url: PatientPrescriptionRepository.getPdfUrl(item.id),
+  //       filename: PatientPrescriptionRepository.getPdfFileName(item?.code),
+  //       title: t('myPrescriptions.preview'),
+  //       // Its code first, as the portal's preview shows it — the one quoted at the desk or the pharmacy.
+  //       subtitle: [item?.code, item?.patientName, formatRecordDate(prescribedOn(item), months), t(prescriptionKindKey(item))]
+  //         .filter(Boolean)
+  //         .join(' · '),
+  //       canDownload: true,
+  //       fresh: true,
+  //     });
+  //   },
+  //   [navigation, months, t],
+  // );
 
-  /** Every row previews its PDF; one the patient uploaded can also be removed. */
+  /** One the patient uploaded can be removed; a doctor's row has no button (the PDF preview is off). */
   const actionOf = useCallback(
     (item: PortalPrescription): RecordAction[] | null => {
       if (!item?.id) return null;
-      const preview: RecordAction = {
-        icon: 'file-eye-outline',
-        label: t('myPrescriptions.preview'),
-        onPress: () => previewPdf(item),
-      };
-      if (!item?.isUploaded) return [preview];
+      // Off (2026-11-18) — the PDF preview on every row:
+      // const preview: RecordAction = {
+      //   icon: 'file-eye-outline',
+      //   label: t('myPrescriptions.preview'),
+      //   onPress: () => previewPdf(item),
+      // };
+      // if (!item?.isUploaded) return [preview];
+      if (!item?.isUploaded) return null;
       return [
-        preview,
+        // preview,
         {
           icon: 'trash-can-outline',
           label: t('reports.removeUpload'),
@@ -398,7 +405,7 @@ export const VisitPrescriptionsSection = ({ months, bottomPadding, reloadSignal 
         },
       ];
     },
-    [previewPdf, removingId, t],
+    [removingId, t], // previewPdf — with the preview, off
   );
 
   const cancelRemove = useCallback(() => {

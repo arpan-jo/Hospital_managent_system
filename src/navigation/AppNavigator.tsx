@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { observer } from 'mobx-react-lite';
-import { cancelAllAlarms, useStores } from '@app/core';
+import { cancelAllAlarms, claimFollowUpReminders, useStores } from '@app/core';
 import AuthStackNavigator from './AuthStackNavigator';
 import DrawerNavigator from './DrawerNavigator';
 import { NavigationLightTheme, NavigationDarkTheme } from '@app/ui';
@@ -50,6 +50,14 @@ export const AppNavigator = observer(() => {
     }
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
+
+  // Follow-up reminders are not taken here: an expired session keeps them (the
+  // patient still has the follow-up); Logout takes them (useSignOut). A
+  // different account signing in takes the last one's away.
+  const userId = authStore?.user?.userId ?? 0;
+  useEffect(() => {
+    if (isAuthenticated && userId > 0) claimFollowUpReminders?.(userId);
+  }, [isAuthenticated, userId]);
 
   return (
     <NavigationContainer

@@ -23,6 +23,7 @@ import {
 import { htmlToLines } from '../utils/htmlText';
 import {
   flattenSectionData,
+  followUpDatesFromSectionData,
   medicinesFromSectionData,
 } from '../utils/prescriptionSectionData';
 import {
@@ -223,6 +224,8 @@ export interface PrescriptionPrintData {
    * sends only `signatureImageId`, an SME document id no patient route can open.
    */
   signatureImage: string;
+  /** The Follow-up section's dates as written ('YYYY-MM-DD'), each once — for the follow-up reminders. */
+  followUpDates: string[];
 }
 
 const toText = (value: any): string => String(value ?? '').trim();
@@ -302,6 +305,8 @@ export const toPrescriptionPrintData = (raw: any): PrescriptionPrintData => ({
   },
   leftSectionKeys: toSectionKeys(raw?.leftSections),
   rightSectionKeys: toSectionKeys(raw?.rightSections),
+  // From the same sectionData the sheet is drawn from (or its JSON copy).
+  followUpDates: followUpDatesFromSectionData(raw?.sectionData ?? raw?.prescription?.sectionDataJson),
   hospitalLines:
     raw?.layout?.hospitalInfo?.enabled === false
       ? []

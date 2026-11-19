@@ -393,6 +393,20 @@
     "10": "Nov",
     "11": "Dec"
   },
+  "monthNames": {
+    "0": "January",
+    "1": "February",
+    "2": "March",
+    "3": "April",
+    "4": "May",
+    "5": "June",
+    "6": "July",
+    "7": "August",
+    "8": "September",
+    "9": "October",
+    "10": "November",
+    "11": "December"
+  },
   "days": {
     "0": "Sun",
     "1": "Mon",
@@ -658,6 +672,14 @@
     "serverResponded": "The server responded with {{status}}.",
     "serverUnreachable": "The server could not be reached.",
     "tryAgain": "Try again"
+  },
+  "followUpReminder": {
+    "channelName": "Follow-up reminders",
+    "title": "Follow-up visit tomorrow",
+    "visit": "See {{doctor}} again on {{day}}",
+    "visitNoDoctor": "See your doctor again on {{day}}",
+    "patient": "Patient: {{name}}",
+    "ok": "OK"
   },
   "uploadFile": {
     "fileRequired": "Select a file to upload",

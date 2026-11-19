@@ -4,32 +4,19 @@
  * action or `ALARM_RING_MS` runs out. Notifee keeps the scheduled alarm on the
  * phone (and puts it back after a reboot), so nothing is stored here.
  *
- * Notifee is loaded lazily: its module throws on import when the native side
- * is missing (an install built before it was added), and that must leave the
- * alarm unavailable rather than crash the app at launch.
+ * Notifee is loaded lazily (`loadNotifee`): its module throws on import when
+ * the native side is missing (an install built before it was added), and that
+ * must leave the alarm unavailable rather than crash the app at launch.
  */
 import { Platform } from 'react-native';
 import type * as NotifeeModule from '@notifee/react-native';
+import { loadNotifee } from './localNotifications';
 
 /** How long an alarm rings before it stops by itself. */
 export const ALARM_RING_MS = 30_000;
 
 const CHANNEL_ID = 'patient-alarm';
 const STOP_ACTION_ID = 'stop-alarm';
-
-let notifeeModule: typeof NotifeeModule | null | undefined;
-
-const loadNotifee = (): typeof NotifeeModule | null => {
-  if (notifeeModule === undefined) {
-    try {
-      notifeeModule = require('@notifee/react-native') as typeof NotifeeModule;
-    } catch (error: any) {
-      console.log('notifee unavailable ==>', error?.message);
-      notifeeModule = null;
-    }
-  }
-  return notifeeModule;
-};
 
 /**
  * The next time the clock shows `time`'s hour and minute: today while that is
@@ -175,8 +162,12 @@ export const cancelAllAlarms = async () => {
   }
 };
 
-/** The stop action silences the alarm by taking it away. */
-const handleAlarmEvent = async (event: NotifeeModule.Event) => {
+/**
+ * The stop action silences the alarm by taking it away. Hooked up through
+ * `registerNotificationHandlers` in index.js — Notifee keeps one handler for
+ * the whole app.
+ */
+export const handleAlarmEvent = async (event: NotifeeModule.Event) => {
   const lib = loadNotifee();
   const notificationId = event?.detail?.notification?.id;
   if (
@@ -191,20 +182,5 @@ const handleAlarmEvent = async (event: NotifeeModule.Event) => {
     await lib.default.cancelNotification(notificationId);
   } catch (error: any) {
     console.log('stop alarm error ==>', error?.message);
-  }
-};
-
-/**
- * Hooks the stop action up, for an open app and for one that is closed —
- * called once from index.js, before the app registers.
- */
-export const registerAlarmHandlers = () => {
-  const lib = loadNotifee();
-  if (!lib) return;
-  try {
-    lib.default.onBackgroundEvent(handleAlarmEvent);
-    lib.default.onForegroundEvent(handleAlarmEvent);
-  } catch (error: any) {
-    console.log('registerAlarmHandlers error ==>', error?.message);
   }
 };

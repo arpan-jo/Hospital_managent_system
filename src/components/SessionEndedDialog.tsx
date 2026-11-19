@@ -18,7 +18,8 @@ const stayOpen = () => undefined;
 export const SessionEndedDialog = observer(() => {
   const { t } = useTranslation();
   const { authStore } = useStores();
-  const signOut = useSignOut();
+  // Ended elsewhere, not by this patient's Logout: their follow-up reminders stay.
+  const signOut = useSignOut({ keepReminders: true });
 
   const logOut = useCallback(() => {
     signOut?.();
