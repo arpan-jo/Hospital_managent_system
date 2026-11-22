@@ -1,6 +1,8 @@
 import {
   TAKEN_LOG_KEEP_DAYS,
+  markTakenDoses,
   medicineDoseKey,
+  onTakenLogChange,
   pruneTakenLogs,
   readTakenLog,
   takenLogDay,
@@ -127,5 +129,56 @@ describe('pruneTakenLogs', () => {
     expect(pruneTakenLogs(7, NOW)).toBe(0);
     expect(pruneTakenLogs(7, new Date(NaN))).toBe(0);
     expect(pruneTakenLogs(NaN as any)).toBe(0);
+  });
+});
+
+describe('markTakenDoses — "Taken" on a medicine reminder', () => {
+  it('ticks every listed line for that slot and day, on top of what is there', () => {
+    mockStore.set(KEY, '{"9_morning":true}');
+    expect(markTakenDoses(DAY, 'night', [3047, 3048])).toEqual({
+      '9_morning': true,
+      '3047_night': true,
+      '3048_night': true,
+    });
+    expect(readTakenLog(DAY)).toEqual({ '9_morning': true, '3047_night': true, '3048_night': true });
+  });
+
+  it('only ever sets a tick: pressing it twice, or on a dose already ticked, changes nothing', () => {
+    markTakenDoses(DAY, 'night', [3047]);
+    expect(markTakenDoses(DAY, 'night', [3047])).toEqual({ '3047_night': true });
+  });
+
+  it('ticks nothing for a day it cannot read, no slot, or no usable ids', () => {
+    expect(markTakenDoses('22/11/2026', 'night', [1])).toEqual({});
+    expect(markTakenDoses(DAY, '' as any, [1])).toEqual({});
+    expect(markTakenDoses(DAY, 'night', [0, -1, NaN, 'x' as any])).toEqual({});
+    expect(mockStorage.set).not.toHaveBeenCalled();
+  });
+});
+
+describe('onTakenLogChange', () => {
+  it('hears every tick, from either panel or a reminder, until it stops listening', () => {
+    const heard = jest.fn();
+    const stop = onTakenLogChange(heard);
+    toggleTakenDose('1_morning', DAY);
+    markTakenDoses(DAY, 'night', [2]);
+    expect(heard).toHaveBeenCalledTimes(2);
+    stop();
+    toggleTakenDose('1_morning', DAY);
+    expect(heard).toHaveBeenCalledTimes(2);
+  });
+
+  it('one listener that throws stops none of the others, nor the tick', () => {
+    const failing = jest.fn(() => {
+      throw new Error('boom');
+    });
+    const other = jest.fn();
+    const stopFailing = onTakenLogChange(failing);
+    const stopOther = onTakenLogChange(other);
+    expect(toggleTakenDose('1_morning', DAY)).toEqual({ '1_morning': true });
+    expect(other).toHaveBeenCalledTimes(1);
+    stopFailing();
+    stopOther();
+    expect(onTakenLogChange(undefined as any)).toEqual(expect.any(Function));
   });
 });

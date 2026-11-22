@@ -42,6 +42,7 @@ export * from './utils/alarm';
 export * from './utils/localNotifications';
 export * from './utils/notificationPermission';
 export * from './utils/followUpReminder';
+export * from './utils/medicineReminder';
 export * from './utils/googleSignIn';
 export * from './utils/appUpdate';
 export * from './utils/dicomPixels';

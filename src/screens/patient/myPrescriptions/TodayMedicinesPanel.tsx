@@ -3,10 +3,17 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { MEDICINE_SLOTS, MedicineSlot, to12Hour } from '@app/core';
+import {
+  MEDICINE_REMINDER_CHANNEL_ID,
+  MEDICINE_SLOTS,
+  MedicineSlot,
+  to12Hour,
+} from '@app/core';
 import { CustomButton, CustomDatePicker, fontFamilies } from '@app/ui';
+import { useReminderPermission } from '../../../hooks/useReminderPermission';
 import { doseKey, useTodayMedicines } from './useTodayMedicines';
 import { doctorTitle } from './prescriptionUi';
+import ReminderNote from './ReminderNote';
 
 const SLOT_LOOK: Record<
   MedicineSlot,
@@ -52,6 +59,7 @@ export const TodayMedicinesPanel = memo<TodayMedicinesPanelProps>(
     const theme = useTheme();
     const { t } = useTranslation();
     const today = useTodayMedicines(patientCode || null);
+    const reminders = useReminderPermission(MEDICINE_REMINDER_CHANNEL_ID);
     const [showSettings, setShowSettings] = useState(false);
     const muted = theme.colors.onSurfaceVariant;
 
@@ -176,6 +184,21 @@ export const TodayMedicinesPanel = memo<TodayMedicinesPanelProps>(
           />
         </View>
 
+        {/* Reminders cannot come at all: said where the medicines are, with the switch. */}
+        {reminders.state?.notifications === 'off' ? (
+          <ReminderNote
+            tone="warning"
+            icon="bell-off-outline"
+            message={
+              reminders.state?.offAt === 'channel'
+                ? t('medicineReminder.channelOff')
+                : t('medicineReminder.notificationsOff')
+            }
+            actionLabel={t('medicineReminder.turnOn')}
+            onAction={reminders.openNotificationSettings}
+          />
+        ) : null}
+
         <Pressable
           onPress={() => setShowSettings(value => !value)}
           accessibilityRole="button"
@@ -226,6 +249,19 @@ export const TodayMedicinesPanel = memo<TodayMedicinesPanelProps>(
             <Text style={[styles.settingsHint, { color: muted }]}>
               {t('todayMedicines.reminderHint')}
             </Text>
+            <Text style={[styles.settingsHint, { color: muted }]}>
+              {t('medicineReminder.howItWorks')}
+            </Text>
+            {/* Android 12+ without "Alarms & reminders": they come, but late. */}
+            {reminders.state?.onTime === 'off' &&
+            reminders.state?.notifications !== 'off' ? (
+              <ReminderNote
+                icon="clock-alert-outline"
+                message={t('medicineReminder.onTimeOff')}
+                actionLabel={t('medicineReminder.allow')}
+                onAction={reminders.openOnTimeSettings}
+              />
+            ) : null}
             <View style={styles.timeGrid}>
               {MEDICINE_SLOTS.map(slot => (
                 <View

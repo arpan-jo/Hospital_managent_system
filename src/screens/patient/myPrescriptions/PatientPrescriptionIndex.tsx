@@ -39,7 +39,8 @@ import ScreenHeader from '../../../components/ScreenHeader';
 import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 // import { useMonthNames } from '../../../hooks/useMonthNames'; // server-PDF preview, off for now
 import { MyPrescriptionsStackParamList } from '../../../navigation/MyPrescriptionsStackNavigator';
-import AlarmSheet from './AlarmSheet';
+// Demo alarm, off since 2026-11-22: the medicine reminders replace it (utils/medicineReminder).
+// import AlarmSheet from './AlarmSheet';
 import PrescriptionCard from './PrescriptionCard';
 import PrescriptionFilterSheet from './PrescriptionFilterSheet';
 import UploadDocumentSheet from './UploadDocumentSheet';
@@ -69,7 +70,8 @@ export const PatientPrescriptionIndex = observer(() => {
     useState<PrescriptionAttachment | null>(null);
   /** The portal's "Today's Medicines" toggle — the panel opens above the list. */
   const [showToday, setShowToday] = useState(false);
-  const [showAlarm, setShowAlarm] = useState(false);
+  // Demo alarm, off since 2026-11-22 — see the AlarmSheet import.
+  // const [showAlarm, setShowAlarm] = useState(false);
 
   /**
    * View opens the prescription as the app's own sheet — the screen the Reports
@@ -372,6 +374,7 @@ export const PatientPrescriptionIndex = observer(() => {
         leading="menu"
         right={
           <View style={styles.headerActions}>
+            {/* Demo alarm, off since 2026-11-22 — see the AlarmSheet import.
             <Pressable
               onPress={() => setShowAlarm(true)}
               hitSlop={8}
@@ -391,6 +394,7 @@ export const PatientPrescriptionIndex = observer(() => {
                 color={theme.colors.onSurface}
               />
             </Pressable>
+            */}
             <Pressable
               onPress={viewModel.openFilters}
               hitSlop={8}
@@ -543,7 +547,9 @@ export const PatientPrescriptionIndex = observer(() => {
         onApply={viewModel.applyFilters}
       />
 
+      {/* Demo alarm, off since 2026-11-22 — see the AlarmSheet import.
       <AlarmSheet visible={showAlarm} onClose={() => setShowAlarm(false)} />
+      */}
 
       <UploadDocumentSheet
         visible={viewModel.uploadTarget !== null}

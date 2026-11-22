@@ -24,16 +24,25 @@ export interface TodayMedicine {
   formType: string;
   /** As written: "1-0-1", "1+1+1+1", "BD", "Twice daily", … */
   frequency: string;
+  /** "7 Days", "3 Months", "Continue", or '' — the server's own words. */
   duration: string;
   instructions: string;
   doctorName: string;
   patientCode: string;
   patientName: string;
+  /**
+   * The day the course started, 'YYYY-MM-DD' (the server's `appointmentDate`:
+   * the prescription's day, or the date on an uploaded paper); '' when unknown.
+   */
+  startDate: string;
 }
 
 const toText = (value: any): string => String(value ?? '').trim();
 
-const toTodayMedicine = (raw: any): TodayMedicine => ({
+/** 'YYYY-MM-DD' from the server's "2026-11-17T00:00:00"; '' for anything else. */
+const toDay = (value: any): string => /^\d{4}-\d{2}-\d{2}/.exec(toText(value))?.[0] ?? '';
+
+export const toTodayMedicine = (raw: any): TodayMedicine => ({
   prescriptionId: Number(raw?.prescriptionId ?? 0) || 0,
   medicine: toText(raw?.medicine),
   dosage: toText(raw?.dosage),
@@ -44,6 +53,7 @@ const toTodayMedicine = (raw: any): TodayMedicine => ({
   doctorName: toText(raw?.doctorName),
   patientCode: toText(raw?.patientCode),
   patientName: toText(raw?.patientName),
+  startDate: toDay(raw?.appointmentDate),
 });
 
 const HH_MM = /^\d{2}:\d{2}$/;

@@ -17,6 +17,8 @@ export const ALARM_RING_MS = 30_000;
 
 const CHANNEL_ID = 'patient-alarm';
 const STOP_ACTION_ID = 'stop-alarm';
+/** The app's own reminders (followUpReminder, medicineReminder): never an alarm. */
+const REMINDER_ID_PREFIXES = ['followup-', 'med-'];
 
 /**
  * The next time the clock shows `time`'s hour and minute: today while that is
@@ -141,8 +143,13 @@ export const cancelAllAlarms = async () => {
   if (!lib) return;
   try {
     const notifee = lib.default;
+    // Android tells an alarm by its channel. iOS has no channels: there,
+    // everything that is not one of the app's own reminders (follow-up,
+    // medicine) is an alarm, so a session that ends never takes those.
     const isAlarm = (notification?: NotifeeModule.Notification) =>
-      Platform.OS !== 'android' || notification?.android?.channelId === CHANNEL_ID;
+      Platform.OS === 'android'
+        ? notification?.android?.channelId === CHANNEL_ID
+        : !REMINDER_ID_PREFIXES.some(prefix => String(notification?.id ?? '').startsWith(prefix));
 
     const scheduled = await notifee.getTriggerNotifications();
     const scheduledIds = (scheduled ?? [])

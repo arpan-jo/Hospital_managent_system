@@ -10,8 +10,10 @@ import {
   TodayMedicine,
   TodayMedicinesRepository,
   medicineDoseKey,
+  onTakenLogChange,
   readTakenLog,
   serverMessageOf,
+  setMedicineReminderTimes,
   slotsOfFrequency,
   takenLogDay,
   toggleTakenDose,
@@ -153,6 +155,16 @@ export const useTodayMedicines = (patientCode?: string | null) => {
     setLog(toggleTakenDose(doseKey(prescriptionId, slot)));
   }, []);
 
+  // A tick made anywhere else shows here at once: the other panel, or "Taken"
+  // on a medicine reminder pressed while the app is open.
+  useEffect(
+    () =>
+      onTakenLogChange?.(() => {
+        if (mountedRef.current) setLog(readTakenLog());
+      }),
+    [],
+  );
+
   const groups = useMemo(
     () =>
       MEDICINE_SLOTS.map(slot => ({
@@ -181,6 +193,8 @@ export const useTodayMedicines = (patientCode?: string | null) => {
           setSlotTimes(times);
           setDraftTimes(times);
         }
+        // The medicine reminders move to the new times.
+        setMedicineReminderTimes?.(times);
         toastStore.show(t(successKey), 'success');
         return true;
       } catch (error: any) {

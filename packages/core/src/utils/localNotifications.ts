@@ -52,6 +52,12 @@ export interface ReminderChannel {
   name: string;
 }
 
+export interface ReminderAction {
+  /** Handed back as `pressAction.id` in the action's event. */
+  id: string;
+  title: string;
+}
+
 export interface ReminderInput {
   /** Setting the same id again replaces the earlier reminder — never a second copy. */
   id: string;
@@ -60,8 +66,14 @@ export interface ReminderInput {
   title: string;
   body: string;
   channel: ReminderChannel;
-  /** The label of the button that clears it ("OK"). */
-  dismissLabel: string;
+  /** The label of the button that clears it ("OK"). Not used when `actions` are given. */
+  dismissLabel?: string;
+  /**
+   * The reminder's own buttons, in place of the "OK" that clears it — each
+   * answered by the module that set it (see `registerNotificationHandlers`).
+   * A tap on the reminder itself still only clears it.
+   */
+  actions?: ReminderAction[];
   /** It leaves the notification shade by itself at this time, read or not. */
   removeAt?: Date;
   /** Carried with the notification and handed back in its events — strings only. */
@@ -154,6 +166,15 @@ export const scheduleReminder = async (input: ReminderInput): Promise<boolean> =
     const timeoutAfter = Number.isFinite(removeAt) && removeAt > at ? removeAt - at : undefined;
 
     const body = toNotificationText(input?.body ?? '');
+    const ownActions = (Array.isArray(input?.actions) ? input.actions : [])
+      ?.filter(action => action?.id && action?.title)
+      ?.map(action => ({
+        title: toNotificationText(action.title),
+        pressAction: { id: String(action.id) },
+      }));
+    const actions = ownActions?.length
+      ? ownActions
+      : [{ title: toNotificationText(input?.dismissLabel || 'OK'), pressAction: { id: DISMISS_ACTION_ID } }];
     await notifee?.createTriggerNotification?.(
       {
         id,
@@ -171,9 +192,7 @@ export const scheduleReminder = async (input: ReminderInput): Promise<boolean> =
           style: { type: lib?.AndroidStyle?.BIGTEXT ?? STYLE_BIGTEXT, text: body },
           autoCancel: true,
           pressAction: { id: PRESS_ID },
-          actions: [
-            { title: toNotificationText(input?.dismissLabel || 'OK'), pressAction: { id: DISMISS_ACTION_ID } },
-          ],
+          actions,
           ...(timeoutAfter ? { timeoutAfter } : {}),
         },
         ios: { sound: 'default' },
@@ -247,6 +266,84 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
   } catch (error: any) {
     console.log('requestNotificationPermission error ==>', error?.message);
     return 'unavailable';
+  }
+};
+
+export interface ReminderPermissionState {
+  /**
+   * Whether the phone shows these reminders: 'off' when notifications are
+   * turned off for the app, or for the reminder's own channel; 'unknown' when
+   * it cannot tell (not asked yet, or no native side).
+   */
+  notifications: 'on' | 'off' | 'unknown';
+  /** Which switch is off, so the right settings page can be opened. */
+  offAt?: 'app' | 'channel';
+  /**
+   * Android 12+: whether reminders may show on the minute ("Alarms &
+   * reminders"). Without it Android shows them a little late. 'n/a' where
+   * the setting does not exist.
+   */
+  onTime: 'on' | 'off' | 'n/a';
+}
+
+const STATUS_NOT_DETERMINED = -1; // AuthorizationStatus.NOT_DETERMINED
+const SETTING_NOT_SUPPORTED = -1; // AndroidNotificationSetting.NOT_SUPPORTED
+
+/** What stands between a reminder and the patient right now. Never throws. */
+export const readReminderPermission = async (
+  channelId?: string,
+): Promise<ReminderPermissionState> => {
+  const lib = loadNotifee();
+  const notifee = lib?.default;
+  if (!notifee) return { notifications: 'unknown', onTime: 'n/a' };
+  try {
+    const settings = await notifee?.getNotificationSettings?.();
+    const status = settings?.authorizationStatus;
+    const alarm = settings?.android?.alarm;
+    const onTime: ReminderPermissionState['onTime'] =
+      Platform?.OS !== 'android' ||
+      alarm === undefined ||
+      alarm === (lib?.AndroidNotificationSetting?.NOT_SUPPORTED ?? SETTING_NOT_SUPPORTED)
+        ? 'n/a'
+        : alarm === (lib?.AndroidNotificationSetting?.ENABLED ?? SETTING_ENABLED)
+        ? 'on'
+        : 'off';
+
+    if (status === (lib?.AuthorizationStatus?.DENIED ?? STATUS_DENIED)) {
+      return { notifications: 'off', offAt: 'app', onTime };
+    }
+    if (status === undefined || status === (lib?.AuthorizationStatus?.NOT_DETERMINED ?? STATUS_NOT_DETERMINED)) {
+      return { notifications: 'unknown', onTime };
+    }
+    // A channel the patient switched off in the phone's settings (Android only).
+    if (channelId && Platform?.OS === 'android' && (await notifee?.isChannelBlocked?.(channelId))) {
+      return { notifications: 'off', offAt: 'channel', onTime };
+    }
+    return { notifications: 'on', onTime };
+  } catch (error: any) {
+    console.log('readReminderPermission error ==>', error?.message);
+    return { notifications: 'unknown', onTime: 'n/a' };
+  }
+};
+
+/**
+ * Opens the phone's page that turns reminders back on: the app's (or one
+ * channel's) notification settings, or "Alarms & reminders". Never throws.
+ */
+export const openReminderSettings = async (
+  page: 'notifications' | 'onTime',
+  channelId?: string,
+): Promise<void> => {
+  const notifee = loadNotifee()?.default;
+  if (!notifee) return;
+  try {
+    if (page === 'onTime') {
+      await notifee?.openAlarmPermissionSettings?.();
+    } else {
+      await notifee?.openNotificationSettings?.(channelId);
+    }
+  } catch (error: any) {
+    console.log('openReminderSettings error ==>', error?.message);
   }
 };
 

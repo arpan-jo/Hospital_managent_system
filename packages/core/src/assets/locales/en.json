@@ -681,6 +681,24 @@
     "patient": "Patient: {{name}}",
     "ok": "OK"
   },
+  "medicineReminder": {
+    "channelName": "Medicine reminders",
+    "title": {
+      "morning": "Time for your morning medicine",
+      "afternoon": "Time for your afternoon medicine",
+      "evening": "Time for your evening medicine",
+      "night": "Time for your night medicine"
+    },
+    "taken": "Taken",
+    "more": "+{{count}} more",
+    "unnamed": "Medicine",
+    "howItWorks": "At each of these times you get a reminder of the medicines still to take, even when the app is closed. Tap “Taken” on it to tick them off.",
+    "notificationsOff": "Notifications are turned off for this app, so medicine reminders cannot reach you.",
+    "channelOff": "Medicine reminders are turned off in your phone’s settings.",
+    "turnOn": "Turn on",
+    "onTimeOff": "Reminders may arrive a little late. Allow “Alarms & reminders” for this app to get them on time.",
+    "allow": "Allow"
+  },
   "uploadFile": {
     "fileRequired": "Select a file to upload",
     "titleRequired": "Enter a title for this document",

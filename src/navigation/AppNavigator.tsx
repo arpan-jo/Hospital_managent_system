@@ -8,6 +8,7 @@ import {
   pruneTakenLogs,
   useStores,
 } from '@app/core';
+import { useMedicineReminders } from '../hooks/useMedicineReminders';
 import AuthStackNavigator from './AuthStackNavigator';
 import DrawerNavigator from './DrawerNavigator';
 import { NavigationLightTheme, NavigationDarkTheme } from '@app/ui';
@@ -75,6 +76,9 @@ export const AppNavigator = observer(() => {
   useEffect(() => {
     pruneTakenLogs?.();
   }, []);
+
+  // Medicine reminders: claimed and read on sign-in, kept in step after it.
+  useMedicineReminders(isAuthenticated, userId);
 
   return (
     <NavigationContainer

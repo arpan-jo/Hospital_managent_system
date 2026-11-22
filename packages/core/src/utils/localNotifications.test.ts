@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import {
   cancelReminders,
+  openReminderSettings,
+  readReminderPermission,
   registerNotificationHandlers,
   requestNotificationPermission,
   scheduleReminder,
@@ -18,6 +20,9 @@ const mockNotifee = {
   requestPermission: jest.fn(),
   onBackgroundEvent: jest.fn(),
   onForegroundEvent: jest.fn(),
+  isChannelBlocked: jest.fn(),
+  openNotificationSettings: jest.fn(),
+  openAlarmPermissionSettings: jest.fn(),
 };
 
 jest.mock('@notifee/react-native', () => ({
@@ -140,6 +145,32 @@ describe('scheduleReminder', () => {
     expect(mockNotifee.createTriggerNotification).not.toHaveBeenCalled();
   });
 
+  it('its own buttons in place of OK — a tap on it still only clears it', async () => {
+    await scheduleReminder({
+      ...reminder(new Date(Date.now() + HOUR)),
+      dismissLabel: undefined,
+      actions: [
+        { id: 'medicine-taken', title: 'Taken & <done>' },
+        { id: '', title: 'no id' },
+        { id: 'x', title: '' },
+      ],
+    });
+
+    const [notification] = mockNotifee.createTriggerNotification.mock.calls[0];
+    expect(notification.android.actions).toEqual([
+      { title: 'Taken &amp; &lt;done&gt;', pressAction: { id: 'medicine-taken' } },
+    ]);
+    expect(notification.android.pressAction).toEqual({ id: 'reminder-press' });
+  });
+
+  it('no usable button of its own: the OK one', async () => {
+    await scheduleReminder({ ...reminder(new Date(Date.now() + HOUR)), actions: [{ id: '', title: '' }] });
+
+    expect(mockNotifee.createTriggerNotification.mock.calls[0][0].android.actions).toEqual([
+      { title: 'OK', pressAction: { id: 'reminder-dismiss' } },
+    ]);
+  });
+
   it('no removal time: no timeout', async () => {
     await scheduleReminder(reminder(new Date(Date.now() + HOUR)));
 
@@ -242,5 +273,64 @@ describe('registerNotificationHandlers', () => {
 
     expect(failing).toHaveBeenCalledWith(stop);
     expect(alarm).toHaveBeenCalledWith(stop);
+  });
+});
+
+describe('readReminderPermission', () => {
+  it('on, and on time when "Alarms & reminders" is allowed', async () => {
+    mockNotifee.getNotificationSettings.mockResolvedValueOnce({ authorizationStatus: 1, android: { alarm: 1 } });
+    mockNotifee.isChannelBlocked.mockResolvedValueOnce(false);
+    await expect(readReminderPermission('medicine-reminder')).resolves.toEqual({ notifications: 'on', onTime: 'on' });
+  });
+
+  it('off for the app, off for the channel alone, and late without "Alarms & reminders"', async () => {
+    mockNotifee.getNotificationSettings.mockResolvedValueOnce({ authorizationStatus: 0, android: { alarm: 0 } });
+    await expect(readReminderPermission('medicine-reminder')).resolves.toEqual({
+      notifications: 'off',
+      offAt: 'app',
+      onTime: 'off',
+    });
+
+    mockNotifee.getNotificationSettings.mockResolvedValueOnce({ authorizationStatus: 1, android: { alarm: 1 } });
+    mockNotifee.isChannelBlocked.mockResolvedValueOnce(true);
+    await expect(readReminderPermission('medicine-reminder')).resolves.toEqual({
+      notifications: 'off',
+      offAt: 'channel',
+      onTime: 'on',
+    });
+  });
+
+  it('nothing to say where the setting does not exist, or before the phone has been asked', async () => {
+    mockNotifee.getNotificationSettings.mockResolvedValueOnce({ authorizationStatus: 1, android: { alarm: -1 } });
+    mockNotifee.isChannelBlocked.mockResolvedValueOnce(false);
+    await expect(readReminderPermission()).resolves.toEqual({ notifications: 'on', onTime: 'n/a' });
+
+    mockNotifee.getNotificationSettings.mockResolvedValueOnce({ authorizationStatus: -1, android: { alarm: 1 } });
+    await expect(readReminderPermission()).resolves.toEqual({ notifications: 'unknown', onTime: 'on' });
+
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    mockNotifee.getNotificationSettings.mockResolvedValueOnce({ authorizationStatus: 1 });
+    await expect(readReminderPermission('medicine-reminder')).resolves.toEqual({ notifications: 'on', onTime: 'n/a' });
+    expect(mockNotifee.isChannelBlocked).not.toHaveBeenCalled();
+  });
+
+  it('never throws', async () => {
+    mockNotifee.getNotificationSettings.mockRejectedValueOnce(new Error('native gone'));
+    await expect(readReminderPermission()).resolves.toEqual({ notifications: 'unknown', onTime: 'n/a' });
+  });
+});
+
+describe('openReminderSettings', () => {
+  it("opens the app's or the channel's notification page, or Alarms & reminders", async () => {
+    await openReminderSettings('notifications');
+    await openReminderSettings('notifications', 'medicine-reminder');
+    await openReminderSettings('onTime');
+    expect(mockNotifee.openNotificationSettings.mock.calls).toEqual([[undefined], ['medicine-reminder']]);
+    expect(mockNotifee.openAlarmPermissionSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('never throws', async () => {
+    mockNotifee.openAlarmPermissionSettings.mockRejectedValueOnce(new Error('no activity'));
+    await expect(openReminderSettings('onTime')).resolves.toBeUndefined();
   });
 });

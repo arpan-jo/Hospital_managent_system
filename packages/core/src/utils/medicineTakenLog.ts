@@ -22,6 +22,32 @@ const LOG_KEY = /^med-log-(\d{4}-\d{2}-\d{2})$/;
 /** How many days of ticks are kept before today's; older ones are of no use. */
 export const TAKEN_LOG_KEEP_DAYS = 7;
 
+type TakenLogListener = () => void;
+const listeners = new Set<TakenLogListener>();
+
+/**
+ * Called after every change to the ticks — made on either panel, or with
+ * "Taken" on a medicine reminder while the app is open — so whatever shows
+ * them reads them again at once. Gives back the function that stops it.
+ */
+export const onTakenLogChange = (listener: TakenLogListener): (() => void) => {
+  if (typeof listener !== 'function') return () => {};
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const notifyTakenLogChange = () => {
+  listeners.forEach(listener => {
+    try {
+      listener?.();
+    } catch (error: any) {
+      console.log('medicine taken log listener error ==>', error?.message);
+    }
+  });
+};
+
 /** The log's day for `now`, by the phone's own date ("2026-11-22"). */
 export const takenLogDay = (now?: Date): string => {
   const date = now instanceof Date && Number.isFinite(now?.getTime?.()) ? now : new Date();
@@ -90,5 +116,37 @@ export const toggleTakenDose = (key: string, day?: string): Record<string, boole
   } catch (error: any) {
     console.log('medicine taken log write error ==>', error?.message);
   }
+  notifyTakenLogChange();
+  return next;
+};
+
+/**
+ * Ticks the given medicine lines as taken in one slot of one day: "Taken" on
+ * a medicine reminder. Only ever sets a tick, never takes one off, so pressing
+ * it twice changes nothing. Gives back the day's ticks after it.
+ */
+export const markTakenDoses = (
+  day: string,
+  slot: MedicineSlot,
+  prescriptionIds: number[],
+): Record<string, boolean> => {
+  const logDay = String(day ?? '');
+  // A day that is not "YYYY-MM-DD" ticks nothing, rather than the wrong day.
+  if (!LOG_KEY.test(logKeyOf(logDay))) return readTakenLog();
+  const current = readTakenLog(logDay);
+  const ids = (Array.isArray(prescriptionIds) ? prescriptionIds : [])
+    ?.map(id => Math.trunc(Number(id) || 0))
+    ?.filter(id => id > 0);
+  if (!slot || !ids?.length) return current;
+  const next = { ...current };
+  ids.forEach(id => {
+    next[medicineDoseKey(id, slot)] = true;
+  });
+  try {
+    storage?.set?.(logKeyOf(logDay), JSON.stringify(next));
+  } catch (error: any) {
+    console.log('medicine taken log write error ==>', error?.message);
+  }
+  notifyTakenLogChange();
   return next;
 };
