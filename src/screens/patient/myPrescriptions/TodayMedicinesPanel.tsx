@@ -249,9 +249,6 @@ export const TodayMedicinesPanel = memo<TodayMedicinesPanelProps>(
             <Text style={[styles.settingsHint, { color: muted }]}>
               {t('todayMedicines.reminderHint')}
             </Text>
-            <Text style={[styles.settingsHint, { color: muted }]}>
-              {t('medicineReminder.howItWorks')}
-            </Text>
             {/* Android 12+ without "Alarms & reminders": they come, but late. */}
             {reminders.state?.onTime === 'off' &&
             reminders.state?.notifications !== 'off' ? (

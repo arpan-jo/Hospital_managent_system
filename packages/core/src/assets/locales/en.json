@@ -692,11 +692,10 @@
     "taken": "Taken",
     "more": "+{{count}} more",
     "unnamed": "Medicine",
-    "howItWorks": "At each of these times you get a reminder of the medicines still to take, even when the app is closed. Tap “Taken” on it to tick them off.",
-    "notificationsOff": "Notifications are turned off for this app, so medicine reminders cannot reach you.",
-    "channelOff": "Medicine reminders are turned off in your phone’s settings.",
+    "notificationsOff": "Notifications are off, so medicine reminders won’t come.",
+    "channelOff": "Medicine reminders are turned off.",
     "turnOn": "Turn on",
-    "onTimeOff": "Reminders may arrive a little late. Allow “Alarms & reminders” for this app to get them on time.",
+    "onTimeOff": "Allow alarms to get reminders on time.",
     "allow": "Allow"
   },
   "uploadFile": {
