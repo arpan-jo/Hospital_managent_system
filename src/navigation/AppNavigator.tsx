@@ -5,6 +5,7 @@ import {
   askNotificationPermissionOnce,
   cancelAllAlarms,
   claimFollowUpReminders,
+  pruneTakenLogs,
   useStores,
 } from '@app/core';
 import AuthStackNavigator from './AuthStackNavigator';
@@ -69,6 +70,11 @@ export const AppNavigator = observer(() => {
   useEffect(() => {
     if (isAuthenticated) askNotificationPermissionOnce?.();
   }, [isAuthenticated]);
+
+  // Once as the app opens: Today's Medicines ticks of days long past leave the phone.
+  useEffect(() => {
+    pruneTakenLogs?.();
+  }, []);
 
   return (
     <NavigationContainer

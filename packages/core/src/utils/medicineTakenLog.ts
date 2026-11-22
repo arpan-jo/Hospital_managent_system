@@ -16,6 +16,12 @@ import type { MedicineSlot } from './medicineSlots';
 
 const logKeyOf = (day: string) => `med-log-${day}`;
 
+/** A day's record key, and nothing else: `med-log-YYYY-MM-DD`. */
+const LOG_KEY = /^med-log-(\d{4}-\d{2}-\d{2})$/;
+
+/** How many days of ticks are kept before today's; older ones are of no use. */
+export const TAKEN_LOG_KEEP_DAYS = 7;
+
 /** The log's day for `now`, by the phone's own date ("2026-11-22"). */
 export const takenLogDay = (now?: Date): string => {
   const date = now instanceof Date && Number.isFinite(now?.getTime?.()) ? now : new Date();
@@ -35,6 +41,37 @@ export const readTakenLog = (day?: string): Record<string, boolean> => {
   } catch (error: any) {
     console.log('medicine taken log read error ==>', error?.message);
     return {};
+  }
+};
+
+/**
+ * Takes away the records of days more than `keepDays` before today. A day's
+ * ticks are only shown on that day, so without this they would pile up on the
+ * phone for good, one record a day. Only `med-log-YYYY-MM-DD` keys are touched;
+ * today's and later ones always stay. Gives back how many were taken away.
+ * Run once as the app opens. Never throws.
+ */
+export const pruneTakenLogs = (keepDays: number = TAKEN_LOG_KEEP_DAYS, now?: Date): number => {
+  try {
+    const today = now instanceof Date && Number.isFinite(now?.getTime?.()) ? now : new Date();
+    const days = Math.max(0, Math.trunc(Number(keepDays) || 0));
+    const oldestKept = takenLogDay(
+      new Date(today.getFullYear(), today.getMonth(), today.getDate() - days),
+    );
+    const keys = storage?.getAllKeys?.() ?? [];
+    let removed = 0;
+    for (const key of Array.isArray(keys) ? keys : []) {
+      const day = LOG_KEY.exec(String(key ?? ''))?.[1];
+      // "YYYY-MM-DD" sorts as the days do.
+      if (day && day < oldestKept) {
+        storage?.remove?.(key);
+        removed += 1;
+      }
+    }
+    return removed;
+  } catch (error: any) {
+    console.log('medicine taken log prune error ==>', error?.message);
+    return 0;
   }
 };
 
