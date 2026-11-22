@@ -43,6 +43,8 @@ export const AppLightTheme = {
     onSurfaceVariant: '#8A90A6',
     outlineVariant: '#EDEFF5',
     error: '#B3261E',
+    // A note that asks the patient to do something, short of an error (amber).
+    caution: '#B45309',
     // Paper's raised surfaces — dialogs (level3), menus (level2), search bars
     // (level3). Its defaults are a lilac; these follow the app's blue-grey.
     elevation: {
@@ -81,6 +83,7 @@ export const AppDarkTheme = {
     onSurfaceVariant: '#9AA0B5',
     outlineVariant: '#2A3042',
     error: '#F2B8B5',
+    caution: '#FBBF24',
     // Paper's raised surfaces — dialogs (level3), menus (level2), search bars
     // (level3). Its defaults are a purple grey; these follow the app's navy.
     elevation: {

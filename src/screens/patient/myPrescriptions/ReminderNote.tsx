@@ -1,8 +1,8 @@
 import React, { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { fontFamilies } from '@app/ui';
+import { fontFamilies, useAppTheme } from '@app/ui';
 
 interface ReminderNoteProps {
   icon: string;
@@ -21,9 +21,10 @@ export const ReminderNote = memo<ReminderNoteProps>(function ReminderNoteView({
   onAction,
   tone = 'info',
 }) {
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isWarning = tone === 'warning';
-  const ink = isWarning ? theme.colors.onErrorContainer : theme.colors.onSurfaceVariant;
+  // Info in amber, so it stands out from the grey hints around it.
+  const ink = isWarning ? theme.colors.onErrorContainer : theme.colors.caution;
 
   return (
     <View
