@@ -12,7 +12,7 @@ const mockNotifications = {
   scheduleReminder: jest.fn(),
   cancelReminder: jest.fn(),
   cancelReminders: jest.fn(),
-  getTriggerNotificationIds: jest.fn(),
+  getTriggerNotifications: jest.fn(),
 };
 
 // Read when called, not when the module loads — the mocks are set up after the imports run.
@@ -23,7 +23,7 @@ jest.mock('./secureStorage', () => ({
 }));
 jest.mock('./localNotifications', () => ({
   loadNotifee: () => ({
-    default: { getTriggerNotificationIds: (...args: any[]) => mockNotifications.getTriggerNotificationIds(...args) },
+    default: { getTriggerNotifications: (...args: any[]) => mockNotifications.getTriggerNotifications(...args) },
     EventType: { DISMISSED: 0, PRESS: 1, ACTION_PRESS: 2, DELIVERED: 3 },
   }),
   scheduleReminder: (...args: any[]) => mockNotifications.scheduleReminder(...args),
@@ -56,7 +56,7 @@ import {
   setMedicineReminderSource,
   setMedicineReminderTimes,
 } from './medicineReminder';
-import { readTakenLog } from './medicineTakenLog';
+import { markTakenDoses, readTakenLog } from './medicineTakenLog';
 
 /** A local time — months 1-based, as written. */
 const at = (y: number, m: number, d: number, h = 0, min = 0) => new Date(y, m - 1, d, h, min, 0, 0);
@@ -109,6 +109,13 @@ const sourceOf = (medicines: ReminderMedicine[], extra: Record<string, any> = {}
 
 const ids = (plan: { schedule: { id: string }[] }) => plan.schedule.map(item => item.id);
 
+/** Reminders set on the phone and not shown yet, as Notifee lists them. */
+const pendingOnPhone = (list: [string, Date][]) =>
+  list.map(([id, when]) => ({
+    notification: { id, data: { at: String(when.getTime()) } },
+    trigger: { type: 0, timestamp: when.getTime() },
+  }));
+
 beforeEach(() => {
   mockStore.clear();
   Object.values(mockStorage).forEach(fn => fn.mockClear());
@@ -116,7 +123,7 @@ beforeEach(() => {
   mockNotifications.scheduleReminder.mockResolvedValue(true);
   mockNotifications.cancelReminder.mockResolvedValue(undefined);
   mockNotifications.cancelReminders.mockResolvedValue(undefined);
-  mockNotifications.getTriggerNotificationIds.mockResolvedValue([]);
+  mockNotifications.getTriggerNotifications.mockResolvedValue([]);
 });
 
 describe('medicineCourseDays — the server’s own count', () => {
@@ -410,15 +417,38 @@ describe('setting them on the phone', () => {
 
   it('takes away reminders set before and no longer wanted — and only medicine ones', async () => {
     await sign();
-    mockNotifications.getTriggerNotificationIds.mockResolvedValue([
-      'med-2026-11-22-morning',
-      'med-2026-11-22-night',
-      'followup-1-2026-11-30',
-      'abc',
-    ]);
+    mockNotifications.getTriggerNotifications.mockResolvedValue(
+      pendingOnPhone([
+        ['med-2026-11-23-morning', at(2026, 11, 23, 8, 0)],
+        ['med-2026-11-22-night', at(2026, 11, 22, 21, 0)],
+        ['followup-1-2026-11-30', at(2026, 11, 29, 20, 0)],
+        ['abc', at(2026, 11, 22, 10, 0)],
+      ]),
+    );
     await setMedicineReminderSource({ userId: 5, medicines: api([JAHED[1]]), times: DEFAULT_TIMES });
 
-    expect(mockNotifications.cancelReminder.mock.calls).toEqual([['med-2026-11-22-morning']]);
+    expect(mockNotifications.cancelReminder.mock.calls).toEqual([['med-2026-11-23-morning']]);
+  });
+
+  it('a reminder whose time has come but that Android has yet to show stays — the app opened in that hour', async () => {
+    // Without exact alarms Android shows it up to an hour late. It is 9 AM:
+    // the 8 AM one is still waiting; one from 5 AM is past the three hours.
+    await sign();
+    mockNotifications.getTriggerNotifications.mockResolvedValue(
+      pendingOnPhone([
+        ['med-2026-11-22-morning', at(2026, 11, 22, 8, 0)],
+        ['med-2026-11-22-afternoon', at(2026, 11, 22, 5, 0)],
+      ]),
+    );
+    const morning = medicine({ id: 3050, frequency: '1+0+0' });
+    await setMedicineReminderSource({ userId: 5, medicines: api([morning]), times: DEFAULT_TIMES });
+    expect(mockNotifications.cancelReminder.mock.calls).toEqual([['med-2026-11-22-afternoon']]);
+
+    // Ticked, its reminder goes all the same, waiting or showing.
+    mockNotifications.cancelReminder.mockClear();
+    markTakenDoses('2026-11-22', 'morning', [3050]);
+    await rebuildMedicineReminders();
+    expect(mockNotifications.cancelReminder.mock.calls).toContainEqual(['med-2026-11-22-morning']);
   });
 
   it("a list read for an account that has since signed out, or another account's, is never kept", async () => {
@@ -478,10 +508,10 @@ describe('setting them on the phone', () => {
   it('calls that come while one runs are folded into one more pass', async () => {
     await sign();
     await setMedicineReminderSource({ userId: 5, medicines: api([JAHED[1]]), times: DEFAULT_TIMES });
-    mockNotifications.getTriggerNotificationIds.mockClear();
+    mockNotifications.getTriggerNotifications.mockClear();
 
     await Promise.all([rebuildMedicineReminders(), rebuildMedicineReminders(), rebuildMedicineReminders()]);
-    expect(mockNotifications.getTriggerNotificationIds.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(mockNotifications.getTriggerNotifications.mock.calls.length).toBeLessThanOrEqual(2);
   });
 
   it('another account signing in: the last one’s reminders and list leave the phone first', async () => {
@@ -522,7 +552,7 @@ describe('setting them on the phone', () => {
 
   it('never throws when the phone refuses', async () => {
     await sign();
-    mockNotifications.getTriggerNotificationIds.mockRejectedValue(new Error('native gone'));
+    mockNotifications.getTriggerNotifications.mockRejectedValue(new Error('native gone'));
     mockNotifications.scheduleReminder.mockRejectedValue(new Error('bad trigger'));
     await expect(
       setMedicineReminderSource({ userId: 5, medicines: api(JAHED), times: DEFAULT_TIMES }),

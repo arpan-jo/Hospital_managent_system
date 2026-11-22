@@ -409,6 +409,17 @@ const setOne = async (item: MedicineReminderPlanItem) => {
 /** Set by sign-in as another account and by logout: the next pass first clears every medicine reminder. */
 let purgeFirst = false;
 
+/**
+ * A reminder whose time has come, less than three hours ago, that Android has
+ * yet to show. With no exact alarms allowed (the default on a fresh install of
+ * Android 14+), Android shows a reminder up to an hour after its time.
+ */
+const isWaitingToShow = (pending: NotifeeModule.TriggerNotification | null | undefined, now: number): boolean => {
+  const trigger = pending?.trigger as { timestamp?: number } | undefined;
+  const due = Number(trigger?.timestamp ?? pending?.notification?.data?.at);
+  return Number.isFinite(due) && due <= now && now - due < MEDICINE_REMINDER_LATE_MS;
+};
+
 /** One pass: sets what the plan wants, takes away what it no longer does. */
 const applyPlan = async () => {
   if (purgeFirst) {
@@ -416,14 +427,19 @@ const applyPlan = async () => {
     // Still to come and showing now alike: no one sees another account's medicines.
     await cancelReminders?.(ID_PREFIX);
   }
-  const plan = planMedicineReminders({ source: readSource(), now: new Date() });
+  const now = new Date();
+  const plan = planMedicineReminders({ source: readSource(), now });
   const wanted = new Set(plan.schedule.map(item => item.id));
 
-  // Set ahead but no longer wanted: a course over, a time moved, an account gone.
-  const setIds = await loadNotifee()?.default?.getTriggerNotificationIds?.();
-  for (const id of Array.isArray(setIds) ? setIds : []) {
-    const key = String(id ?? '');
-    if (key.startsWith(ID_PREFIX) && !wanted.has(key)) await cancelReminder?.(key);
+  // Set ahead but no longer wanted: a course over, a time moved, an account
+  // gone. Not one whose time has come and that Android has yet to show: the
+  // app opened in that hour must not take the dose's reminder away. (A slot
+  // all ticked still loses it, below.)
+  const pending = await loadNotifee()?.default?.getTriggerNotifications?.();
+  for (const entry of Array.isArray(pending) ? pending : []) {
+    const key = String(entry?.notification?.id ?? '');
+    if (!key.startsWith(ID_PREFIX) || wanted.has(key) || isWaitingToShow(entry, now.getTime())) continue;
+    await cancelReminder?.(key);
   }
   // A slot ticked off in full: its reminder goes, still to come or showing now.
   for (const id of plan.cancelIds) await cancelReminder?.(id);
