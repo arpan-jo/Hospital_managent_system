@@ -45,7 +45,9 @@ import {
   claimMedicineReminders,
   clearMedicineReminders,
   handleMedicineReminderEvent,
+  isAlternateDayMedicine,
   isMedicineDueOn,
+  isMedicineWithoutReminder,
   isWeeklyMedicine,
   medicineCourseDays,
   medicineReminderBody,
@@ -144,16 +146,52 @@ describe('medicineCourseDays — the server’s own count', () => {
   });
 });
 
+// The doses as the server sends them: the doctor's Dose list (tblDoseLookups)
+// with the spaces stripped — "Use once weekly" comes as "Useonceweekly".
+const DAILY = ['0+0+1', '1+0+1', '½+0+½', 'BD', 'TDS', 'twicedaily', 'OD', 'Useoncedaily', 'nocte', '1Tab', 'Applythinlayer', '', '1+0+1for2weeks', '1+0+1for1month', 'onceadayfor1week'];
+
+describe('isMedicineWithoutReminder', () => {
+  it('as needed, once only, and a few days a week or a month not named', () => {
+    [
+      'Useasneeded', 'Applyasneeded', 'SOS', '1+0+1SOS', '1TabSOS', 'PRN', 'whenrequired', 'প্রয়োজনে', 'প্র\u09DFোজনমতো',
+      'STAT', '1TabSTAT',
+      'Usetwiceweekly', 'Usethreetimesweekly', 'twice a week', '2timesaweek', '3x/week', 'সপ্তাহে২বার', 'সপ্তাহেদুইবার', 'সপ্তাহেতিনবার', 'সপ্তাহেছ\u09DFবার', 'সপ্তাহেছয়বার',
+      'biweekly', 'fortnightly', 'every2weeks', 'monthly', 'onceamonth', 'মাসে১বার',
+    ].forEach(text => expect([text, isMedicineWithoutReminder(text)]).toEqual([text, true]));
+  });
+
+  it('leaves daily doses, once a week and alternate days alone', () => {
+    [...DAILY, 'ONCEWKLY', 'Useonceweekly', 'Useonalternatedays', 'Statin', 'Prostate'].forEach(text =>
+      expect([text, isMedicineWithoutReminder(text)]).toEqual([text, false]),
+    );
+  });
+});
+
 describe('isWeeklyMedicine', () => {
   it('knows a once-a-week dose, however it is run together', () => {
-    ['ONCEWKLY', 'weekly', 'Weekly', 'onceaweek', 'once a week', '1/week', 'সপ্তাহে১বার'].forEach(text =>
-      expect(isWeeklyMedicine(text)).toBe(true),
+    [
+      'ONCEWKLY', 'Useonceweekly', 'weekly', 'Weekly', 'onceaweek', 'once a week', 'onceeveryweek', 'everyweek',
+      '1/week', '1timeperweek', '1 time a week', '1xweek', 'সপ্তাহে১বার', 'সপ্তাহে একবার',
+    ].forEach(text => expect([text, isWeeklyMedicine(text)]).toEqual([text, true]));
+  });
+
+  it('leaves daily doses, and more or less than once a week, alone', () => {
+    [...DAILY, 'Usetwiceweekly', 'Usethreetimesweekly', '2timesaweek', 'সপ্তাহে২বার', 'biweekly', '1+0+1weeks'].forEach(
+      text => expect([text, isWeeklyMedicine(text)]).toEqual([text, false]),
+    );
+  });
+});
+
+describe('isAlternateDayMedicine', () => {
+  it('knows every other day', () => {
+    ['Useonalternatedays', 'Use on alternate days', 'Alternateday', 'everyotherday', 'একদিনপরপর', 'একদিন পর পর'].forEach(text =>
+      expect([text, isAlternateDayMedicine(text)]).toEqual([text, true]),
     );
   });
 
-  it('leaves every daily dose alone', () => {
-    ['0+0+1', '1+0+1', 'BD', 'twicedaily', 'OD', '', 'nocte'].forEach(text =>
-      expect(isWeeklyMedicine(text)).toBe(false),
+  it('leaves the rest alone', () => {
+    [...DAILY, 'ONCEWKLY', 'Useasneeded'].forEach(text =>
+      expect([text, isAlternateDayMedicine(text)]).toEqual([text, false]),
     );
   });
 });
@@ -169,10 +207,13 @@ describe('isMedicineDueOn', () => {
     expect(isMedicineDueOn(week, at(2026, 11, 29), listed)).toBe(false);
   });
 
-  it('"Continue" carries on, but no more than the year the server reads back', () => {
+  it('"Continue" carries on, a year after its start and more', () => {
+    // The server keeps listing it: its one-year read goes by the day the
+    // prescription was saved, and an uploaded paper can be dated far older.
     const always = medicine({ startDate: '2025-11-22', duration: 'Continue' });
     expect(isMedicineDueOn(always, at(2026, 11, 22), listed)).toBe(true); // 365 days
-    expect(isMedicineDueOn(always, at(2026, 11, 23), listed)).toBe(false); // 366 days
+    expect(isMedicineDueOn(always, at(2026, 11, 23), listed)).toBe(true); // 366 days
+    expect(isMedicineDueOn(medicine({ startDate: '2023-01-05', duration: 'Continue' }), at(2026, 11, 23), listed)).toBe(true);
   });
 
   it('a once-a-week medicine only on its own weekday', () => {
@@ -181,6 +222,23 @@ describe('isMedicineDueOn', () => {
     expect(isMedicineDueOn(weekly, at(2026, 11, 22), listed)).toBe(false);
     expect(isMedicineDueOn(weekly, at(2026, 11, 24), listed)).toBe(true);
     expect(isMedicineDueOn(weekly, at(2026, 12, 1), listed)).toBe(true);
+  });
+
+  it('an alternate-day medicine every other day from its start', () => {
+    const everyOther = medicine({ frequency: 'Useonalternatedays', startDate: '2026-11-17' }); // Tue
+    expect(isMedicineDueOn(everyOther, at(2026, 11, 17), listed)).toBe(true);
+    expect(isMedicineDueOn(everyOther, at(2026, 11, 18), listed)).toBe(false);
+    expect(isMedicineDueOn(everyOther, at(2026, 11, 19), listed)).toBe(true);
+    expect(isMedicineDueOn(everyOther, at(2026, 11, 22), listed)).toBe(false);
+    expect(isMedicineDueOn(everyOther, at(2026, 11, 23), listed)).toBe(true);
+  });
+
+  it('as needed, STAT, twice weekly: never, though the course runs', () => {
+    ['Useasneeded', 'SOS', 'STAT', 'Usetwiceweekly', 'Usethreetimesweekly'].forEach(frequency => {
+      const line = medicine({ frequency, startDate: '2026-11-22', duration: 'Continue' });
+      expect([frequency, isMedicineDueOn(line, at(2026, 11, 22), listed)]).toEqual([frequency, false]);
+      expect([frequency, isMedicineDueOn({ ...line, startDate: '' }, at(2026, 11, 22), listed)]).toEqual([frequency, false]);
+    });
   });
 
   it('a line with no start day only on the day the server listed it', () => {
@@ -376,6 +434,35 @@ describe('setting them on the phone', () => {
     mockNotifications.scheduleReminder.mockClear();
 
     await setMedicineReminderTimes({ ...DEFAULT_TIMES, night: '21:30' });
+    expect(mockNotifications.scheduleReminder.mock.calls[0][0].at).toEqual(at(2026, 11, 22, 21, 30));
+  });
+
+  it('a list read without its times (that read failed) keeps the times from before', async () => {
+    await sign();
+    await setMedicineReminderSource({ userId: 5, medicines: api([JAHED[1]]), times: { ...DEFAULT_TIMES, night: '22:15' } });
+    mockNotifications.scheduleReminder.mockClear();
+
+    await setMedicineReminderSource({ userId: 5, medicines: api([JAHED[1]]), times: null });
+    expect(mockNotifications.scheduleReminder.mock.calls[0][0].at).toEqual(at(2026, 11, 22, 22, 15));
+  });
+
+  it('no times ever read: the default times', async () => {
+    await sign();
+    await setMedicineReminderSource({ userId: 5, medicines: api([JAHED[1]]) });
+    expect(mockNotifications.scheduleReminder.mock.calls[0][0].at).toEqual(at(2026, 11, 22, 21, 0));
+  });
+
+  it("times read for another account, or with no list on the phone, change nothing", async () => {
+    await sign();
+    await setMedicineReminderTimes({ ...DEFAULT_TIMES, night: '21:30' }, 5); // no list yet
+    expect(mockNotifications.scheduleReminder).not.toHaveBeenCalled();
+
+    await setMedicineReminderSource({ userId: 5, medicines: api([JAHED[1]]), times: DEFAULT_TIMES });
+    mockNotifications.scheduleReminder.mockClear();
+    await setMedicineReminderTimes({ ...DEFAULT_TIMES, night: '23:00' }, 9);
+    expect(mockNotifications.scheduleReminder).not.toHaveBeenCalled();
+
+    await setMedicineReminderTimes({ ...DEFAULT_TIMES, night: '21:30' }, 5);
     expect(mockNotifications.scheduleReminder.mock.calls[0][0].at).toEqual(at(2026, 11, 22, 21, 30));
   });
 

@@ -9,13 +9,17 @@
  *
  *   - Built from the last list read from the server (Today's Medicines), with
  *     the server's own course rule (start day + duration), for today and the
- *     six days after it. Read again whenever the app is open and signed in.
- *     After a week without that, the reminders stop until the next sign-in.
+ *     six days after it. Read again whenever the app is open and signed in,
+ *     and set again from the phone each time the app opens or comes back,
+ *     signed in or not. A week without the app opened at all, and they stop
+ *     until it is.
  *   - A dose ticked off (in the app, or with "Taken" on the reminder) leaves
  *     its slot's reminder. Once a slot is all taken, its reminder goes.
  *   - "Taken" ticks the listed medicines without opening the app. A tap on the
  *     reminder, or a swipe, only clears it.
- *   - A once-a-week medicine is reminded on its own weekday only.
+ *   - A once-a-week medicine is reminded on its own weekday only, an
+ *     alternate-day one every other day. One taken as needed, once only
+ *     (STAT), or on a few days a week or a month not named gets none.
  *   - A reminder shown more than three hours late (the phone was off) is taken
  *     away.
  *   - Logout takes every reminder off the phone. An expired session keeps
@@ -57,8 +61,6 @@ export const MEDICINE_REMINDER_DAYS = 7;
 export const MEDICINE_REMINDER_LATE_MS = 3 * 60 * 60 * 1000;
 /** Medicines listed one by one; past this the rest are counted ("+3 more"). */
 const MAX_LINES = 6;
-/** The server reads a year of prescriptions back, no further. */
-const COURSE_LOOKBACK_DAYS = 365;
 
 const EVENT_PRESS_ACTION = 2; // EventType.ACTION_PRESS
 const EVENT_DELIVERED = 3; // EventType.DELIVERED
@@ -141,30 +143,70 @@ export const medicineCourseDays = (duration: string): number | null => {
   return Math.ceil(days);
 };
 
-/**
- * Once a week ("ONCEWKLY", "weekly", "once a week", "1/week", "সপ্তাহে ১"):
- * reminded on the course's own weekday only. The server lists such a medicine
- * every day, so a reminder each day would be wrong.
- */
-const WEEKLY = /w(ee)?kly|once\s*a?\s*w(ee)?k|1\s*\/\s*w(ee)?k|সপ্তাহে\s*(১|1|এক)/i;
-export const isWeeklyMedicine = (frequency: string): boolean => WEEKLY.test(String(frequency ?? ''));
+// The dose as the doctor chose it (the server's `frequency`, its spaces
+// stripped). The server lists every line every day of its course, whatever
+// the dose says; these rules keep a reminder from asking for a dose on a day
+// it is not to be taken. Each reads the text with or without the spaces.
+
+/** As needed: "SOS", "PRN", "Use as needed", "প্রয়োজনে" (য় written as one letter or two). */
+const AS_NEEDED =
+  /(^|[^a-z])(sos|prn)|(sos|prn)$|as\s*(needed|required)|when\s*(needed|required)|if\s*(needed|required|necessary)|প্র(?:\u09DF|\u09AF\u09BC)োজনে|প্র(?:\u09DF|\u09AF\u09BC)োজন\s*(মত|মতো|হলে)/i;
+/** Once only, at once: "STAT". */
+const ONCE_ONLY = /(^|[^a-z])stat([^a-z]|$)|stat$/i;
+/** Some days of the week, not named: "Use twice weekly", "Use three times weekly", "3x/week", "সপ্তাহে ২ বার". */
+const SOME_DAYS_A_WEEK =
+  /(twice|thrice|(two|three|four|five|six|[2-6])\s*(times|x))\s*(a|per|every|\/)?\s*w(ee)?k|সপ্তাহে\s*([২-৬]|[2-6]|দুই|তিন|চার|পাঁচ|ছ(?:\u09DF|\u09AF\u09BC))/i;
+/** Less often than weekly: "biweekly", "fortnightly", "every 2 weeks", "monthly", "মাসে ১ বার". */
+const LESS_THAN_WEEKLY =
+  /bi\s*-?\s*w(ee)?kly|fortnight|every\s*(2|two|other)\s*w(ee)?ks?|monthly|every\s*month|once\s*(a|per|every)?\s*month|1\s*(times?|x)?\s*(a|per|every|\/)\s*month|মাসে\s*(১|1|এক)\s*(বার|দিন)/i;
+/** Once a week: "ONCEWKLY", "Use once weekly", "every week", "1/week", "1 time per week", "সপ্তাহে ১ বার". */
+const ONCE_A_WEEK =
+  /w(ee)?kly|once\s*(a|per|every)?\s*w(ee)?k|every\s*w(ee)?k|1\s*(times?|x)\s*(a|per|every|\/)?\s*w(ee)?k|1\s*(a|per|every|\/)\s*w(ee)?k|সপ্তাহে\s*(১|1|এক)\s*(বার|দিন)?/i;
+/** Every other day: "Use on alternate days", "every other day", "একদিন পর পর". */
+const ALTERNATE_DAYS = /alternate\s*days?|every\s*(other|2nd|second|alternate)\s*day|এক\s*দিন\s*(পর\s*পর|অন্তর)/i;
 
 /**
- * Whether `medicine` is reminded on `day`: its course covers the day (start ≤
- * day < start + duration, a year back at most), and for a once-a-week
- * medicine, the day is its weekday. A line with no start day counts on
- * `listedDay` only, the day the server listed it.
+ * No reminder at all: as needed, once only (STAT), or a few days a week or a
+ * month that the dose does not name. A reminder every day would ask for a
+ * dose every day. The panel still lists them, as the portal does.
+ */
+export const isMedicineWithoutReminder = (frequency: string): boolean => {
+  const text = String(frequency ?? '');
+  return AS_NEEDED.test(text) || ONCE_ONLY.test(text) || SOME_DAYS_A_WEEK.test(text) || LESS_THAN_WEEKLY.test(text);
+};
+
+/** Once a week: reminded on the course's own weekday only. */
+export const isWeeklyMedicine = (frequency: string): boolean =>
+  !isMedicineWithoutReminder(frequency) && ONCE_A_WEEK.test(String(frequency ?? ''));
+
+/** Every other day: reminded on the course's first day, the third, the fifth… */
+export const isAlternateDayMedicine = (frequency: string): boolean =>
+  !isMedicineWithoutReminder(frequency) &&
+  !isWeeklyMedicine(frequency) &&
+  ALTERNATE_DAYS.test(String(frequency ?? ''));
+
+/**
+ * Whether `medicine` is reminded on `day`: its dose is one a reminder can be
+ * set for, its course covers the day (start ≤ day < start + duration), and the
+ * day is one of its days (its weekday, once a week; every other day, on
+ * alternate days). A line with no start day counts on `listedDay` only, the
+ * day the server listed it.
+ *
+ * There is no one-year limit here. The server reads a year of prescriptions
+ * back by the day each was saved, while `startDate` can be the date on an
+ * uploaded paper, far older. It has just listed the line, so the line counts.
  */
 export const isMedicineDueOn = (medicine: ReminderMedicine, day: Date, listedDay: Date): boolean => {
+  if (isMedicineWithoutReminder(medicine?.frequency)) return false;
   const start = parseDay(medicine?.startDate);
   if (!start) return daysBetween(midnight(listedDay), midnight(day)) === 0;
   const today = midnight(day);
   const sinceStart = daysBetween(start, today);
   if (sinceStart < 0) return false;
-  if (sinceStart > COURSE_LOOKBACK_DAYS) return false;
   const days = medicineCourseDays(medicine?.duration);
   if (days !== null && sinceStart >= days) return false;
   if (isWeeklyMedicine(medicine?.frequency)) return sinceStart % 7 === 0;
+  if (isAlternateDayMedicine(medicine?.frequency)) return sinceStart % 2 === 0;
   return true;
 };
 
@@ -421,7 +463,8 @@ export const rebuildMedicineReminders = (): Promise<void> => {
  * The list and times just read from the server for `userId`. Kept on the
  * phone (encrypted, as everything the app keeps) so the reminders can be set
  * again with no network and no login. Ignored when another account has signed
- * in since the read began.
+ * in since the read began. With no `times` (that read failed), the times kept
+ * from before stand, and the defaults when there are none.
  */
 export const setMedicineReminderSource = ({
   userId,
@@ -430,14 +473,14 @@ export const setMedicineReminderSource = ({
 }: {
   userId: number;
   medicines: TodayMedicine[];
-  times: MedicineSlotTimes;
+  times?: MedicineSlotTimes | null;
 }): Promise<void> => {
   const owner = readOwner();
   if (owner <= 0 || Math.trunc(Number(userId) || 0) !== owner) return Promise.resolve();
   writeSource({
     userId: owner,
     savedAt: Date.now(),
-    times: toTimes(times),
+    times: toTimes(times ?? readSource()?.times),
     medicines: (Array.isArray(medicines) ? medicines : [])
       .map(toReminderMedicine)
       .filter(medicine => medicine.id > 0),
@@ -445,10 +488,15 @@ export const setMedicineReminderSource = ({
   return rebuildMedicineReminders();
 };
 
-/** Times just saved on the server: the reminders move to them. */
-export const setMedicineReminderTimes = (times: MedicineSlotTimes): Promise<void> => {
+/**
+ * Times just saved on the server, or read from it: the reminders move to
+ * them. With `userId` (a read that began earlier), ignored when another
+ * account has signed in since.
+ */
+export const setMedicineReminderTimes = (times: MedicineSlotTimes, userId?: number): Promise<void> => {
   const source = readSource();
   if (!source) return Promise.resolve();
+  if (userId !== undefined && Math.trunc(Number(userId) || 0) !== source.userId) return Promise.resolve();
   writeSource({ ...source, times: toTimes(times) });
   return rebuildMedicineReminders();
 };
