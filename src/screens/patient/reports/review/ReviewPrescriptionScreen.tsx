@@ -245,7 +245,13 @@ export const ReviewPrescriptionScreen = () => {
     try {
       await DocumentReadRepository.confirmPrescription(documentId, payload);
       toastStore.show(t('reports.review.rxSaved'), 'success');
-      navigation.navigate('ReportsHome', { saved: { section: 'prescriptions', at: Date.now() } });
+      // Back to the Reports list, closing this review: a second list on top
+      // would leave the saved review under it, one Back away from saving it again.
+      navigation.navigate(
+        'ReportsHome',
+        { saved: { section: 'prescriptions', at: Date.now() } },
+        { pop: true },
+      );
     } catch (e: any) {
       console.log('confirmUploadedPrescription error ==>', e?.message);
       toastStore.show(serverMessageOf(e) || t('reports.review.saveFailed'), 'error');

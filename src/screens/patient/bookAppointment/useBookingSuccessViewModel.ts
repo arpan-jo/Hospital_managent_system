@@ -34,12 +34,21 @@ export const useBookingSuccessViewModel = (input: BookingSuccessInput) => {
   }, [paymentStatus, t]);
 
   // Only a free consultation (a doctor set up at ৳0) is booked at 0.
+  const isFree = !(amount > 0);
   const amountLabel = useMemo(
-    () => (amount > 0 ? `৳${groupThousands(amount)}` : t('doctorProfile.free')),
-    [amount, t],
+    () => (isFree ? t('doctorProfile.free') : `৳${groupThousands(amount)}`),
+    [isFree, amount, t],
   );
 
-  return { paymentLabel, amountLabel };
+  /**
+   * Whether to show how it is paid. Not for a free consultation: there is
+   * nothing to pay, and "Free" beside "Cash · Unpaid" reads as a contradiction.
+   * The portal shows no payment line for any booking. The booking itself is
+   * the same either way.
+   */
+  const showPayment = !isFree;
+
+  return { paymentLabel, amountLabel, showPayment };
 };
 
 export default useBookingSuccessViewModel;

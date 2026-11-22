@@ -187,7 +187,7 @@ export const AuthScreenLayout = ({
               style={styles.logo}
               resizeMode="contain"
               accessibilityRole="image"
-              accessibilityLabel="Hospital Management System"
+              accessibilityLabel="Akij Mediplex"
             />
           </View>
 
@@ -269,9 +269,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginTop: 8,
   },
+  // The web's height (h-14 = 56); the width keeps the logo's 640×254 shape.
   logo: {
-    width: 200,
-    height: 36,
+    width: 141,
+    height: 56,
   },
   title: {
     fontFamily: fontFamilies.bold,

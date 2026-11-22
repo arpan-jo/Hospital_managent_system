@@ -1,4 +1,4 @@
-import { billLabSection } from './billLabSection';
+import { billHasBothLabSections, billLabSection } from './billLabSection';
 
 const tests = (...codes: string[]) => codes.map(billCode => ({ billCode }));
 
@@ -29,5 +29,21 @@ describe('billLabSection', () => {
   it('opens pathology for a bill with no code, and skips tests with none', () => {
     expect(billLabSection('', [], tests(''))).toBe('pathology');
     expect(billLabSection(undefined, [], [{ billCode: null }, null as any])).toBe('pathology');
+  });
+});
+
+describe('billHasBothLabSections', () => {
+  it('is true only when both lists have the bill', () => {
+    expect(billHasBothLabSections('BILL-1', tests('BILL-1'), tests('BILL-1'))).toBe(true);
+    expect(billHasBothLabSections(' bill-1 ', tests('BILL-1'), tests('BILL-1'))).toBe(true);
+    expect(billHasBothLabSections('BILL-1', tests('BILL-1'), tests('BILL-2'))).toBe(false);
+    expect(billHasBothLabSections('BILL-1', tests('BILL-2'), tests('BILL-1'))).toBe(false);
+  });
+
+  it('is false with no code, or a list that could not be read', () => {
+    expect(billHasBothLabSections('', tests(''), tests(''))).toBe(false);
+    expect(billHasBothLabSections('BILL-1', null, tests('BILL-1'))).toBe(false);
+    expect(billHasBothLabSections('BILL-1', tests('BILL-1'), undefined)).toBe(false);
+    expect(billHasBothLabSections('BILL-1', {} as any, tests('BILL-1'))).toBe(false);
   });
 });

@@ -25,7 +25,6 @@
  * was off at 8 or 10 PM and puts it up when it comes back on, on the follow-up
  * day or later), it is taken away at once — nothing is shown late.
  */
-import { AppState } from 'react-native';
 import type * as NotifeeModule from '@notifee/react-native';
 import i18next from './i18n';
 import { withDoctorTitle } from './format';
@@ -34,9 +33,9 @@ import {
   cancelReminder,
   cancelReminders,
   loadNotifee,
-  requestNotificationPermission,
   scheduleReminder,
 } from './localNotifications';
+import { askNotificationPermissionOnce } from './notificationPermission';
 
 /** The reminder shows the day before the follow-up at this hour. */
 export const DAY_BEFORE_REMINDER_HOUR = 20;
@@ -52,8 +51,6 @@ const CHANNEL_ID = 'follow-up-reminder';
 const RECORDS_PREFIX = 'reminder_followup_records_';
 /** The account signed in on this phone — whose reminders are set. */
 const OWNER_KEY = 'reminder_followup_owner';
-/** The notification permission is asked for once; after that the phone's settings decide. */
-const PERMISSION_ASKED_KEY = 'reminder_permission_asked';
 
 /** The follow-up day a reminder is for, carried with it (notification.data — strings only). */
 const DATA_DATE = 'followUpDate';
@@ -406,30 +403,6 @@ const setFollowUpReminder = async (
   return set === true;
 };
 
-let isAsking = false;
-
-/**
- * Asks to show notifications, once. Only while the patient is looking at the
- * app — a request from the background is lost and would use up the one ask —
- * and it counts only once the phone has answered.
- */
-const askPermissionOnce = async () => {
-  if (isAsking) return;
-  isAsking = true;
-  try {
-    if (storage?.getBoolean?.(PERMISSION_ASKED_KEY)) return;
-    if (AppState?.currentState !== 'active') return;
-    const answer = await requestNotificationPermission?.();
-    if (answer === 'granted' || answer === 'denied') {
-      storage?.set?.(PERMISSION_ASKED_KEY, true);
-    }
-  } catch (error: any) {
-    console.log('follow-up reminder permission error ==>', error?.message);
-  } finally {
-    isAsking = false;
-  }
-};
-
 export interface FollowUpReminderInput {
   prescriptionId: number;
   /** The prescription's follow-up dates — the print data's `followUpDates`. */
@@ -476,7 +449,8 @@ export const scheduleFollowUpReminders = async (
     }
 
     const toSchedule = plan?.schedule ?? [];
-    if (toSchedule?.some(item => item?.isNew)) await askPermissionOnce();
+    // Normally asked at sign-in already; this covers a patient who never was.
+    if (toSchedule?.some(item => item?.isNew)) await askNotificationPermissionOnce?.();
 
     const set: FollowUpReminderRecords = {};
     for (const item of toSchedule) {

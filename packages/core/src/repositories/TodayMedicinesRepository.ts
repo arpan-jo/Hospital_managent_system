@@ -3,8 +3,9 @@
  * from `/hms/prescriptions/today`, and the patient's reminder times from
  * `/hms/medicine-schedule`.
  *
- * Both routes answered 404 on the dev server when this was written — the
- * backend dropped them — so the panel shows its empty state, as the portal does.
+ * The backend dropped both routes on 2026-09-07 and brought them back on
+ * 2026-11-19 (PortalMedicineController), reading the patient's own
+ * prescriptions. Until then the panel showed its empty state, as the portal did.
  */
 import { API_URL } from '@env';
 import apiRequest, { ApiRequestOptions } from '../network/apiRequest';

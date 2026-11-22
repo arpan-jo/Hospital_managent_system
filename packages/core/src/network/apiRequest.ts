@@ -1,6 +1,20 @@
 import { AxiosRequestConfig, Method } from 'axios';
 import { apiClient } from './apiClient';
 
+/**
+ * A write (POST, PUT, PATCH, DELETE) waits this long unless the call sets its
+ * own time. The portal sets no limit at all. The client's 10 s default made a
+ * slow save look like a failure even when the server had in fact taken it, and
+ * a retry then made it twice (a home-collection order, a document). Reads keep
+ * the client's default.
+ */
+export const WRITE_TIMEOUT_MS = 30_000;
+
+const WRITE_METHODS = ['post', 'put', 'patch', 'delete'];
+
+const isWrite = (method?: Method | string) =>
+  WRITE_METHODS.includes(String(method ?? 'GET')?.toLowerCase?.() ?? '');
+
 export interface ApiRequestOptions<TData = any> {
   url: string;
   method?: Method;
@@ -50,8 +64,10 @@ export async function apiRequest<TResponse = any, TData = any>({
     isConsoleEncrypted,
   };
 
-  if (timeout) {
-    config.timeout = timeout;
+  // The call's own time first; a write without one gets the longer write time.
+  const wait = timeout || (isWrite(method) ? WRITE_TIMEOUT_MS : undefined);
+  if (wait) {
+    config.timeout = wait;
   }
 
   if (responseType) {

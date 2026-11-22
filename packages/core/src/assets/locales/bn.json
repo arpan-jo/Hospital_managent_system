@@ -718,6 +718,7 @@
     "sectionUploads": "আমার আপলোড",
     "sectionPathology": "প্যাথলজি",
     "sectionRadiology": "রেডিওলজি",
+    "billAlsoRadiology": "এই বিলে রেডিওলজির টেস্টও আছে — রেডিওলজি অংশে দেখুন।",
     "sectionPrescriptions": "প্রেসক্রিপশন",
     "subtitleUploads": "আপনার নিজের আপলোড করা ফাইল",
     "subtitlePathology": "আপনার ল্যাব টেস্ট ও তার রিপোর্ট",

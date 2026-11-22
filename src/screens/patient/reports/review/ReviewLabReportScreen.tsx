@@ -245,9 +245,13 @@ export const ReviewLabReportScreen = () => {
         }),
         'success',
       );
-      navigation.navigate('ReportsHome', {
-        saved: { section: reportType === 'Radiology' ? 'radiology' : 'pathology', at: Date.now() },
-      });
+      // Back to the Reports list, closing this review: a second list on top
+      // would leave the saved review under it, one Back away from saving it again.
+      navigation.navigate(
+        'ReportsHome',
+        { saved: { section: reportType === 'Radiology' ? 'radiology' : 'pathology', at: Date.now() } },
+        { pop: true },
+      );
     } catch (e: any) {
       console.log('confirmUploadedLabReport error ==>', e?.message);
       toastStore.show(serverMessageOf(e) || t('reports.review.saveFailed'), 'error');

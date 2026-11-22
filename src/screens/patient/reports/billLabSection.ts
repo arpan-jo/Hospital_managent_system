@@ -20,7 +20,25 @@ export const billLabSection = (
 ): 'pathology' | 'radiology' => {
   const key = String(code ?? '').trim().toLowerCase();
   if (!key) return 'pathology';
-  const inRadiology = (radiology ?? []).some(sameCode(key));
-  const inPathology = (pathology ?? []).some(sameCode(key));
+  const inRadiology = (Array.isArray(radiology) ? radiology : []).some(sameCode(key));
+  const inPathology = (Array.isArray(pathology) ? pathology : []).some(sameCode(key));
   return inRadiology && !inPathology ? 'radiology' : 'pathology';
+};
+
+/**
+ * Whether a bill has tests in both lab sections. Pathology opens then, and the
+ * patient is told the radiology tests are under Radiology. The portal shows
+ * every test of a bill on one page.
+ */
+export const billHasBothLabSections = (
+  code: string | null | undefined,
+  pathology: BillTest[] | null | undefined,
+  radiology: BillTest[] | null | undefined,
+): boolean => {
+  const key = String(code ?? '').trim().toLowerCase();
+  if (!key) return false;
+  return (
+    (Array.isArray(pathology) ? pathology : []).some(sameCode(key)) &&
+    (Array.isArray(radiology) ? radiology : []).some(sameCode(key))
+  );
 };

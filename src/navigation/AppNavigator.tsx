@@ -1,7 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { observer } from 'mobx-react-lite';
-import { cancelAllAlarms, claimFollowUpReminders, useStores } from '@app/core';
+import {
+  askNotificationPermissionOnce,
+  cancelAllAlarms,
+  claimFollowUpReminders,
+  useStores,
+} from '@app/core';
 import AuthStackNavigator from './AuthStackNavigator';
 import DrawerNavigator from './DrawerNavigator';
 import { NavigationLightTheme, NavigationDarkTheme } from '@app/ui';
@@ -58,6 +63,12 @@ export const AppNavigator = observer(() => {
   useEffect(() => {
     if (isAuthenticated && userId > 0) claimFollowUpReminders?.(userId);
   }, [isAuthenticated, userId]);
+
+  // Signed in (or opened signed in): the notification permission, asked once
+  // for the whole app, as the portal asks right after a patient signs in.
+  useEffect(() => {
+    if (isAuthenticated) askNotificationPermissionOnce?.();
+  }, [isAuthenticated]);
 
   return (
     <NavigationContainer

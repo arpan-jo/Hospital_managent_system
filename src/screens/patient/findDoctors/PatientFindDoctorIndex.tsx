@@ -69,11 +69,15 @@ export const PatientFindDoctorIndex = observer(() => {
     ? t('findDoctors.greetingWithName', { greeting, name: firstName })
     : greeting;
 
+  // The profile itself — not a profile screen left open in that tab.
   const handleProfile = useCallback(
     () =>
       navigation
-        .getParent<DrawerNavigationProp<DrawerParamList>>()
-        ?.navigate('MainTabs', { screen: 'ProfileTab' }),
+        ?.getParent?.<DrawerNavigationProp<DrawerParamList>>()
+        ?.navigate?.('MainTabs', {
+          screen: 'ProfileTab',
+          params: { screen: 'ProfileMain', pop: true },
+        }),
     [navigation],
   );
 

@@ -292,9 +292,14 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
   const isActive = (item: MenuItem): boolean =>
     item.tab ? focusedTab === item.tab : activeRoute?.name === item.name;
 
-  /** A row opens its section — at the section's list when the section is a stack. */
+  /**
+   * A row opens its section — at the section's list when the section is a
+   * stack. `pop` goes back to the list already in that stack: without it,
+   * React Navigation 7 stacks a second list over a detail left open there, and
+   * Back from that list reopens the old detail.
+   */
   const openMenuItem = (item: MenuItem) => {
-    const nested = item?.screen ? { screen: item.screen } : undefined;
+    const nested = item?.screen ? { screen: item.screen, pop: true } : undefined;
     if (item?.tab) {
       props?.navigation?.navigate?.('MainTabs', { screen: item.tab, params: nested });
     } else if (item?.name) {
@@ -339,7 +344,7 @@ const CustomDrawerContent = observer((props: DrawerContentComponentProps) => {
           onPress={() =>
             props.navigation.navigate('MainTabs', {
               screen: 'ProfileTab',
-              params: { screen: 'ProfileMain' },
+              params: { screen: 'ProfileMain', pop: true },
             })
           }
           accessibilityRole="button"

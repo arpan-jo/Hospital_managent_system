@@ -81,7 +81,7 @@ export const ENDPOINTS = {
   portalVitals: '/hms/portal/medical-records/GetMyVitals',
   /** One final radiology test's own images, as a link to the PACS viewer. */
   portalRadiologyImages: '/hms/portal/medical-records/GetRadiologyImages',
-  /** Today's Medicines, as the portal binds it (both 404 on dev as of 2026-10-14). */
+  /** Today's Medicines, as the portal binds it (backend PortalMedicineController, back since 2026-11-19). */
   todayMedicines: '/hms/prescriptions/today',
   medicineSchedule: '/hms/medicine-schedule',
   patientDocuments: '/hms/patient/documents',

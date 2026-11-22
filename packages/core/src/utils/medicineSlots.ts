@@ -19,25 +19,62 @@ export const DEFAULT_SLOT_TIMES: MedicineSlotTimes = {
 
 const toText = (value: any): string => String(value ?? '').trim();
 
+const BANGLA_DIGITS = '০১২৩৪৫৬৭৮৯';
+
+/** Bangla digits as 0–9: doctors write a dose either way ("০+০+১" is "0+0+1"). */
+const toAsciiDigits = (text: string): string =>
+  String(text ?? '')?.replace?.(/[০-৯]/g, digit => String(BANGLA_DIGITS.indexOf(digit))) ?? '';
+
+const FRACTION_SIGNS = '½¼¾⅓⅔⅛';
+
+/**
+ * One position of a dose pattern: a fraction (1/2), a fraction sign with or
+ * without a whole number (½, 1½), or a count (1, 10, 0.5).
+ */
+const DOSE = `(\\d+\\/\\d+|\\d*[${FRACTION_SIGNS}]|\\d+(?:\\.\\d+)?)`;
+
+/**
+ * Three or four doses joined by + or −. Anything after them that does not
+ * carry on a dose (a note the server ran into the dose, "1+0+1খাবারেরপরে")
+ * is left out.
+ */
+const DOSE_PATTERN = new RegExp(
+  `^${DOSE}[+-]${DOSE}[+-]${DOSE}(?:[+-]${DOSE})?(?=$|[^\\d./+\\-${FRACTION_SIGNS}])`,
+);
+
+/** A dose that is actually taken: anything above zero — ½ and 0.5 included. */
+const isTaken = (dose?: string): boolean => {
+  const text = String(dose ?? '');
+  if (!text) return false;
+  if (new RegExp(`[${FRACTION_SIGNS}]`).test(text)) return true;
+  const [top, bottom] = text.split('/');
+  const value = bottom === undefined ? Number(top) : Number(top) / Number(bottom);
+  return Number.isFinite(value) && value > 0;
+};
+
 /**
  * Which of the day's slots a frequency falls in, as the portal reads it:
  * "1-0-1" is morning/afternoon/night by position (a fourth figure adds the
- * evening), and the usual words — qid, tds, bd, od, nocte — map to theirs.
+ * evening), and the usual words — qid, tds, bd, od, nocte — map to theirs, in
+ * the portal's order. Beyond the portal, a dose written in Bangla digits
+ * ("০+০+১") or as a fraction ("½+0+½", "1/2", "0.5") is read too: the portal
+ * takes those for a morning dose, which puts a night-only medicine under
+ * Morning.
  */
 export const slotsOfFrequency = (frequency?: string | null): MedicineSlot[] => {
-  const raw = toText(frequency).toLowerCase();
-  const numeric = /^(\d)[+-](\d)[+-](\d)(?:[+-](\d))?$/.exec(raw);
+  const raw = toAsciiDigits(toText(frequency))?.toLowerCase?.() ?? '';
+  const numeric = DOSE_PATTERN.exec(raw);
 
   if (numeric) {
     const [, morning, afternoon, third, fourth] = numeric;
     const slots: MedicineSlot[] = [];
-    if (morning !== '0') slots.push('morning');
-    if (afternoon !== '0') slots.push('afternoon');
+    if (isTaken(morning)) slots.push('morning');
+    if (isTaken(afternoon)) slots.push('afternoon');
     if (fourth === undefined) {
-      if (third !== '0') slots.push('night');
+      if (isTaken(third)) slots.push('night');
     } else {
-      if (third !== '0') slots.push('evening');
-      if (fourth !== '0') slots.push('night');
+      if (isTaken(third)) slots.push('evening');
+      if (isTaken(fourth)) slots.push('night');
     }
     return slots.length ? slots : ['morning'];
   }
@@ -45,6 +82,8 @@ export const slotsOfFrequency = (frequency?: string | null): MedicineSlot[] => {
   if (/\bqid\b|\bfour\s+times\b|\b4\s+times\b/.test(raw)) return [...MEDICINE_SLOTS];
   if (/\btds\b|\btid\b|\bthree\s+times\b|\b3\s+times\b/.test(raw)) return ['morning', 'afternoon', 'night'];
   if (/\bbd\b|\btwice\b|\bbid\b|\b2\s+times\b/.test(raw)) return ['morning', 'night'];
+  // Before "at night", as the portal checks: "once at night" is a morning dose there too.
+  if (/\bod\b|\bonce\b|\b1\s+time\b|\bonce\s+daily\b/.test(raw)) return ['morning'];
   if (/\bnocte\b|\bhs\b|\bat\s+night\b/.test(raw)) return ['night'];
   return ['morning'];
 };

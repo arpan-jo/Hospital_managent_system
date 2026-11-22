@@ -135,13 +135,23 @@ export const PatientDashboard = observer(() => {
   const openMenu = useCallback(() => navigation.dispatch(DrawerActions.openDrawer()), [navigation]);
   // Every shortcut names its section's list, as the portal's links open the
   // page itself: a section left on an inner screen (a doctor, a thread, a
-  // file) is taken back to its list instead of reopening that screen.
+  // file) is taken back to its list instead of reopening that screen. `pop`
+  // goes back to that list; without it React Navigation 7 stacks a second list
+  // over the inner screen, and Back from it reopens the old screen.
   const openFindDoctors = useCallback(
-    () => drawer()?.navigate?.('MainTabs', { screen: 'HomeTab', params: { screen: 'PatientFindDoctorIndex' } }),
+    () =>
+      drawer()?.navigate?.('MainTabs', {
+        screen: 'HomeTab',
+        params: { screen: 'PatientFindDoctorIndex', pop: true },
+      }),
     [drawer],
   );
   const openAppointments = useCallback(
-    () => drawer()?.navigate?.('MainTabs', { screen: 'ActivityTab', params: { screen: 'AppointmentsList' } }),
+    () =>
+      drawer()?.navigate?.('MainTabs', {
+        screen: 'ActivityTab',
+        params: { screen: 'AppointmentsList', pop: true },
+      }),
     [drawer],
   );
   const openAppointment = useCallback(
@@ -155,22 +165,36 @@ export const PatientDashboard = observer(() => {
     [drawer],
   );
   const openReports = useCallback(
-    () => drawer()?.navigate?.('MainTabs', { screen: 'ReportsTab', params: { screen: 'ReportsHome' } }),
+    () =>
+      drawer()?.navigate?.('MainTabs', {
+        screen: 'ReportsTab',
+        params: { screen: 'ReportsHome', pop: true },
+      }),
     [drawer],
   );
-  const openBills = useCallback(() => drawer()?.navigate?.('Bills', { screen: 'BillsList' }), [drawer]);
-  const openMessages = useCallback(() => drawer()?.navigate?.('Messages', { screen: 'MessagesList' }), [drawer]);
+  const openBills = useCallback(
+    () => drawer()?.navigate?.('Bills', { screen: 'BillsList', pop: true }),
+    [drawer],
+  );
+  const openMessages = useCallback(
+    () => drawer()?.navigate?.('Messages', { screen: 'MessagesList', pop: true }),
+    [drawer],
+  );
   const openPrescriptions = useCallback(
-    () => drawer()?.navigate?.('Prescriptions', { screen: 'MyPrescriptionsList' }),
+    () => drawer()?.navigate?.('Prescriptions', { screen: 'MyPrescriptionsList', pop: true }),
     [drawer],
   );
   const openVitals = useCallback(() => drawer()?.navigate?.('Vitals'), [drawer]);
   const openHomeCollection = useCallback(
-    () => drawer()?.navigate?.('HomeCollection', { screen: 'HomeCollectionList' }),
+    () => drawer()?.navigate?.('HomeCollection', { screen: 'HomeCollectionList', pop: true }),
     [drawer],
   );
   const openProfile = useCallback(
-    () => drawer()?.navigate?.('MainTabs', { screen: 'ProfileTab', params: { screen: 'ProfileMain' } }),
+    () =>
+      drawer()?.navigate?.('MainTabs', {
+        screen: 'ProfileTab',
+        params: { screen: 'ProfileMain', pop: true },
+      }),
     [drawer],
   );
   const openNotifications = useCallback(() => drawer()?.navigate?.('Notifications'), [drawer]);

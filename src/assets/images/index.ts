@@ -9,7 +9,8 @@ import { ImageSourcePropType } from 'react-native';
  * so the path must be a literal and cannot be built from a variable.
  */
 export const images = {
-  logo: require('./logo-mediplex.png'),
+  /** "AKIJ MEDIPLEX LIMITED", the web's own logo (akij-mediplex-logo.png, 640×254). */
+  logo: require('./logo-akij-mediplex.png'),
   /** Google's "G", taken from the web's sign-in button. */
   google: require('./google.png'),
 } satisfies Record<string, ImageSourcePropType>;

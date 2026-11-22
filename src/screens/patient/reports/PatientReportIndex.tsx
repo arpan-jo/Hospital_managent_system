@@ -22,7 +22,7 @@ import { useFocusedStatusBar } from '../../../hooks/useFocusedStatusBar';
 import { useMonthNames } from '../../../hooks/useMonthNames';
 import { ReportsStackParamList } from '../../../navigation/ReportsStackNavigator';
 import { TAB_BAR_CLEARANCE } from '../../../navigation/tabBarLayout';
-import { billLabSection } from './billLabSection';
+import { billHasBothLabSections, billLabSection } from './billLabSection';
 import { PathologySection, RadiologySection, VisitPrescriptionsSection } from './RecordSections';
 import UploadProgressModal from './UploadProgressModal';
 import UploadReportSheet from './UploadReportSheet';
@@ -145,14 +145,25 @@ export const PatientReportIndex = observer(() => {
   useEffect(() => {
     sectionRef.current = section;
   }, [section]);
+  // Held in a ref so a change of language does not open the bill's tests again.
+  const tellAlsoRadiologyRef = useRef<() => void>(() => {});
+  tellAlsoRadiologyRef.current = () =>
+    toastStore?.show?.(t('reports.billAlsoRadiology'), 'info', 5000);
   useEffect(() => {
     if (!billAt || !billCode) return;
     openSection('pathology');
     let isCurrent = true;
-    Promise.all([readLabTests('pathology'), readLabTests('radiology')]).then(([pathology, radiology]) => {
-      if (!isCurrent || sectionRef.current !== 'pathology') return;
-      if (billLabSection(billCode, pathology, radiology) === 'radiology') openSection('radiology');
-    });
+    Promise.all([readLabTests('pathology'), readLabTests('radiology')])
+      .then(([pathology, radiology]) => {
+        if (!isCurrent || sectionRef.current !== 'pathology') return;
+        if (billLabSection(billCode, pathology, radiology) === 'radiology') {
+          openSection('radiology');
+        } else if (billHasBothLabSections(billCode, pathology, radiology)) {
+          // Pathology is open; the bill's radiology tests are one tab away.
+          tellAlsoRadiologyRef.current?.();
+        }
+      })
+      .catch((error: any) => console.log('bill lab sections error ==>', error?.message));
     return () => {
       isCurrent = false;
     };

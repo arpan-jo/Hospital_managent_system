@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Allergy,
@@ -106,6 +106,35 @@ export const useProfileViewModel = () => {
     loadConditions();
     loadAllergies();
   }, [hasProfile, loadConditions, loadAllergies]);
+
+  const hasProfileRef = useRef(hasProfile);
+  useEffect(() => {
+    hasProfileRef.current = hasProfile;
+  }, [hasProfile]);
+
+  /**
+   * Back on the Profile screen: the conditions and allergies again, as the
+   * portal reads them again when its page comes back into view. One changed on
+   * the web, say, shows here. Quiet: no spinner, and a read that fails leaves
+   * the list on screen as it is.
+   */
+  const refreshLists = useCallback(async () => {
+    if (!hasProfileRef.current) return;
+    const [conditions, allergies] = await Promise.allSettled([
+      PatientRepository.getConditions(),
+      PatientRepository.getAllergies(),
+    ]);
+    if (conditions?.status === 'fulfilled') {
+      setConditionsRequest({ isLoading: false, data: conditions?.value ?? [], error: null });
+    } else {
+      console.log('[Profile] refresh getConditions error ==>', conditions?.reason?.message);
+    }
+    if (allergies?.status === 'fulfilled') {
+      setAllergiesRequest({ isLoading: false, data: allergies?.value ?? [], error: null });
+    } else {
+      console.log('[Profile] refresh getAllergies error ==>', allergies?.reason?.message);
+    }
+  }, []);
 
   /** Resolves true once saved, so the sheet closes only then. */
   const addCondition = useCallback(
@@ -255,6 +284,7 @@ export const useProfileViewModel = () => {
     refreshProfile: loadProfile,
     reloadConditions: loadConditions,
     reloadAllergies: loadAllergies,
+    refreshLists,
     addCondition,
     removeCondition,
     addAllergy,

@@ -133,12 +133,18 @@ export const BookingSuccessScreen = observer(() => {
           {officeName ? (
             <SummaryRow label={t('doctorProfile.office')} value={officeName} />
           ) : null}
-          <SummaryRow label={t('doctorProfile.price')} value={viewModel?.amountLabel ?? ''} />
           <SummaryRow
-            label={t('bookingSuccess.payment')}
-            value={viewModel?.paymentLabel ?? ''}
-            last
+            label={t('doctorProfile.price')}
+            value={viewModel?.amountLabel ?? ''}
+            last={!viewModel?.showPayment}
           />
+          {viewModel?.showPayment ? (
+            <SummaryRow
+              label={t('bookingSuccess.payment')}
+              value={viewModel?.paymentLabel ?? ''}
+              last
+            />
+          ) : null}
         </View>
 
         <CustomButton

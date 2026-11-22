@@ -67,8 +67,12 @@ export const LabOrderDetailScreen = () => {
     }
   }, [order?.orderId, isCancelling, toastStore, t]);
 
+  // The Bills list itself: a bare 'Bills' reopened whatever bill was left open there.
   const openBills = useCallback(
-    () => navigation?.getParent?.<DrawerNavigationProp<DrawerParamList>>()?.navigate?.('Bills'),
+    () =>
+      navigation
+        ?.getParent?.<DrawerNavigationProp<DrawerParamList>>()
+        ?.navigate?.('Bills', { screen: 'BillsList', pop: true }),
     [navigation],
   );
 

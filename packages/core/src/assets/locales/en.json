@@ -718,6 +718,7 @@
     "sectionUploads": "My Uploads",
     "sectionPathology": "Pathology",
     "sectionRadiology": "Radiology",
+    "billAlsoRadiology": "This bill has radiology tests too — they are under Radiology.",
     "sectionPrescriptions": "Prescriptions",
     "subtitleUploads": "Files you uploaded yourself",
     "subtitlePathology": "Your lab tests and their reports",

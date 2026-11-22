@@ -57,17 +57,21 @@ export const PatientProfileIndex = observer(() => {
 
   const months = Array.from({ length: 12 }, (_, index) => t(`months.${index}`));
 
-  // A profile changed elsewhere — on the web, say — shows when we come back.
-  // The store already carries one saved here a moment ago, and this re-read
-  // never blanks the screen while it runs.
+  // A profile changed elsewhere — on the web, say — shows when we come back,
+  // its conditions and allergies too. The store already carries one saved here
+  // a moment ago, and these re-reads never blank the screen while they run.
   const refreshProfile = viewModel.refreshProfile;
+  const refreshLists = viewModel.refreshLists;
   const hasFocusedOnce = useRef(false);
   useFocusEffect(
     useCallback(() => {
       // The view model already fetches on mount — skip that duplicate here.
-      if (hasFocusedOnce.current) refreshProfile();
+      if (hasFocusedOnce.current) {
+        refreshProfile?.();
+        refreshLists?.();
+      }
       hasFocusedOnce.current = true;
-    }, [refreshProfile]),
+    }, [refreshProfile, refreshLists]),
   );
 
   const signOut = useSignOut();

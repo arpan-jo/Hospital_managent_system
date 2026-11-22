@@ -180,6 +180,8 @@ export const BillDetailScreen = () => {
           params: {
             bill: { code: billCode, at: Date.now() },
           },
+          // Back to the Reports list already there, not a second one over a report left open.
+          pop: true,
         },
       });
   }, [navigation, billCode]);

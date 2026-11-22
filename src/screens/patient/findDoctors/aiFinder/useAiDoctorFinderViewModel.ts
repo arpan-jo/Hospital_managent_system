@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   AiAssistFailure,
@@ -45,6 +46,7 @@ export const useAiDoctorFinderViewModel = () => {
     stop: stopRecorder,
     discard: discardRecording,
     isActive: isRecorderActive,
+    resume: resumeRecorder,
   } = recorder;
 
   const [input, setInput] = useState('');
@@ -68,6 +70,24 @@ export const useAiDoctorFinderViewModel = () => {
 
   // Leaving the screen stops whatever is on its way.
   useEffect(() => () => requestRef.current?.abort(), []);
+
+  /*
+   * The recorder pauses when the app goes to the background (the phone takes
+   * the microphone away there), but this screen still says "Listening", with
+   * its clock and its ceiling stopped. Back in the app the recording carries
+   * on, so what the screen says is true again. Stop and Cancel work as before;
+   * `resume` does nothing unless the recording is in fact paused.
+   */
+  const phaseRef = useRef<AiFinderPhase>('idle');
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+  useEffect(() => {
+    const subscription = AppState?.addEventListener?.('change', next => {
+      if (next === 'active' && phaseRef.current === 'recording') resumeRecorder?.();
+    });
+    return () => subscription?.remove?.();
+  }, [resumeRecorder]);
 
   /** Sends the patient's words — typed, picked from an example, or heard in a recording. */
   const ask = useCallback(
