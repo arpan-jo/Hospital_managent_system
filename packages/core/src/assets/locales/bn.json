@@ -1329,6 +1329,7 @@
     "unavailable": "অ্যালার্মের জন্য অ্যাপের নতুন ভার্সন লাগবে।"
   },
   "notifications": {
+    "pushChannel": "হাসপাতালের আপডেট",
     "title": "নোটিফিকেশন",
     "unreadSubtitle": "{{count}}টি অপঠিত",
     "unreadSubtitle_plural": "{{count}}টি অপঠিত",

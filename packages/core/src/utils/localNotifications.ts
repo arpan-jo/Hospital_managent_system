@@ -42,8 +42,8 @@ const DISMISS_ACTION_ID = 'reminder-dismiss';
 const PRESS_ID = 'reminder-press';
 
 /** Status-bar icon — res/drawable/ic_stat_alarm; the launcher icon reads as a blank circle there. */
-const SMALL_ICON = 'ic_stat_alarm';
-const ACCENT = '#2F45E5';
+export const SMALL_ICON = 'ic_stat_alarm';
+export const ACCENT = '#2F45E5';
 
 export interface ReminderChannel {
   /** One per kind of reminder, so the patient can silence one kind in the phone's settings. */

@@ -143,6 +143,35 @@ export const NotificationRepository = {
     };
     await apiRequest<any>(api_params);
   },
+
+  /** `POST /hms/notifications/devices` — this phone's FCM token, so new notifications are pushed to it. */
+  registerDevice: async (token: string, platform: string): Promise<void> => {
+    const api_params: ApiRequestOptions = {
+      url: `${ENDPOINTS.notifications}/devices`,
+      method: 'POST',
+      data: { token, platform },
+      baseUrl: API_URL,
+    };
+    await apiRequest<any>(api_params);
+  },
+
+  /**
+   * `POST /hms/notifications/devices/remove` — stop pushing to this phone. Takes
+   * the login, as `AuthRepository.logout` does: the stores are already cleared
+   * when it goes out.
+   */
+  removeDevice: async (token: string, authToken: string): Promise<void> => {
+    const api_params: ApiRequestOptions = {
+      url: `${ENDPOINTS.notifications}/devices/remove`,
+      method: 'POST',
+      data: { token },
+      baseUrl: API_URL,
+      headers: { Authorization: `Bearer ${authToken}` },
+      // Best effort, like the sign-out it goes before.
+      timeout: 5000,
+    };
+    await apiRequest<any>(api_params);
+  },
 };
 
 export default NotificationRepository;

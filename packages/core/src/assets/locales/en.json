@@ -1329,6 +1329,7 @@
     "unavailable": "Alarms need the latest version of the app."
   },
   "notifications": {
+    "pushChannel": "Hospital updates",
     "title": "Notifications",
     "unreadSubtitle": "{{count}} unread",
     "unreadSubtitle_plural": "{{count}} unread",

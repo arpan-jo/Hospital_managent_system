@@ -41,6 +41,7 @@ export * from './utils/notifications';
 export * from './utils/alarm';
 export * from './utils/localNotifications';
 export * from './utils/notificationPermission';
+export * from './utils/pushNotifications';
 export * from './utils/followUpReminder';
 export * from './utils/medicineReminder';
 export * from './utils/googleSignIn';

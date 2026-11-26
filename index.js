@@ -7,7 +7,9 @@ import {
   handleAlarmEvent,
   handleFollowUpEvent,
   handleMedicineReminderEvent,
+  handlePushEvent,
   registerNotificationHandlers,
+  setPushBackgroundHandler,
 } from '@app/core';
 import App from './App';
 import { name as appName } from './app.json';
@@ -20,6 +22,9 @@ registerNotificationHandlers?.(
   handleAlarmEvent,
   handleFollowUpEvent,
   handleMedicineReminderEvent,
+  handlePushEvent,
 );
+// A push from the server while the app is closed: FCM shows it itself.
+setPushBackgroundHandler?.();
 
 AppRegistry.registerComponent(appName, () => App);

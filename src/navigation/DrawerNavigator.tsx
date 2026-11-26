@@ -11,6 +11,7 @@ import NotificationsScreen from '../screens/common/notifications/NotificationsSc
 import { useUnreadNotificationsSync } from '../hooks/useUnreadNotifications';
 import { useUnreadMessagesSync } from '../hooks/useUnreadMessages';
 import { useMessageHub } from '../hooks/useMessageHub';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useSignOut } from '../hooks/useSignOut';
 import SessionEndedDialog from '../components/SessionEndedDialog';
 import MyPrescriptionsStackNavigator, {
@@ -500,6 +501,8 @@ export const DrawerNavigator = () => {
   useUnreadMessagesSync();
   // A doctor's reply arrives at once over the portal's real-time channel; polling stays as the fallback.
   useMessageHub();
+  // …and every notification reaches the phone as a push, even with the app closed.
+  usePushNotifications();
 
   return (
     <>

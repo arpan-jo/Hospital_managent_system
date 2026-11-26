@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import {
   AuthRepository,
+  unregisterPushDevice,
   clearFollowUpReminders,
   clearMedicineReminders,
   useStores,
@@ -35,9 +36,12 @@ export const useSignOut = (options?: SignOutOptions) => {
       clearFollowUpReminders?.();
       clearMedicineReminders?.();
     }
-    AuthRepository.logout(token).catch((error: any) => {
-      console.log('sign out error ==>', error?.message);
-    });
+    // The push token first: the logout request ends the login it needs.
+    unregisterPushDevice(token)
+      .then(() => AuthRepository.logout(token))
+      .catch((error: any) => {
+        console.log('sign out error ==>', error?.message);
+      });
   }, [authStore, profileStore, keepReminders]);
 };
 

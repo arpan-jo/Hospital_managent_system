@@ -16,6 +16,11 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
+      <!-- A push FCM shows itself (app closed) uses the reminders' status-bar icon;
+           the launcher icon reads as a blank circle there. -->
+      <meta-data
+        android:name="com.google.firebase.messaging.default_notification_icon"
+        android:resource="@drawable/ic_stat_alarm" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
